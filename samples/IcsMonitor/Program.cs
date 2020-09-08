@@ -44,6 +44,28 @@ namespace IcsMonitor
             }
         }
 
+        [Command("Extract-Dnp3Flows")]
+        public async Task ExtractDnp3Flows(string inputFile, string outFile = null)
+        {
+            using var cmd = new ExtractDnp3FlowsCommand
+            {
+                InputFile = inputFile,
+            };
+
+            var serializer = new SerializerBuilder()
+                .WithNamingConvention(UnderscoredUpperCaseNamingConvention.Instance)
+                .DisableAliases()
+                .WithTypeConverter(new IPAddressYamlTypeConverter())
+                .Build();
+
+            using var outWriter = outFile != null ? new StreamWriter(outFile) : new StreamWriter(Console.OpenStandardOutput(), leaveOpen: true);
+            await foreach (var obj in ExecuteCommandAsync(cmd).ConfigureAwait(false))
+            {
+                outWriter.WriteLine("---");
+                serializer.Serialize(outWriter, obj);
+            }
+        }
+
         private IModbusAggregator GetModbusAggregator(ModbusRecordFormat aggregate)
         {
             switch(aggregate)

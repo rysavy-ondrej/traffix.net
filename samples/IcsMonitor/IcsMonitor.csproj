@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -18,10 +18,6 @@
     <ProjectReference Include="..\..\source\Traffix.Extensions.Decoders\Traffix.Extensions.Decoders.csproj" />
     <ProjectReference Include="..\..\source\Traffix.Hosting.Console\Traffix.Hosting.Console.csproj" />
     <ProjectReference Include="..\..\source\Traffix.Storage.Faster\Traffix.Storage.Faster.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Dnp3\" />
   </ItemGroup>
 
 </Project>

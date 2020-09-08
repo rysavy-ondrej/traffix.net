@@ -3,9 +3,13 @@
     "IcsMonitor": {
       "commandName": "Project"
     },
-    "Extract-Flows": {
+    "Extract-ModbusFlows": {
       "commandName": "Project",
       "commandLineArgs": "Extract-ModbusFlows -inputFile D:\\Captures\\modbus\\modbus.pcap -format compact"
+    },
+    "Extract-Dnp3Flows": {
+      "commandName": "Project",
+      "commandLineArgs": "Extract-Dnp3Flows -inputFile D:\\Captures\\dnp3\\dnp3.pcap"
     }
   }
 }
