@@ -1,28 +1,36 @@
+using MessagePack;
 using System;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
 
 namespace Traffix.Core.Flows
 {
+    [Union(NullFlowKey.FlowKeyType, typeof(NullFlowKey))]
+    [Union(FlowKeyInternetwork.FlowKeyType, typeof(FlowKeyInternetwork))]
+    [Union(FlowKeyInternetworkV6.FlowKeyType, typeof(FlowKeyInternetworkV6))]
+    [MessagePackObject]
     public abstract class FlowKey : IEquatable<FlowKey>
     {
 
+        [IgnoreMember]
         public abstract AddressFamily AddressFamily { get; }
 
+        [IgnoreMember]
         public abstract ProtocolType ProtocolType { get; }
 
+        [IgnoreMember]
         public abstract IPAddress SourceIpAddress { get; }
 
+        [IgnoreMember]
         public abstract IPAddress DestinationIpAddress { get; }
 
+        [IgnoreMember]
         public abstract ushort SourcePort { get; }
 
+        [IgnoreMember]
         public abstract ushort DestinationPort { get; }
-        public IPEndPoint SourceEndpoint => new IPEndPoint(SourceIpAddress, SourcePort);
 
-        public IPEndPoint DestinationEndpoint => new IPEndPoint(DestinationIpAddress, DestinationPort);
         public static FlowKey Create(AddressFamily addressFamily, ProtocolType protocolType, ReadOnlySpan<byte> sourceAddress, ushort sourcePort, ReadOnlySpan<byte> destinationAddress, ushort destinationPort)
         {
             switch (addressFamily)

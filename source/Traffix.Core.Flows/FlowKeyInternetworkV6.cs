@@ -1,3 +1,4 @@
+using MessagePack;
 using System;
 using System.Buffers.Binary;
 using System.Net;
@@ -7,18 +8,24 @@ using System.Runtime.InteropServices;
 
 namespace Traffix.Core.Flows
 {
+    [MessagePackObject]
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct _FlowKeyInternetworkV6 : IEquatable<_FlowKeyInternetworkV6>
     {
 
+        [Key(0)]
         public ushort ProtocolType;
 
+        [Key(1)]
         public fixed byte SourceAddressBytes[16];
 
+        [Key(2)]
         public ushort SourcePort;
 
+        [Key(3)]
         public fixed byte DestinationAddressBytes[16];
 
+        [Key(4)]
         public ushort DestinationPort;
 
         public _FlowKeyInternetworkV6(ushort protocolType, ReadOnlySpan<byte> sourceAddressBytes, ushort sourcePort, ReadOnlySpan<byte> destinationAddressBytes, ushort destinationPort)
@@ -71,18 +78,22 @@ namespace Traffix.Core.Flows
     /// <summary>
     /// Implements <see cref="FlowKey"/> interface as a compact struct.
     /// </summary>
-    [Serializable]
+    [MessagePackObject]
     public sealed class FlowKeyInternetworkV6 : FlowKey
     {
         public const int FlowKeyType = 6;
 
+        [Key(0)]
         private _FlowKeyInternetworkV6 _data;
         #region Implementation of FlowKey
 
+        [IgnoreMember]
         public override System.Net.Sockets.ProtocolType ProtocolType => (ProtocolType)_data.ProtocolType;
 
+        [IgnoreMember]
         public override System.Net.Sockets.AddressFamily AddressFamily => AddressFamily.InterNetworkV6;
 
+        [IgnoreMember]
         public override unsafe IPAddress SourceIpAddress
         {
             get
@@ -92,6 +103,7 @@ namespace Traffix.Core.Flows
             }
         }
 
+        [IgnoreMember]
         public override unsafe IPAddress DestinationIpAddress
         {
             get
@@ -101,9 +113,11 @@ namespace Traffix.Core.Flows
             }
         }
 
+        [IgnoreMember]
         public override ushort SourcePort => _data.SourcePort;
 
- 
+
+        [IgnoreMember]
         public override ushort DestinationPort => _data.DestinationPort;
 
         #endregion

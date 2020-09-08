@@ -13,10 +13,10 @@ using Traffix.Providers.PcapFile;
 namespace Traffix.Storage.Faster
 {
     /// <summary>
-    /// Implements a store of packets and conversations. This class provides API for 
+    /// Implements a flow table backed by FASTER Key-Value Database. This class provides API for 
     /// adding packets and accessing conversations.
     /// </summary>
-    public class PacketStore : IDisposable
+    public class FasterFlowTable : IDisposable
     {
         private readonly string _rootFolder;
 
@@ -45,7 +45,7 @@ namespace Traffix.Storage.Faster
         /// Creates a store that uses the specified folder for saving data.
         /// </summary>
         /// <param name="folder"></param>
-        public PacketStore(string folder)
+        public FasterFlowTable(string folder)
         {
             _rootFolder = folder;
 
@@ -116,7 +116,7 @@ namespace Traffix.Storage.Faster
                     frameValue.Meta.LinkLayer = (ushort) frame.LinkLayer;
                     frameValue.Meta.FlowKeyHash = flowKey.GetHashCode64();
 
-                    onNextPacket(frame.Ticks, packet);
+                    onNextPacket?.Invoke(frame.Ticks, packet);
 
                     var frameKey = new FrameKey { Address = address };
                     framesSession.Upsert(ref frameKey, ref frameValue, null, 0);

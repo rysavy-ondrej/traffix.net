@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "IcsMonitor": {
+      "commandName": "Project"
+    },
+    "Extract-Flows": {
+      "commandName": "Project",
+      "commandLineArgs": "Extract-ModbusFlows -inputFile D:\\Captures\\modbus\\modbus.pcap -format compact"
+    }
+  }
+}

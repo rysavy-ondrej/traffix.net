@@ -33,6 +33,7 @@ namespace Traffix.Storage.Faster
             }
         }
 
+
         public abstract T Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames);
     }
 

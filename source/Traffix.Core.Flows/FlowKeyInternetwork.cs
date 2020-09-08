@@ -1,3 +1,4 @@
+using MessagePack;
 using System;
 using System.Buffers.Binary;
 using System.Net;
@@ -11,18 +12,20 @@ namespace Traffix.Core.Flows
     /// <summary>
     /// Represents the smallest structure to store IPv4 flow key.
     /// </summary>
+    [MessagePackObject]
     [StructLayout(LayoutKind.Sequential)]
     public struct _FlowKeyInternetwork  : IEquatable<_FlowKeyInternetwork>
     {
 
+        [Key(0)]
         public  ushort ProtocolType;
-
+        [Key(1)]
         public  uint SourceAddressBytes;
-
+        [Key(2)]
         public  ushort SourcePort;
-
+        [Key(3)]
         public  uint DestinationAddressBytes;
-
+        [Key(4)]
         public  ushort DestinationPort;
 
         public _FlowKeyInternetwork(ushort protocolType, uint sourceAddressBytes, ushort sourcePort, uint destinationAddressBytes, ushort destinationPort)
@@ -55,25 +58,32 @@ namespace Traffix.Core.Flows
     // <summary>
     /// Implements <see cref="FlowKey"/> interface for IPv4 flow. 
     /// </summary>
-
+    [MessagePackObject]
     public sealed class FlowKeyInternetwork : FlowKey
     {
 
-        public const int FlowKeyType = 4;  
+        public const int FlowKeyType = 4;
+        [Key(0)]
         private _FlowKeyInternetwork _data;
 
         #region Implementation of FlowKey
 
+        [IgnoreMember]
         public override AddressFamily AddressFamily => AddressFamily.InterNetwork;
 
+        [IgnoreMember]
         public override ProtocolType ProtocolType => (ProtocolType)_data.ProtocolType;
 
+        [IgnoreMember]
         public override IPAddress SourceIpAddress => new IPAddress(_data.SourceAddressBytes);
 
+        [IgnoreMember]
         public override IPAddress DestinationIpAddress => new IPAddress(_data.DestinationAddressBytes);
 
+        [IgnoreMember]
         public override ushort SourcePort => _data.SourcePort;
 
+        [IgnoreMember]
         public override ushort DestinationPort => _data.DestinationPort;
         #endregion
        
