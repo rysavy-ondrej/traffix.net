@@ -1,7 +1,12 @@
-﻿# Ndx.Packets
+﻿# Traffix.Extensions.Decoders
 
-The project provides an implementation of commonly used application protocol parsers. Binary protocol parsers are generated
-from Kaitai specification. 
+Provides an implementation of parsers for several Internet protocols. Binary protocol parsers are generated
+from Kaitai specifications. The protocols are organized in groups depedning on their use:
+* Base - collection of fundamental Internet protocols.
+* Core - the most used Internet protocols. 
+* Common - commonly used Internet protocols. 
+* IoT - protocols developed for communication in Internet-based IoT systems. 
+* Industrial - industrial protocols that communicates above the TCP/IP stack.
 
 ## Usage
 The following code shows parsing SNMP packet from the raw frame data with the help of PacketDotNet. 
@@ -19,29 +24,14 @@ var snmp = new Snmp(new KaitaiStream(app.Bytes));
 The Kaitai Struct Compiler needs to be installed on the system in order to recompile parsers. 
 Kaitai is available from http://kaitai.io/#download. 
 
+In each subfolder, there are `compile.cmd` and `compile.sh` scripts that generates CS source codes from Kaitai specifications.  
 
-* To recompile BASE Internet protocols:
-```
-Kaitai/base# kaitai-struct-compiler -t csharp --dotnet-namespace Loiret.Domain.Captures.Decoders.Base -d ../../Base *.ksy
-```
 
-* To recompile common internet protocols
+## Kaitai Notes
+[Kaitai.IDE](https://ide.kaitai.io/) is a nice environment for developing and debugging Kaitai protocol specifications. However, sometimes you may encounter 
+errors when trying to compile a kaitai specification, which seems to be correct in the IDE:
+* expression needs to be enclosed in parenthesis, for instance:
 ```
-Kaitai/common# kaitai-struct-compiler -t csharp --dotnet-namespace Loiret.Domain.Captures.Decoders.Common -d ../../Common *.ksy
-```
-
-* To recompile common internet protocols
-```
-Kaitai/core# kaitai-struct-compiler -t csharp --dotnet-namespace Loiret.Domain.Captures.Decoders.Core -d ../../Core *.ksy
-```
-
-* To recompile industrial protocol parsers:
-```
-Kaitai/dlms# kaitai-struct-compiler -t csharp --dotnet-namespace Loiret.Domain.Captures.Decoders.Industrial -d ../../Industrial/Dlms *.ksy
-Kaitai/modbus# kaitai-struct-compiler -t csharp --dotnet-namespace Loiret.Domain.Captures.Decoders.Industrial -d ../../Industrial *.ksy
-```
-
-* To recompile IoT parsers:
-```
-Kaitai/iot# kaitai-struct-compiler -t csharp --dotnet-namespace Loiret.Domain.Captures.Decoders.IoT -d ../../IoT *.ksy
-```
+    - id: data
+      size: "(_io.pos + 18 <= _io.size) ? 16 : (_io.size - _io.pos) - 2"
+```  
