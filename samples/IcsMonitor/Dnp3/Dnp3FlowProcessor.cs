@@ -50,11 +50,8 @@ namespace IcsMonitor.Modbus
         {
             switch(dnp3Packet.FirstChunk?.Application.FunctionCode)
             {
-                case Dnp3Packet.Dnp3FunctionCode.Dnp3Confirm:
-                    dnp3FlowData.Confirmations++;
-                    break;
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3Response:
-                    dnp3FlowData.Responses++;
+                    dnp3FlowData.RegularResponses++;
                     break;
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3UnsolicitedResponse:
                     dnp3FlowData.UnsolicitedResponses++;
@@ -88,7 +85,7 @@ namespace IcsMonitor.Modbus
             switch(dnp3Packet.FirstChunk?.Application.FunctionCode)
             {
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3Confirm:
-                    dnp3FlowData.Confirmations++;
+                    dnp3FlowData.ConfirmationRequests++;
                     break;
 
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3Read:

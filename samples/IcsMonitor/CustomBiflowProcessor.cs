@@ -39,13 +39,14 @@ namespace IcsMonitor
                 CustomData = Invoke(fwdPackets, revPackets)
             };
         }
+        static DateTime nullDate = new DateTime();
         private static void AddPacket(List<Packet> packets, FlowMetrics metrics, FrameMetadata meta, Packet packet)
         {
             metrics.Octets += meta.IncludedLength;
             metrics.Packets++;
             var packetTimestamp = new DateTime(meta.Ticks);
-            if (packetTimestamp < metrics.Start) metrics.Start = packetTimestamp;
-            if (packetTimestamp > metrics.End) metrics.End = packetTimestamp;
+            if (metrics.Start == nullDate || packetTimestamp < metrics.Start) metrics.Start = packetTimestamp;
+            if (metrics.End == nullDate || packetTimestamp > metrics.End) metrics.End = packetTimestamp;
             packets.Add(packet);
         }
 
