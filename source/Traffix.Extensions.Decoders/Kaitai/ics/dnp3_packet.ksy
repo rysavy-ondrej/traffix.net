@@ -6,7 +6,7 @@ meta:
 doc: |
   A simplified DNP3 parser. It only extracts information up to the application function code 
   which needs to be located wihtin the first data chunk. It ignores objects and does not
-  processes other than the first fragment/chunk. 
+  process other fragments/chunks. 
 seq:
   - id: frame_header
     type: dnp3_frame_header
