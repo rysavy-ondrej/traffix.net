@@ -50,6 +50,9 @@ namespace IcsMonitor.Modbus
         {
             switch(dnp3Packet.FirstChunk?.Application.FunctionCode)
             {
+                case Dnp3Packet.Dnp3FunctionCode.Dnp3Confirm:
+                    dnp3FlowData.ConfirmationResponses++;
+                    break; 
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3Response:
                     dnp3FlowData.RegularResponses++;
                     break;
@@ -63,26 +66,20 @@ namespace IcsMonitor.Modbus
             var internalIndication = dnp3Packet.FirstChunk?.Application.InternalIndication;
             if (internalIndication != null)
             {
-                dnp3FlowData.AllStationsFlag += internalIndication.AllStations ? 1 : 0;
-                dnp3FlowData.AlreadyExecutingFlag += internalIndication.AlreadyExecuting ? 1 : 0;
-                dnp3FlowData.Class1EventFlag += internalIndication.Class1Event ? 1 : 0;
-                dnp3FlowData.Class2EventFlag += internalIndication.Class2Event ? 1 : 0;
-                dnp3FlowData.Class3EventFlag += internalIndication.Class3Event ? 1 : 0;
-                dnp3FlowData.ConfigurationCorruptFlag += internalIndication.ConfigurationCorrupt ? 1 : 0;
-                dnp3FlowData.DeviceRestartFlag += internalIndication.DeviceRestart ? 1 : 0;
-                dnp3FlowData.DeviceTroubleFlag += internalIndication.DeviceTrouble ? 1 : 0;
-                dnp3FlowData.EventBufferOverflowFlag += internalIndication.EventBufferOverflow ? 1 : 0;
-                dnp3FlowData.FunctionNotSupportedFlag += internalIndication.FunctionNotSupported ? 1 : 0;
-                dnp3FlowData.LocalControlFlag += internalIndication.LocalControl ? 1 : 0;
-                dnp3FlowData.NeedTimeFlag += internalIndication.NeedTime ? 1 : 0;
-                dnp3FlowData.ObjectUnknownFlag += internalIndication.ObjectUnknown ? 1 : 0;
-                dnp3FlowData.ParameterErrorFlag += internalIndication.ParameterError ? 1 : 0;
+                dnp3FlowData.ConfigurationCorruptCount += internalIndication.ConfigurationCorrupt ? 1 : 0;
+                dnp3FlowData.DeviceRestartCount += internalIndication.DeviceRestart ? 1 : 0;
+                dnp3FlowData.DeviceTroubleCount += internalIndication.DeviceTrouble ? 1 : 0;
+                dnp3FlowData.EventBufferOverflowCount += internalIndication.EventBufferOverflow ? 1 : 0;
+                dnp3FlowData.FunctionNotSupportedCount += internalIndication.FunctionNotSupported ? 1 : 0;
+                dnp3FlowData.ObjectUnknownCount += internalIndication.ObjectUnknown ? 1 : 0;
+                dnp3FlowData.ParameterErrorCount += internalIndication.ParameterError ? 1 : 0;
             }
         }
 
         private void UpdateRequestFlowData(Dnp3FlowData dnp3FlowData, Dnp3Packet dnp3Packet)
         {
-            switch(dnp3Packet.FirstChunk?.Application.FunctionCode)
+            var fc = dnp3Packet.FirstChunk?.Application.FunctionCode;
+            switch (fc)
             {
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3Confirm:
                     dnp3FlowData.ConfirmationRequests++;
@@ -97,13 +94,10 @@ namespace IcsMonitor.Modbus
                     break;
 
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3Select:
-                    dnp3FlowData.SelectRequests++;
-                    break;
-
+                case Dnp3Packet.Dnp3FunctionCode.Dnp3Operate:
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3DirOperate:
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3DirOperateNoResp:
-                case Dnp3Packet.Dnp3FunctionCode.Dnp3Operate:
-                    dnp3FlowData.OperateRequests++;
+                    dnp3FlowData.ControlRequests++;
                     break;
 
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3Freeze:
@@ -114,33 +108,26 @@ namespace IcsMonitor.Modbus
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3FreezeClear:
                     dnp3FlowData.FreezeRequests++;
                     break;
-
+                case Dnp3Packet.Dnp3FunctionCode.Dnp3DelayMeasurement:
+                    dnp3FlowData.TimeSynchronizationRequests++;
+                    break;
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3ColdRestart:
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3WarmRestart:
-                    dnp3FlowData.RestartRequests++;
-                    break;
-
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3InitializeApplication:
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3InitializeData:
-                    dnp3FlowData.InitializeRequests++;
-                    break;
-
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3StartApplication:
                 case Dnp3Packet.Dnp3FunctionCode.Dnp3StopApplication:
-                    dnp3FlowData.ApplicationOperationRequests++;
+                    dnp3FlowData.ApplicationControlRequests++;
                     break;
-
-                case Dnp3Packet.Dnp3FunctionCode.Dnp3AbortFile:
-                case Dnp3Packet.Dnp3FunctionCode.Dnp3AuthenticateFile:
-                case Dnp3Packet.Dnp3FunctionCode.Dnp3CloseFile:
-                case Dnp3Packet.Dnp3FunctionCode.Dnp3DeleteFile:
-                case Dnp3Packet.Dnp3FunctionCode.Dnp3GetFileInformation:
-                case Dnp3Packet.Dnp3FunctionCode.Dnp3OpenFile:
-                    dnp3FlowData.FileOperationRequests++;
-                    break;
-
                 default:
-                    dnp3FlowData.OtherOperationRequests++;
+                    if ((int?)fc >= 24 && (int?)fc <= 128)
+                    {
+                        dnp3FlowData.ReservedRequests++;
+                    }
+                    else
+                    {
+                        dnp3FlowData.OtherOperationRequests++;
+                    }
                     break;
             }
         }
