@@ -6,10 +6,6 @@ namespace Traffix.Extensions.Decoders.Base
 {
     public partial class EthernetFrame : KaitaiStruct
     {
-        public static EthernetFrame FromFile(string fileName)
-        {
-            return new EthernetFrame(new KaitaiStream(fileName));
-        }
 
         public enum EtherTypeEnum
         {

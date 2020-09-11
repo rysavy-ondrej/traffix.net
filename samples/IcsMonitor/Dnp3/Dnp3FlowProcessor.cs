@@ -1,6 +1,7 @@
 ﻿using Kaitai;
 using PacketDotNet;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using Traffix.Extensions.Decoders.Industrial;
 
@@ -16,7 +17,8 @@ namespace IcsMonitor.Modbus
                 var tcpPacket = packet.Extract<TcpPacket>();
                 if (tcpPacket.PayloadData?.Length != 0)
                 {
-                    var stream = new KaitaiStream(tcpPacket.PayloadData);
+                    var packetData = new ReadOnlySequence<byte>(tcpPacket.PayloadDataSegment.Bytes, tcpPacket.PayloadDataSegment.Offset, tcpPacket.PayloadDataSegment.Length);
+                    var stream = new KaitaiStream(ref packetData);
                     if (TryParseDnp3Packet(stream, out var dnp3Packet, out _))
                     {
                         UpdateRequestFlowData(dnp3FlowData, dnp3Packet);
@@ -32,7 +34,9 @@ namespace IcsMonitor.Modbus
                 var tcpPacket = packet.Extract<TcpPacket>();
                 if (tcpPacket.PayloadData?.Length != 0)
                 {
-                    var stream = new KaitaiStream(tcpPacket.PayloadData);
+                    var packetData = new ReadOnlySequence<byte>(tcpPacket.PayloadDataSegment.Bytes, tcpPacket.PayloadDataSegment.Offset, tcpPacket.PayloadDataSegment.Length);
+
+                    var stream = new KaitaiStream(ref packetData);
                     if (TryParseDnp3Packet(stream, out var dnp3Packet, out _))
                     {
                         UpdateResponseFlowData(dnp3FlowData, dnp3Packet);
