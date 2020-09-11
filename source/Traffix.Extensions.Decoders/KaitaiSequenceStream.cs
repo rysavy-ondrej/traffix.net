@@ -342,5 +342,57 @@ namespace Kaitai
             }
             return NotEnoughBytes<byte>();
         }
+
+        public interface IBinaryTypeConvert<T>
+        {
+            public T Invoke(ReadOnlySpan<byte> bytes)
+            {
+                return default;
+            }
+            public int Length { get; }
+        }
+
+        /// <summary>
+        /// Tries to read the given type from the input buffer using specified  binary type converter. 
+        /// </summary>
+        /// <typeparam name="T">The type of the value to be extracted from the input buffer.</typeparam>
+        /// <param name="buffer">The input buffer.</param>
+        /// <param name="bytesToValue">The type converter object. It is used to convert bytes to the target value.</param>
+        /// <param name="value">The target value.</param>
+        /// <param name="advanceBuffer">If set to true, the input buffer will be modified by advancing the number of consumed bytes.</param>
+        /// <returns>true on succes, false if there is not enough bytes. </returns>
+        public bool TryGetValue<T>(ref ReadOnlySequence<byte> buffer, IBinaryTypeConvert<T> bytesToValue, out T value, bool advanceBuffer = true) where T: struct 
+        {
+            var requestedLength = bytesToValue.Length;
+            // If there's not enough space, the length can't be obtained.
+            if (buffer.Length < requestedLength)
+            {
+                value = default;
+                return false;
+            }
+
+            // Grab the first N bytes of the buffer.
+            var lengthSlice = buffer.Slice(buffer.Start, requestedLength);
+            if (lengthSlice.IsSingleSegment)
+            {   // Fast path since it's a single segment.
+                var bytes = lengthSlice.First.Span.Slice(0, requestedLength);
+                value = bytesToValue.Invoke(bytes);
+            }
+            else
+            {
+                // There are N bytes split across multiple segments. Since it's so small, it
+                // can be copied to a stack allocated buffer. This avoids a heap allocation.
+                Span<byte> stackBuffer = stackalloc byte[requestedLength];
+                lengthSlice.CopyTo(stackBuffer);
+                value = bytesToValue.Invoke(stackBuffer);
+            }
+
+            if (advanceBuffer)
+            {
+                // Move the buffer N bytes ahead if required.
+                buffer = buffer.Slice(lengthSlice.End);
+            }
+            return true;
+        }
     }
 }
