@@ -8,6 +8,10 @@ namespace IcsMonitor.Modbus
 {
     public class ModbusBiflowProcessor : CustomBiflowProcessor<ModbusFlowData>
     {
+        public ModbusBiflowProcessor()
+        {
+        }
+
         protected override ModbusFlowData Invoke(IReadOnlyCollection<Packet> fwdPackets, IReadOnlyCollection<Packet> revPackets)
         {
             var modbusFlowData = new ModbusFlowData();
@@ -19,7 +23,7 @@ namespace IcsMonitor.Modbus
                     var stream = new KaitaiStream(tcpPacket.PayloadData);
                     if (TryParseModbusRequestPacket(stream, out var modbusPacket, out var error))
                     {
-                        UpdateRequests(modbusFlowData, modbusPacket);
+                        UpdateRequests(ref modbusFlowData, modbusPacket);
                     }
                     else
                     {
@@ -35,7 +39,7 @@ namespace IcsMonitor.Modbus
                     var stream = new KaitaiStream(tcpPacket.PayloadData);
                     if (TryParseModbusResponsePacket(stream, out var modbusPacket, out var error))
                     {
-                        UpdateResponses(modbusFlowData, modbusPacket);
+                        UpdateResponses(ref modbusFlowData, modbusPacket);
                     }
                     else
                     {
@@ -77,7 +81,7 @@ namespace IcsMonitor.Modbus
             }
         }
 
-        private void UpdateResponses(ModbusFlowData responses, ModbusResponsePacket modbusPacket)
+        private void UpdateResponses(ref ModbusFlowData responses, ModbusResponsePacket modbusPacket)
         {
             if (modbusPacket.Status == ModbusResponsePacket.ModbusStatusCode.Success)
             {
@@ -213,7 +217,7 @@ namespace IcsMonitor.Modbus
             }
         }
 
-        private void UpdateRequests(ModbusFlowData requests, ModbusRequestPacket modbusPacket)
+        private void UpdateRequests(ref ModbusFlowData requests, ModbusRequestPacket modbusPacket)
         {
             switch (modbusPacket.Function)
             {

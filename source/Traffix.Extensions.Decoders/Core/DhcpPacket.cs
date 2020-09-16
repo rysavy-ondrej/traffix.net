@@ -12,6 +12,7 @@ namespace Traffix.Extensions.Decoders.Core
             return new DhcpPacket(new KaitaiStream(fileName));
         }
 
+
         public enum DhcpOpcode
         {
             Request = 1,
@@ -184,18 +185,16 @@ namespace Traffix.Extensions.Decoders.Core
             WebProxyAutoDetectionWpad = 252,
             EndOfOptions = 255,
         }
-
-        public DhcpPacket(KaitaiStream io, KaitaiStruct parent = null, DhcpPacket root = null) : base(io)
+        public DhcpPacket(KaitaiStream p__io, KaitaiStruct p__parent = null, DhcpPacket p__root = null) : base(p__io)
         {
-            m_parent = parent;
-            m_root = root ?? this;
-            _parse();
+            m_parent = p__parent;
+            m_root = p__root ?? this;
+            _read();
         }
-
-        private void _parse()
+        private void _read()
         {
-            _opCode = ((DhcpOpcode)m_io.ReadU1());
-            _hardwareType = ((DhcpHardwareType)m_io.ReadU1());
+            _opCode = ((DhcpOpcode) m_io.ReadU1());
+            _hardwareType = ((DhcpHardwareType) m_io.ReadU1());
             _hardwareAddressLength = m_io.ReadU1();
             _hopCount = m_io.ReadU1();
             _traqnsactionId = m_io.ReadU4be();
@@ -210,9 +209,12 @@ namespace Traffix.Extensions.Decoders.Core
             _bootFileName = System.Text.Encoding.GetEncoding("ASCII").GetString(m_io.ReadBytesTerm(0, false, true, true));
             _magicCookie = m_io.ReadBytes(4);
             _options = new List<DhcpOption>();
-            while (!m_io.IsEof)
             {
-                _options.Add(new DhcpOption(m_io, this, m_root));
+                var i = 0;
+                while (!m_io.IsEof) {
+                    _options.Add(new DhcpOption(m_io, this, m_root));
+                    i++;
+                }
             }
         }
         public partial class DhcpFlags : KaitaiStruct
@@ -222,14 +224,13 @@ namespace Traffix.Extensions.Decoders.Core
                 return new DhcpFlags(new KaitaiStream(fileName));
             }
 
-            public DhcpFlags(KaitaiStream io, DhcpPacket parent = null, DhcpPacket root = null) : base(io)
+            public DhcpFlags(KaitaiStream p__io, DhcpPacket p__parent = null, DhcpPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
+                m_parent = p__parent;
+                m_root = p__root;
+                _read();
             }
-
-            private void _parse()
+            private void _read()
             {
                 _broadcast = m_io.ReadBitsInt(1) != 0;
                 _reserved = m_io.ReadBitsInt(15);
@@ -250,16 +251,15 @@ namespace Traffix.Extensions.Decoders.Core
                 return new DhcpOption(new KaitaiStream(fileName));
             }
 
-            public DhcpOption(KaitaiStream io, DhcpPacket parent = null, DhcpPacket root = null) : base(io)
+            public DhcpOption(KaitaiStream p__io, DhcpPacket p__parent = null, DhcpPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
+                m_parent = p__parent;
+                m_root = p__root;
+                _read();
             }
-
-            private void _parse()
+            private void _read()
             {
-                _code = ((DhcpPacket.DhcpOptionCode)m_io.ReadU1());
+                _code = ((DhcpPacket.DhcpOptionCode) m_io.ReadU1());
                 _len = m_io.ReadU1();
                 _body = m_io.ReadBytes(Len);
             }

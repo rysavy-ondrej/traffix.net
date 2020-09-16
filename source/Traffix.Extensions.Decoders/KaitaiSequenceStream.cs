@@ -1,7 +1,9 @@
 ﻿using PacketDotNet.Utils.Converters;
 using System;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace Kaitai
 {
@@ -343,14 +345,20 @@ namespace Kaitai
             return NotEnoughBytes<byte>();
         }
 
-        public interface IBinaryTypeConvert<T>
+        public interface IBinaryTypeConverter<T>
         {
-            public T Invoke(ReadOnlySpan<byte> bytes)
-            {
-                return default;
-            }
-            public int Length { get; }
+            public T Invoke(ReadOnlySpan<byte> bytes);
+            public int Length => Unsafe.SizeOf<T>();
         }
+
+        class UInt64LittleEndianConverter : IBinaryTypeConverter<ulong>
+        {
+            public ulong Invoke(ReadOnlySpan<byte> bytes)
+            {
+                return BinaryPrimitives.ReadUInt64LittleEndian(bytes);
+            }
+        }
+
 
         /// <summary>
         /// Tries to read the given type from the input buffer using specified  binary type converter. 
@@ -361,7 +369,7 @@ namespace Kaitai
         /// <param name="value">The target value.</param>
         /// <param name="advanceBuffer">If set to true, the input buffer will be modified by advancing the number of consumed bytes.</param>
         /// <returns>true on succes, false if there is not enough bytes. </returns>
-        public bool TryGetValue<T>(ref ReadOnlySequence<byte> buffer, IBinaryTypeConvert<T> bytesToValue, out T value, bool advanceBuffer = true) where T: struct 
+        public bool TryGetValue<T>(ref ReadOnlySequence<byte> buffer, IBinaryTypeConverter<T> bytesToValue, out T value, bool advanceBuffer = true) where T: struct 
         {
             var requestedLength = bytesToValue.Length;
             // If there's not enough space, the length can't be obtained.

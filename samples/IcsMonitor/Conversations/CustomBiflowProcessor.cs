@@ -36,7 +36,7 @@ namespace IcsMonitor
                 Key = flowKey,
                 ForwardMetrics = fwdMetrics,
                 ReverseMetrics = revMetrics,
-                CustomData = Invoke(fwdPackets, revPackets)
+                Data = Invoke(fwdPackets, revPackets)
             };
         }
         static DateTime nullDate = new DateTime();

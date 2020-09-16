@@ -11,6 +11,7 @@ namespace Traffix.Extensions.Decoders.Core
             return new ArpPacket(new KaitaiStream(fileName));
         }
 
+
         public enum ArpOpCode
         {
             Request = 1,
@@ -37,21 +38,19 @@ namespace Traffix.Extensions.Decoders.Core
             MarsRedirectMap = 22,
             MaposUnarp = 23,
         }
-
-        public ArpPacket(KaitaiStream io, KaitaiStruct parent = null, ArpPacket root = null) : base(io)
+        public ArpPacket(KaitaiStream p__io, KaitaiStruct p__parent = null, ArpPacket p__root = null) : base(p__io)
         {
-            m_parent = parent;
-            m_root = root ?? this;
-            _parse();
+            m_parent = p__parent;
+            m_root = p__root ?? this;
+            _read();
         }
-
-        private void _parse()
+        private void _read()
         {
             _hardwareType = m_io.ReadU2be();
             _protocolType = m_io.ReadU2be();
             _hardwareAddresslen = m_io.ReadU1();
             _protocolAddresslen = m_io.ReadU1();
-            _opCode = ((ArpOpCode)m_io.ReadU2be());
+            _opCode = ((ArpOpCode) m_io.ReadU2be());
             _senderHardwareAddress = m_io.ReadBytes(HardwareAddresslen);
             _senderProtocolAddress = m_io.ReadBytes(ProtocolAddresslen);
             _targetHardwareAddress = m_io.ReadBytes(HardwareAddresslen);

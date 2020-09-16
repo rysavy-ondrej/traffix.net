@@ -13,29 +13,13 @@ namespace IcsMonitor.Commands
     [Cmdlet("Extract", "Dnp3Flows")]
     public class ExtractDnp3FlowsCommand : AsyncCmdlet
     {
-        public string InputFile { get; set; }
-
-        public IModbusAggregator Aggregator { get; set; }
+        public FileInfo InputFile { get; set; }
 
         FasterFlowTable _flowTable;
-        private int _framesCount;
-        private long _bytesUploaded;
-        private readonly Mapper _flowDataMapper;
-
-        public ExtractDnp3FlowsCommand()
-        {
-            var config = new MapperConfiguration(cfg =>
-            {
-                cfg.CreateMap<long, DateTime>().ConvertUsing<TicksToDateTimeConverter>();
-                cfg.CreateMap<long, TimeSpan>().ConvertUsing<TicksToTimeSpanConverter>();
-                    });
-            _flowDataMapper = new Mapper(config);
-        }
-
         protected override Task BeginProcessingAsync()
         {
             _flowTable = new FasterFlowTable("tmp");
-            using (var stream = File.OpenRead(InputFile))
+            using (var stream = InputFile.OpenRead())
             {
                 _flowTable.LoadFromStream(stream, CancellationTokenSource.Token, null);
             }
@@ -44,7 +28,6 @@ namespace IcsMonitor.Commands
 
         protected override Task EndProcessingAsync()
         {
-            //_flowTable.Reset();
             return Task.CompletedTask;
         }
 

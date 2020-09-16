@@ -5,11 +5,11 @@
     },
     "Extract-ModbusFlows": {
       "commandName": "Project",
-      "commandLineArgs": "Extract-ModbusFlows -inputFile D:\\Captures\\modbus\\modbus.pcap -format compact"
+      "commandLineArgs": "Extract-ModbusFlows -inputFile D:\\Captures\\modbus\\modbus.pcap -outformat csv -outFile D:\\Captures\\modbus\\modbus.csv"
     },
     "Extract-Dnp3Flows": {
       "commandName": "Project",
-      "commandLineArgs": "Extract-Dnp3Flows -inputFile D:\\Captures\\dnp3\\dnp3.pcap"
+      "commandLineArgs": "Extract-Dnp3Flows -inputFile D:\\Captures\\dnp3\\dnp3.pcap -outFormat csv -outFile D:\\Captures\\dnp3\\dnp3.csv"
     }
   }
 }

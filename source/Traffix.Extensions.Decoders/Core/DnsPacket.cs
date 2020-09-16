@@ -16,6 +16,7 @@ namespace Traffix.Extensions.Decoders.Core
             return new DnsPacket(new KaitaiStream(fileName));
         }
 
+
         public enum ClassType
         {
             InClass = 1,
@@ -44,15 +45,13 @@ namespace Traffix.Extensions.Decoders.Core
             Txt = 16,
             Aaaa = 28,
         }
-
-        public DnsPacket(KaitaiStream io, KaitaiStruct parent = null, DnsPacket root = null) : base(io)
+        public DnsPacket(KaitaiStream p__io, KaitaiStruct p__parent = null, DnsPacket p__root = null) : base(p__io)
         {
-            m_parent = parent;
-            m_root = root ?? this;
-            _parse();
+            m_parent = p__parent;
+            m_root = p__root ?? this;
+            _read();
         }
-
-        private void _parse()
+        private void _read()
         {
             _transactionId = m_io.ReadU2be();
             _flags = new PacketFlags(m_io, this, m_root);
@@ -60,12 +59,12 @@ namespace Traffix.Extensions.Decoders.Core
             _ancount = m_io.ReadU2be();
             _nscount = m_io.ReadU2be();
             _arcount = m_io.ReadU2be();
-            _queries = new List<Query>((int)(Qdcount));
+            _queries = new List<Query>((int) (Qdcount));
             for (var i = 0; i < Qdcount; i++)
             {
                 _queries.Add(new Query(m_io, this, m_root));
             }
-            _answers = new List<Answer>((int)(Ancount));
+            _answers = new List<Answer>((int) (Ancount));
             for (var i = 0; i < Ancount; i++)
             {
                 _answers.Add(new Answer(m_io, this, m_root));
@@ -78,16 +77,15 @@ namespace Traffix.Extensions.Decoders.Core
                 return new PointerStruct(new KaitaiStream(fileName));
             }
 
-            public PointerStruct(KaitaiStream io, Label parent = null, DnsPacket root = null) : base(io)
+            public PointerStruct(KaitaiStream p__io, DnsPacket.Label p__parent = null, DnsPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
-            }
-
-            private void _parse()
-            {
+                m_parent = p__parent;
+                m_root = p__root;
                 f_contents = false;
+                _read();
+            }
+            private void _read()
+            {
                 _offset = m_io.ReadU1();
             }
             private bool f_contents;
@@ -125,14 +123,13 @@ namespace Traffix.Extensions.Decoders.Core
                 return new AaaaRecord(new KaitaiStream(fileName));
             }
 
-            public AaaaRecord(KaitaiStream io, Answer parent = null, DnsPacket root = null) : base(io)
+            public AaaaRecord(KaitaiStream p__io, DnsPacket.Answer p__parent = null, DnsPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
+                m_parent = p__parent;
+                m_root = p__root;
+                _read();
             }
-
-            private void _parse()
+            private void _read()
             {
                 _address = m_io.ReadBytes(16);
             }
@@ -150,14 +147,13 @@ namespace Traffix.Extensions.Decoders.Core
                 return new ARecord(new KaitaiStream(fileName));
             }
 
-            public ARecord(KaitaiStream io, Answer parent = null, DnsPacket root = null) : base(io)
+            public ARecord(KaitaiStream p__io, DnsPacket.Answer p__parent = null, DnsPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
+                m_parent = p__parent;
+                m_root = p__root;
+                _read();
             }
-
-            private void _parse()
+            private void _read()
             {
                 _address = m_io.ReadBytes(4);
             }
@@ -175,14 +171,13 @@ namespace Traffix.Extensions.Decoders.Core
                 return new CnameRecord(new KaitaiStream(fileName));
             }
 
-            public CnameRecord(KaitaiStream io, Answer parent = null, DnsPacket root = null) : base(io)
+            public CnameRecord(KaitaiStream p__io, DnsPacket.Answer p__parent = null, DnsPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
+                m_parent = p__parent;
+                m_root = p__root;
+                _read();
             }
-
-            private void _parse()
+            private void _read()
             {
                 _hostname = new DomainName(m_io, this, m_root);
             }
@@ -200,23 +195,20 @@ namespace Traffix.Extensions.Decoders.Core
                 return new Label(new KaitaiStream(fileName));
             }
 
-            public Label(KaitaiStream io, DomainName parent = null, DnsPacket root = null) : base(io)
+            public Label(KaitaiStream p__io, DnsPacket.DomainName p__parent = null, DnsPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
-            }
-
-            private void _parse()
-            {
+                m_parent = p__parent;
+                m_root = p__root;
                 f_isPointer = false;
+                _read();
+            }
+            private void _read()
+            {
                 _length = m_io.ReadU1();
-                if (IsPointer)
-                {
+                if (IsPointer) {
                     _pointer = new PointerStruct(m_io, this, m_root);
                 }
-                if (!IsPointer)
-                {
+                if (!(IsPointer)) {
                     _name = System.Text.Encoding.GetEncoding("ASCII").GetString(m_io.ReadBytes(Length));
                 }
             }
@@ -228,7 +220,7 @@ namespace Traffix.Extensions.Decoders.Core
                 {
                     if (f_isPointer)
                         return _isPointer;
-                    _isPointer = (bool)(Length == 192);
+                    _isPointer = (bool) (Length == 192);
                     f_isPointer = true;
                     return _isPointer;
                 }
@@ -259,18 +251,17 @@ namespace Traffix.Extensions.Decoders.Core
                 return new Query(new KaitaiStream(fileName));
             }
 
-            public Query(KaitaiStream io, DnsPacket parent = null, DnsPacket root = null) : base(io)
+            public Query(KaitaiStream p__io, DnsPacket p__parent = null, DnsPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
+                m_parent = p__parent;
+                m_root = p__root;
+                _read();
             }
-
-            private void _parse()
+            private void _read()
             {
                 _name = new DomainName(m_io, this, m_root);
-                _type = ((DnsPacket.RecordType)m_io.ReadU2be());
-                _queryClass = ((DnsPacket.ClassType)m_io.ReadU2be());
+                _type = ((DnsPacket.RecordType) m_io.ReadU2be());
+                _queryClass = ((DnsPacket.ClassType) m_io.ReadU2be());
             }
             private DomainName _name;
             private RecordType _type;
@@ -290,23 +281,23 @@ namespace Traffix.Extensions.Decoders.Core
                 return new DomainName(new KaitaiStream(fileName));
             }
 
-            public DomainName(KaitaiStream io, KaitaiStruct parent = null, DnsPacket root = null) : base(io)
+            public DomainName(KaitaiStream p__io, KaitaiStruct p__parent = null, DnsPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
+                m_parent = p__parent;
+                m_root = p__root;
+                _read();
             }
-
-            private void _parse()
+            private void _read()
             {
                 _labels = new List<Label>();
                 {
+                    var i = 0;
                     Label M_;
-                    do
-                    {
+                    do {
                         M_ = new Label(m_io, this, m_root);
                         _labels.Add(M_);
-                    } while (!(((M_.Length == 0) || (M_.Length == 192))));
+                        i++;
+                    } while (!( ((M_.Length == 0) || (M_.Length == 192)) ));
                 }
             }
             private List<Label> _labels;
@@ -327,14 +318,13 @@ namespace Traffix.Extensions.Decoders.Core
                 return new PtrRecord(new KaitaiStream(fileName));
             }
 
-            public PtrRecord(KaitaiStream io, Answer parent = null, DnsPacket root = null) : base(io)
+            public PtrRecord(KaitaiStream p__io, DnsPacket.Answer p__parent = null, DnsPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
+                m_parent = p__parent;
+                m_root = p__root;
+                _read();
             }
-
-            private void _parse()
+            private void _read()
             {
                 _hostname = new DomainName(m_io, this, m_root);
             }
@@ -352,14 +342,13 @@ namespace Traffix.Extensions.Decoders.Core
                 return new MxRecord(new KaitaiStream(fileName));
             }
 
-            public MxRecord(KaitaiStream io, Answer parent = null, DnsPacket root = null) : base(io)
+            public MxRecord(KaitaiStream p__io, DnsPacket.Answer p__parent = null, DnsPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
+                m_parent = p__parent;
+                m_root = p__root;
+                _read();
             }
-
-            private void _parse()
+            private void _read()
             {
                 _priority = m_io.ReadS2be();
                 _hostname = new DomainName(m_io, this, m_root);
@@ -380,14 +369,13 @@ namespace Traffix.Extensions.Decoders.Core
                 return new NsRecord(new KaitaiStream(fileName));
             }
 
-            public NsRecord(KaitaiStream io, Answer parent = null, DnsPacket root = null) : base(io)
+            public NsRecord(KaitaiStream p__io, DnsPacket.Answer p__parent = null, DnsPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
+                m_parent = p__parent;
+                m_root = p__root;
+                _read();
             }
-
-            private void _parse()
+            private void _read()
             {
                 _hostname = new DomainName(m_io, this, m_root);
             }
@@ -405,52 +393,44 @@ namespace Traffix.Extensions.Decoders.Core
                 return new Answer(new KaitaiStream(fileName));
             }
 
-            public Answer(KaitaiStream io, DnsPacket parent = null, DnsPacket root = null) : base(io)
+            public Answer(KaitaiStream p__io, DnsPacket p__parent = null, DnsPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
+                m_parent = p__parent;
+                m_root = p__root;
+                _read();
             }
-
-            private void _parse()
+            private void _read()
             {
                 _name = new DomainName(m_io, this, m_root);
-                _type = ((DnsPacket.RecordType)m_io.ReadU2be());
-                _answerClass = ((DnsPacket.ClassType)m_io.ReadU2be());
+                _type = ((DnsPacket.RecordType) m_io.ReadU2be());
+                _answerClass = ((DnsPacket.ClassType) m_io.ReadU2be());
                 _ttl = m_io.ReadS4be();
                 _rdlength = m_io.ReadU2be();
-                switch (Type)
-                {
-                    case DnsPacket.RecordType.Aaaa:
-                        {
-                            _rdata = new AaaaRecord(m_io, this, m_root);
-                            break;
-                        }
-                    case DnsPacket.RecordType.A:
-                        {
-                            _rdata = new ARecord(m_io, this, m_root);
-                            break;
-                        }
-                    case DnsPacket.RecordType.Mx:
-                        {
-                            _rdata = new MxRecord(m_io, this, m_root);
-                            break;
-                        }
-                    case DnsPacket.RecordType.Cname:
-                        {
-                            _rdata = new CnameRecord(m_io, this, m_root);
-                            break;
-                        }
-                    case DnsPacket.RecordType.Ns:
-                        {
-                            _rdata = new NsRecord(m_io, this, m_root);
-                            break;
-                        }
-                    case DnsPacket.RecordType.Ptr:
-                        {
-                            _rdata = new PtrRecord(m_io, this, m_root);
-                            break;
-                        }
+                switch (Type) {
+                case DnsPacket.RecordType.Aaaa: {
+                    _rdata = new AaaaRecord(m_io, this, m_root);
+                    break;
+                }
+                case DnsPacket.RecordType.A: {
+                    _rdata = new ARecord(m_io, this, m_root);
+                    break;
+                }
+                case DnsPacket.RecordType.Mx: {
+                    _rdata = new MxRecord(m_io, this, m_root);
+                    break;
+                }
+                case DnsPacket.RecordType.Cname: {
+                    _rdata = new CnameRecord(m_io, this, m_root);
+                    break;
+                }
+                case DnsPacket.RecordType.Ns: {
+                    _rdata = new NsRecord(m_io, this, m_root);
+                    break;
+                }
+                case DnsPacket.RecordType.Ptr: {
+                    _rdata = new PtrRecord(m_io, this, m_root);
+                    break;
+                }
                 }
             }
             private DomainName _name;
@@ -485,15 +465,10 @@ namespace Traffix.Extensions.Decoders.Core
                 return new PacketFlags(new KaitaiStream(fileName));
             }
 
-            public PacketFlags(KaitaiStream io, DnsPacket parent = null, DnsPacket root = null) : base(io)
+            public PacketFlags(KaitaiStream p__io, DnsPacket p__parent = null, DnsPacket p__root = null) : base(p__io)
             {
-                m_parent = parent;
-                m_root = root;
-                _parse();
-            }
-
-            private void _parse()
-            {
+                m_parent = p__parent;
+                m_root = p__root;
                 f_qr = false;
                 f_ra = false;
                 f_tc = false;
@@ -504,6 +479,10 @@ namespace Traffix.Extensions.Decoders.Core
                 f_rd = false;
                 f_cd = false;
                 f_ad = false;
+                _read();
+            }
+            private void _read()
+            {
                 _flag = m_io.ReadU2be();
             }
             private bool f_qr;
@@ -514,7 +493,7 @@ namespace Traffix.Extensions.Decoders.Core
                 {
                     if (f_qr)
                         return _qr;
-                    _qr = (int)(((Flag & 32768) >> 15));
+                    _qr = (int) (((Flag & 32768) >> 15));
                     f_qr = true;
                     return _qr;
                 }
@@ -527,7 +506,7 @@ namespace Traffix.Extensions.Decoders.Core
                 {
                     if (f_ra)
                         return _ra;
-                    _ra = (int)(((Flag & 128) >> 7));
+                    _ra = (int) (((Flag & 128) >> 7));
                     f_ra = true;
                     return _ra;
                 }
@@ -540,7 +519,7 @@ namespace Traffix.Extensions.Decoders.Core
                 {
                     if (f_tc)
                         return _tc;
-                    _tc = (int)(((Flag & 512) >> 9));
+                    _tc = (int) (((Flag & 512) >> 9));
                     f_tc = true;
                     return _tc;
                 }
@@ -553,7 +532,7 @@ namespace Traffix.Extensions.Decoders.Core
                 {
                     if (f_rcode)
                         return _rcode;
-                    _rcode = (int)(((Flag & 15) >> 0));
+                    _rcode = (int) (((Flag & 15) >> 0));
                     f_rcode = true;
                     return _rcode;
                 }
@@ -566,7 +545,7 @@ namespace Traffix.Extensions.Decoders.Core
                 {
                     if (f_opcode)
                         return _opcode;
-                    _opcode = (int)(((Flag & 30720) >> 11));
+                    _opcode = (int) (((Flag & 30720) >> 11));
                     f_opcode = true;
                     return _opcode;
                 }
@@ -579,7 +558,7 @@ namespace Traffix.Extensions.Decoders.Core
                 {
                     if (f_aa)
                         return _aa;
-                    _aa = (int)(((Flag & 1024) >> 10));
+                    _aa = (int) (((Flag & 1024) >> 10));
                     f_aa = true;
                     return _aa;
                 }
@@ -592,7 +571,7 @@ namespace Traffix.Extensions.Decoders.Core
                 {
                     if (f_z)
                         return _z;
-                    _z = (int)(((Flag & 64) >> 6));
+                    _z = (int) (((Flag & 64) >> 6));
                     f_z = true;
                     return _z;
                 }
@@ -605,7 +584,7 @@ namespace Traffix.Extensions.Decoders.Core
                 {
                     if (f_rd)
                         return _rd;
-                    _rd = (int)(((Flag & 256) >> 8));
+                    _rd = (int) (((Flag & 256) >> 8));
                     f_rd = true;
                     return _rd;
                 }
@@ -618,7 +597,7 @@ namespace Traffix.Extensions.Decoders.Core
                 {
                     if (f_cd)
                         return _cd;
-                    _cd = (int)(((Flag & 16) >> 4));
+                    _cd = (int) (((Flag & 16) >> 4));
                     f_cd = true;
                     return _cd;
                 }
@@ -631,7 +610,7 @@ namespace Traffix.Extensions.Decoders.Core
                 {
                     if (f_ad)
                         return _ad;
-                    _ad = (int)(((Flag & 32) >> 5));
+                    _ad = (int) (((Flag & 32) >> 5));
                     f_ad = true;
                     return _ad;
                 }

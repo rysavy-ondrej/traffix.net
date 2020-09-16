@@ -1,103 +1,65 @@
 ﻿using ConsoleAppFramework;
 using IcsMonitor.Commands;
 using IcsMonitor.Modbus;
-using System;
+using Microsoft.PowerShell.Commands;
 using System.IO;
-using System.Net;
+using System.Linq;
 using System.Threading.Tasks;
 using Traffix.Hosting.Console;
-using YamlDotNet.Core;
-using YamlDotNet.Serialization;
 
 namespace IcsMonitor
 {
-    public enum ModbusRecordFormat { Raw, Extended, Compact }
+    public enum DetailLevel { Full, Extended, Compact }
+    public enum OutputFormat { Yaml, Csv }
     public partial class Program : TraffixConsoleApp
     {
         public static async Task Main(string[] args)
         {
-            await RunApplicationAsync(args).ConfigureAwait(false);    
+            await RunApplicationAsync(args).ConfigureAwait(false);
         }
 
 
 
         [Command("Extract-ModbusFlows")]
-        public async Task ExtractModbusFlows(string inputFile, ModbusRecordFormat format = ModbusRecordFormat.Raw, string outFile = null)
+        public async Task ExtractModbusFlows(
+            string inputFile,
+            DetailLevel detailLevel = DetailLevel.Compact,
+            OutputFormat outFormat = OutputFormat.Yaml,
+            string outFile = null)
         {
+
+            using var outWriter = OutputWriter.Create(outFile != null ? new FileInfo(outFile) : null);
             using var cmd = new ExtractModbusFlowsCommand
             {
-                InputFile = inputFile,
-                Aggregator = GetModbusAggregator(format)
+                InputFile = new FileInfo(inputFile),
             };
-
-            var serializer = new SerializerBuilder()
-                .WithNamingConvention(UnderscoredUpperCaseNamingConvention.Instance)
-                .DisableAliases()
-                .WithTypeConverter(new IPAddressYamlTypeConverter())
-                .Build();
-
-            using var outWriter = outFile != null ? new StreamWriter(outFile) : new StreamWriter(Console.OpenStandardOutput(), leaveOpen: true);
-            await foreach (var obj in ExecuteCommandAsync(cmd).ConfigureAwait(false))
+            var records = ExecuteCommandAsync(cmd).Cast<ConversationRecord<ModbusFlowData>>();
+            switch(detailLevel)
             {
-                outWriter.WriteLine("---");
-                serializer.Serialize(outWriter, obj);
+                case DetailLevel.Compact:
+                    await outWriter.WriteOutputAsync(outFormat, records.Select(ConversationRecord<ModbusFlowData>.TransformTo(x=>new ModbusFlowData.Compact(x))));
+                    break;
+                case DetailLevel.Extended:
+                    await outWriter.WriteOutputAsync(outFormat, records.Select(ConversationRecord<ModbusFlowData>.TransformTo(x => new ModbusFlowData.Extended(x))));
+                    break;
+                case DetailLevel.Full:
+                    await outWriter.WriteOutputAsync(outFormat, records.Select(ConversationRecord<ModbusFlowData>.TransformTo(x => new ModbusFlowData.Complete(x))));
+                    break;
             }
         }
 
+
+
         [Command("Extract-Dnp3Flows")]
-        public async Task ExtractDnp3Flows(string inputFile, string outFile = null)
+        public async Task ExtractDnp3Flows(string inputFile, OutputFormat outFormat = OutputFormat.Yaml, string outFile = null)
         {
             using var cmd = new ExtractDnp3FlowsCommand
             {
-                InputFile = inputFile,
+                InputFile = new FileInfo(inputFile),
             };
-
-            var serializer = new SerializerBuilder()
-                .WithNamingConvention(UnderscoredUpperCaseNamingConvention.Instance)
-                .DisableAliases()
-                .WithTypeConverter(new IPAddressYamlTypeConverter())
-                .Build();
-
-            using var outWriter = outFile != null ? new StreamWriter(outFile) : new StreamWriter(Console.OpenStandardOutput(), leaveOpen: true);
-            await foreach (var obj in ExecuteCommandAsync(cmd).ConfigureAwait(false))
-            {
-                outWriter.WriteLine("---");
-                serializer.Serialize(outWriter, obj);
-            }
-        }
-
-        private IModbusAggregator GetModbusAggregator(ModbusRecordFormat aggregate)
-        {
-            switch(aggregate)
-            {
-                case ModbusRecordFormat.Extended:
-                    return new ModbusExtendedAggregator();
-                case ModbusRecordFormat.Compact:
-                    return new ModbusCompactAggregator();
-                default:
-                    return null;
-            }
-        }
-        public class IPAddressYamlTypeConverter : IYamlTypeConverter
-        {
-            public bool Accepts(Type type)
-            {
-                return type == typeof(IPAddress);
-            }
-
-            public object ReadYaml(IParser parser, Type type)
-            {
-                var scalar = (YamlDotNet.Core.Events.Scalar)parser.Current;
-                var ipString = (scalar.Value);
-                parser.MoveNext();
-                return IPAddress.Parse(ipString);
-            }
-
-            public void WriteYaml(IEmitter emitter, object value, Type type)
-            {
-                var ipString = (value as IPAddress).ToString();
-                emitter.Emit(new YamlDotNet.Core.Events.Scalar(ipString));
-            }
+            using var outWriter = OutputWriter.Create(outFile != null ? new FileInfo(outFile) : null);
+            var records = ExecuteCommandAsync(cmd).Cast <ConversationRecord<Dnp3FlowData>>();
+            await outWriter.WriteOutputAsync<Dnp3FlowData>(outFormat, records);
         }
     }
 }
