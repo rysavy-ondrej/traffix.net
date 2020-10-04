@@ -10,6 +10,7 @@ using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Threading.Tasks;
+using Traffix.Core.Flows;
 using YamlDotNet.Core;
 using YamlDotNet.Serialization;
 
@@ -89,30 +90,32 @@ namespace IcsMonitor
             }
         }
 
-      
+        static INamingConvention NamingConvention { get; set; } = UnderscoredUpperCaseNamingConvention.Instance;
         sealed class MapConversationRecord<T> : ClassMap<ConversationRecord<T>>
         {
+           
             public MapConversationRecord()
             {
-                Map(m => m.Label).Name("Label");
-                Map(m => m.Key.ProtocolType).Name("key_ProtocolType");
-                Map(m => m.Key.DestinationIpAddress).Name("key_DestinationIpAddress");
-                Map(m => m.Key.DestinationPort).Name("key_DestinationPort");
-                Map(m => m.Key.SourceIpAddress).Name("key_SourceIpAddress");
-                Map(m => m.Key.SourcePort).Name("key_SourcePort");
+                var recordType = typeof(ConversationRecord<T>);
+                References(typeof(MapAllPublicFields<RecordLabel>), recordType.GetField(nameof(ConversationRecord<T>.Label)), "Label");
 
-                Map(m => m.ForwardMetrics.Start).Name("fwd_Start");
-                Map(m => m.ForwardMetrics.Duration).Name("fwd_Duration").TypeConverter<TimeSpanConverter>();
-                Map(m => m.ForwardMetrics.Packets).Name("fwd_Packets");
-                Map(m => m.ForwardMetrics.Octets).Name("fwd_Octets");
+                Map(m => m.Key.ProtocolType).Name(NamingConvention.Apply("KeyProtocolType"));
+                Map(m => m.Key.DestinationIpAddress).Name(NamingConvention.Apply("KeyDestinationIpAddress"));
+                Map(m => m.Key.DestinationPort).Name(NamingConvention.Apply("KeyDestinationPort"));
+                Map(m => m.Key.SourceIpAddress).Name(NamingConvention.Apply("KeySourceIpAddress"));
+                Map(m => m.Key.SourcePort).Name(NamingConvention.Apply("KeySourcePort"));
 
-                Map(m => m.ReverseMetrics.Start).Name("rev_Start");
-                Map(m => m.ReverseMetrics.Duration).Name("rev_Duration").TypeConverter<TimeSpanConverter>();
-                Map(m => m.ReverseMetrics.Packets).Name("rev_Packets");
-                Map(m => m.ReverseMetrics.Octets).Name("rev_Octets");
+                Map(m => m.ForwardMetrics.Start).Name(NamingConvention.Apply("FwdStart")).TypeConverter<DateTimeToUnixConverter>();
+                Map(m => m.ForwardMetrics.Duration).Name(NamingConvention.Apply("FwdDuration")).TypeConverter<TimeSpanToFloatConverter>();
+                Map(m => m.ForwardMetrics.Packets).Name(NamingConvention.Apply("FwdPackets"));
+                Map(m => m.ForwardMetrics.Octets).Name(NamingConvention.Apply("FwdOctets"));
 
-                var typ = typeof(ConversationRecord<T>);
-                ReferenceMaps.Add(new MemberReferenceMap(typ.GetField(nameof(ConversationRecord<T>.Data)), new MapAllPublicProperties<T>()).Prefix("data_"));
+                Map(m => m.ReverseMetrics.Start).Name(NamingConvention.Apply("RevStart")).TypeConverter<DateTimeToUnixConverter>(); ;
+                Map(m => m.ReverseMetrics.Duration).Name(NamingConvention.Apply("RevDuration")).TypeConverter<TimeSpanToFloatConverter>();
+                Map(m => m.ReverseMetrics.Packets).Name(NamingConvention.Apply("RevPackets"));
+                Map(m => m.ReverseMetrics.Octets).Name(NamingConvention.Apply("RevOctets"));
+
+                References(typeof(MapAllPublicProperties<T>), recordType.GetField(nameof(ConversationRecord<T>.Data)), "Data");
             }
         }
         /// <summary>
@@ -121,22 +124,41 @@ namespace IcsMonitor
         /// <typeparam name="T"></typeparam>
         sealed class MapAllPublicProperties<T> : ClassMap<T>
         {
-            public MapAllPublicProperties()
+            public MapAllPublicProperties(string prefix)
             {
                 var typ = typeof(T);
                 var props = typ.GetProperties(BindingFlags.Public | BindingFlags.Instance);
                 foreach (var prop in props)
                 {
-                    MemberMaps.Add(MemberMap.CreateGeneric(typ, prop).Name(prop.Name));
+                    MemberMaps.Add(MemberMap.CreateGeneric(typ, prop).Name(NamingConvention.Apply($"{prefix}{prop.Name}")));
+                }
+            }
+        }
+        sealed class MapAllPublicFields<T> : ClassMap<T> //where T :struct
+        {
+            public MapAllPublicFields(string prefix)
+            {
+                var typ = typeof(T);
+                var fields = typ.GetFields(BindingFlags.Public | BindingFlags.Instance);
+                foreach (var field in fields)
+                {
+                    MemberMaps.Add(MemberMap.CreateGeneric(typ, field).Name(NamingConvention.Apply($"{prefix}{field.Name}")));
                 }
             }
         }
    
-        class TimeSpanConverter : DefaultTypeConverter
+        class TimeSpanToFloatConverter : DefaultTypeConverter
         {
             public override string ConvertToString(object value, IWriterRow row, MemberMapData memberMapData)
             {
                 return ((TimeSpan)value).TotalSeconds.ToString();
+            }
+        }
+        class DateTimeToUnixConverter : DefaultTypeConverter
+        {
+            public override string ConvertToString(object value, IWriterRow row, MemberMapData memberMapData)
+            {
+                return new DateTimeOffset(((DateTime)value).Ticks, TimeSpan.Zero).ToUnixTimeMilliseconds().ToString();
             }
         }
     }

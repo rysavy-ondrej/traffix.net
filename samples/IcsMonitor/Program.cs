@@ -1,7 +1,13 @@
 ﻿using ConsoleAppFramework;
+using CsvHelper;
 using IcsMonitor.Commands;
 using IcsMonitor.Modbus;
-using Microsoft.PowerShell.Commands;
+using Microsoft.ML;
+using Microsoft.ML.Trainers;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,8 +24,6 @@ namespace IcsMonitor
             await RunApplicationAsync(args).ConfigureAwait(false);
         }
 
-
-
         [Command("Extract-ModbusFlows")]
         public async Task ExtractModbusFlows(
             string inputFile,
@@ -34,10 +38,10 @@ namespace IcsMonitor
                 InputFile = new FileInfo(inputFile),
             };
             var records = ExecuteCommandAsync(cmd).Cast<ConversationRecord<ModbusFlowData>>();
-            switch(detailLevel)
+            switch (detailLevel)
             {
                 case DetailLevel.Compact:
-                    await outWriter.WriteOutputAsync(outFormat, records.Select(ConversationRecord<ModbusFlowData>.TransformTo(x=>new ModbusFlowData.Compact(x))));
+                    await outWriter.WriteOutputAsync(outFormat, records.Select(ConversationRecord<ModbusFlowData>.TransformTo(x => new ModbusFlowData.Compact(x))));
                     break;
                 case DetailLevel.Extended:
                     await outWriter.WriteOutputAsync(outFormat, records.Select(ConversationRecord<ModbusFlowData>.TransformTo(x => new ModbusFlowData.Extended(x))));
@@ -48,8 +52,6 @@ namespace IcsMonitor
             }
         }
 
-
-
         [Command("Extract-Dnp3Flows")]
         public async Task ExtractDnp3Flows(string inputFile, OutputFormat outFormat = OutputFormat.Yaml, string outFile = null)
         {
@@ -58,8 +60,104 @@ namespace IcsMonitor
                 InputFile = new FileInfo(inputFile),
             };
             using var outWriter = OutputWriter.Create(outFile != null ? new FileInfo(outFile) : null);
-            var records = ExecuteCommandAsync(cmd).Cast <ConversationRecord<Dnp3FlowData>>();
+            var records = ExecuteCommandAsync(cmd).Cast<ConversationRecord<Dnp3FlowData>>();
             await outWriter.WriteOutputAsync<Dnp3FlowData>(outFormat, records);
+        }
+
+
+
+        [Command("Train-ModbusModel")]
+        public void TrainModbusModel(
+            string inputFile,
+            string outputFile,
+            int numberOfClusters = 8
+            )
+        {
+            var sw = new Stopwatch();
+            var mlContext = new MLContext(seed: 0);
+            var modbusDataModel = new ModbusDataModel();
+            sw.Start();
+            var inputFileInfo = new FileInfo(inputFile);
+            Console.Write($"Processing input {inputFileInfo.Name}, {inputFileInfo.Length} bytes...");
+            using var cmd = new ExtractModbusFlowsCommand
+            {
+                InputFile = inputFileInfo,
+            };
+            var records = ExecuteCommandAsync(cmd).Cast<ConversationRecord<ModbusFlowData>>();
+            var datapoints = modbusDataModel.GetDataPoints(records.ToEnumerable()).ToList();
+            Console.WriteLine($"Done, {datapoints.Count} records [{sw.Elapsed}]");
+            
+            var trainingData = mlContext.Data.LoadFromEnumerable(datapoints);
+
+            // Normalize data:
+            // https://docs.microsoft.com/en-us/dotnet/api/microsoft.ml.normalizationcatalog?view=ml-dotnet
+            var normalizeFixZero = mlContext.Transforms.NormalizeMinMax("Features", fixZero: true);
+
+            var options = new KMeansTrainer.Options
+            {
+                NumberOfClusters = numberOfClusters,
+                OptimizationTolerance = 1e-6f,
+                NumberOfThreads = 1
+            };
+            Console.Write("Traning predictor...");
+            sw.Restart();
+            // Define the trainer.
+            var pipeline = normalizeFixZero.Append(mlContext.Clustering.Trainers.KMeans(options));
+
+            // Train the model.
+            var model = pipeline.Fit(trainingData);
+            // we also need to compute variance for the data
+            // to do so, we c reate a predictor and evaluate all points
+            var predictor = mlContext.Model.CreatePredictionEngine<ModbusDataModel.DataPoint, ModbusDataModel.Prediction>(model);
+            var predictions = datapoints.Select(p => predictor.Predict(p)).ToList();
+            var variances = predictions.GroupBy(x => x.PredictedClusterId).Select(p => (Key: p.Key, Variance: ComputeVariance(p))).OrderBy(p => p.Key).Select(p => p.Variance).ToArray();
+
+            Console.WriteLine($"Done. [{sw.Elapsed}]");
+
+            using (var centroidWriter = new StreamWriter(File.Open(Path.ChangeExtension(outputFile, Path.GetExtension(outputFile)+"_centroids"), FileMode.Create)))
+            {
+                // Write information on centroids of clusters
+                modbusDataModel.PrintCentroids(model, variances, centroidWriter);
+            }
+
+            // Save the model for the future use.
+            mlContext.Model.Save(model, trainingData.Schema, outputFile);
+        }
+
+        /// <summary>
+        /// Variance is computed as v = 1/n \sum_{i=1}^{n}(x_i - x_{mean})^2 .
+        /// </summary>
+        /// <param name="p">The collection of predictions.</param>
+        /// <returns>The variance value.</returns>
+        private float ComputeVariance(IEnumerable<ModbusDataModel.Prediction> p)
+        {
+            return (float)(p.Sum(s => Math.Pow(s.Distance, 2)) / p.Count());
+        }
+
+        [Command("Evaluate-ModbusFlows")]
+        public void EvaluateModbusFlows(
+            string inputFile,
+            string modelFile,
+            string outputFile
+            )
+        {
+            var mlContext = new MLContext(seed: 0);
+            var modbusDataModel = new ModbusDataModel();
+
+            // Load previously trained model.
+            var model = mlContext.Model.Load(modelFile, out var inputSchema);
+            // Create a predictor.
+            var predictor = mlContext.Model.CreatePredictionEngine<ModbusDataModel.DataPoint, ModbusDataModel.Prediction>(model);
+
+            // Get flow records:
+            using var cmd = new ExtractModbusFlowsCommand
+            {
+                InputFile = new FileInfo(inputFile),
+            };
+            var records = ExecuteCommandAsync(cmd).Cast<ConversationRecord<ModbusFlowData>>();
+            var datapoints = modbusDataModel.GetDataPoints(records.ToEnumerable());
+            using var csv = new CsvWriter(new StreamWriter(new FileInfo(outputFile).Open(FileMode.Create)), CultureInfo.InvariantCulture);
+            csv.WriteRecords(datapoints.Select(p => predictor.Predict(p)));
         }
     }
 }

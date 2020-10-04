@@ -16,9 +16,13 @@ namespace IcsMonitor
             var meta = new FrameMetadata();
             FlowMetrics fwdMetrics = new FlowMetrics();
             FlowMetrics revMetrics = new FlowMetrics();
+            DateTime? firstTimestamp = null; 
             foreach (var frame in frames)
             {
                 var buffer = GetFrame(frame, ref meta);
+
+                if (firstTimestamp == null) firstTimestamp = new DateTime(meta.Ticks);
+
                 var packet = Packet.ParsePacket((LinkLayers)meta.LinkLayer, buffer.ToArray());
                 if (meta.FlowKeyHash == forwardKeyHash)
                 {
@@ -30,7 +34,12 @@ namespace IcsMonitor
                     AddPacket(revPackets, revMetrics, meta, packet);
                 }
             }
-
+            if (firstTimestamp != null)
+            {
+                // adjust metrics:
+                AdjustMetrics(ref fwdMetrics, firstTimestamp.Value);
+                AdjustMetrics(ref revMetrics, firstTimestamp.Value);
+            }
             return new ConversationRecord<TData>()
             {
                 Key = flowKey,
@@ -48,6 +57,17 @@ namespace IcsMonitor
             if (metrics.Start == nullDate || packetTimestamp < metrics.Start) metrics.Start = packetTimestamp;
             if (metrics.End == nullDate || packetTimestamp > metrics.End) metrics.End = packetTimestamp;
             packets.Add(packet);
+        }
+        private void AdjustMetrics(ref FlowMetrics metrics, DateTime timestamp)
+        {
+            if (metrics.Start == DateTime.MinValue)
+            {
+                metrics.Start = timestamp;
+            }
+            if (metrics.End == DateTime.MinValue)
+            {
+                metrics.End = timestamp;
+            }
         }
 
         protected abstract TData Invoke(IReadOnlyCollection<Packet> fwdPackets, IReadOnlyCollection<Packet> revPackets);

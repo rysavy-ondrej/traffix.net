@@ -6,6 +6,17 @@ using Traffix.Core.Flows;
 namespace IcsMonitor
 {
 
+
+    [MessagePackObject]
+    public struct RecordLabel
+    {
+        [Key("CLASS")]
+        public string Class;
+
+        [Key("SCORE")]
+        public float Score;
+    }
+
     [MessagePackObject]
     public class ConversationRecord<TData>
     {
@@ -14,7 +25,7 @@ namespace IcsMonitor
         /// The label is mostly used for classification.
         /// </summary>
         [Key("CONVERSATION_LABEL")]
-        public string Label;
+        public RecordLabel Label;
 
         [Key("CONVERSATION_KEY")]
         public FlowKey Key;

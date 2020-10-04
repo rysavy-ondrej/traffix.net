@@ -7,9 +7,24 @@
       "commandName": "Project",
       "commandLineArgs": "Extract-ModbusFlows -inputFile D:\\Captures\\modbus\\modbus.pcap -outformat csv -outFile D:\\Captures\\modbus\\modbus.csv"
     },
+    "Extract-ModbusFlowsError": {
+      "commandName": "Project",
+      "commandLineArgs": "Extract-ModbusFlows -inputFile \"G:\\Shared drives\\BONNET\\AD Metody\\Modbus\\Datasets.pcap\\lemay\\normal\\run1_6rtu.cap\" -outformat csv -outFile D:\\\\Captures\\\\modbus\\\\run1_6rtu.csv"
+    },
+
     "Extract-Dnp3Flows": {
       "commandName": "Project",
       "commandLineArgs": "Extract-Dnp3Flows -inputFile D:\\Captures\\dnp3\\dnp3.pcap -outFormat csv -outFile D:\\Captures\\dnp3\\dnp3.csv"
+    },
+    "Train-ModbusModel": {
+      "commandName": "Project",
+      "commandLineArgs": "Train-ModbusModel -inputFile D:\\Captures\\modbus\\modbus.pcap -outputFile D:\\Captures\\modbus\\modbus.model -numberOfClusters 4"
+    },
+
+    "Evaluate-ModbusFlows": {
+      "commandName": "Project",
+      "commandLineArgs": "Evaluate-ModbusFlows -inputFile D:\\Captures\\modbus\\modbus.pcap -modelFile D:\\Captures\\modbus\\modbus.model -outputFile D:\\Captures\\modbus\\modbus.class"
     }
+
   }
 }
