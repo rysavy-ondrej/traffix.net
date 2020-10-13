@@ -18,12 +18,12 @@
     },
     "Train-ModbusModel": {
       "commandName": "Project",
-      "commandLineArgs": "Train-ModbusModel -inputFile D:\\Captures\\modbus\\modbus.pcap -outputFile D:\\Captures\\modbus\\modbus.model -numberOfClusters 4"
+      "commandLineArgs": "Train-ModbusModel -inputFile D:\\Captures\\modbus\\modbus.pcap -outputFile D:\\Captures\\modbus\\modbus.model.zip -numberOfClusters 4"
     },
 
     "Evaluate-ModbusFlows": {
       "commandName": "Project",
-      "commandLineArgs": "Evaluate-ModbusFlows -inputFile D:\\Captures\\modbus\\modbus.pcap -modelFile D:\\Captures\\modbus\\modbus.model -outputFile D:\\Captures\\modbus\\modbus.class"
+      "commandLineArgs": "Evaluate-ModbusFlows -inputFile D:\\Captures\\modbus\\modbus.pcap -modelFile D:\\Captures\\modbus\\modbus.model.zip -outputFile D:\\Captures\\modbus\\modbus.out.csv"
     }
 
   }

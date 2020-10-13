@@ -23,4 +23,10 @@
     <ProjectReference Include="..\..\source\Traffix.Storage.Faster\Traffix.Storage.Faster.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Scripts\TrainModels.csx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

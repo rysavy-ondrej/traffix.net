@@ -1,11 +1,17 @@
-﻿using CsvHelper.Configuration.Attributes;
+﻿using AutoMapper;
+using CsvHelper;
+using CsvHelper.Configuration.Attributes;
 using IcsMonitor.Commands;
 using IcsMonitor.Modbus;
+using Microsoft.ML;
 using Microsoft.ML.Data;
 using Microsoft.ML.Trainers;
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
+using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using Traffix.Core.Flows;
 
@@ -13,15 +19,37 @@ namespace IcsMonitor
 {
     class ModbusDataModel
     {
-        public void PrintCentroids(TransformerChain<ClusteringPredictionTransformer<KMeansModelParameters>> model, float[] variances, TextWriter writer)
+        private readonly Mapper _mapper;
+
+        public MLContext MlContext { get; }
+
+        public ModbusDataModel(MLContext mlContext)
         {
+            MlContext = mlContext;
+            var configuration = new MapperConfiguration(cfg => { });
+            _mapper = new Mapper(configuration);
+        }
+
+        public IEnumerable<Centroids> GetCentroids(TransformerChain<ClusteringPredictionTransformer<KMeansModelParameters>> model, float[] variances)
+        {
+            var kmeansModel = model.LastTransformer.Model;
             VBuffer<float>[] centroids = default;
-            model.LastTransformer.Model.GetClusterCentroids(ref centroids, out int k);
-            writer.WriteLine($"ClusterId," + string.Join(", ", GetFeatureNames()) + ", Variance");
+            kmeansModel.GetClusterCentroids(ref centroids, out int k);
             for (var i = 0; i < k; i++)
             {
-                writer.WriteLine(
-                    $"{i+1}, " + string.Join(", ", centroids[i].GetValues().ToArray()) + $",{variances[i].ToString("F6")}");
+                var featureNames = GetFeatureNames();
+                var record = new Dictionary<string, object>
+                {
+                    [nameof(Centroids.ClusterId)] = i + 1,
+                    [nameof(Centroids.Variance)] = variances[i]
+                };
+                var vals = centroids[i].GetValues().ToArray();
+                for(var j = 0; j < vals.Length; j++)
+                {
+                    record[featureNames[j]] = vals[j];
+                }
+                var result = _mapper.Map<Centroids>(record);
+                yield return result;
             }
         }
 
@@ -109,7 +137,7 @@ namespace IcsMonitor
             /// </summary>
             [ColumnName("PredictedLabel")]
             [CsvHelper.Configuration.Attributes.Name("ClusterId")]
-            public uint PredictedClusterId { get; set; }
+            public uint ClusterId { get; set; }
 
 
             /// <summary>
@@ -124,6 +152,93 @@ namespace IcsMonitor
             [ColumnName("Score")]
             [CsvHelper.Configuration.Attributes.Ignore]
             public float[] Distances { get; set; }
+
+            /// <summary>
+            /// The computed variance for the cluster.
+            /// </summary>
+            [ColumnName("Variance")]
+            public float Variance { get; set; }
+
+            /// <summary>
+            /// The treshold value, which is SQRT(variance) * T
+            /// </summary>
+            [ColumnName("Threshold")]
+
+            public float Threshold { get; set; }
+            /// <summary>
+            /// The double treshold value, which is 2 * T * SQRT(variance)
+            /// </summary>
+            [ColumnName("Threshold2")]
+            public float Threshold2 { get; set; }
+            /// <summary>
+            /// The triple treshold value, which is 3 * T * SQRT(variance)
+            /// </summary>
+            [ColumnName("Threshold3")]
+            public float Threshold3 { get; set; }
+
+
+        }
+
+        internal void SaveModel(TransformerChain<ClusteringPredictionTransformer<KMeansModelParameters>> model, float[] variances, DataViewSchema schema, string outputFile)
+        {
+            // create model file - it is a zip file.
+            MlContext.Model.Save(model, schema, outputFile);
+            using (var modelArchive = ZipFile.Open(outputFile, ZipArchiveMode.Update))
+            {
+                var entry = modelArchive.CreateEntry("ClusterCentroids.csv");
+
+                using (var writer = new StreamWriter(entry.Open()))
+                using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+                {
+                    csv.WriteRecords(GetCentroids(model, variances));
+
+                }
+            }
+            
+        }
+
+        public ITransformer LoadModel(string modelFile, out DataViewSchema inputSchema, out Centroids[] centroids)
+        {
+            // Load previously trained model.
+            var model = MlContext.Model.Load(modelFile, out inputSchema);
+
+            using (var modelArchive = ZipFile.Open(modelFile, ZipArchiveMode.Read))
+            {
+                var entry = modelArchive.GetEntry("ClusterCentroids.csv");
+
+                using (var reader = new StreamReader(entry.Open()))
+                {
+                    using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
+                    {
+                         centroids = csv.GetRecords<Centroids>().ToArray();
+                    }
+                }
+            }
+
+
+            return model;
+        }
+
+
+        public class Centroids
+        {
+            public int ClusterId { get; set; }
+            public float FwdDuration { get; set; }
+            public float RevDuration { get; set; }
+            public float FwdPackets { get; set; }
+            public float RevPackets { get; set; }
+            public float FwdOctets { get; set; }
+            public float RevOctets { get; set; }
+            public float ReadRequests { get; set; }
+            public float WriteRequests { get; set; }
+            public float DiagnosticRequests { get; set; }
+            public float OtherRequests { get; set; }
+            public float UndefinedRequests { get; set; }
+            public float MalformedRequests { get; set; }
+            public float ResponsesSuccess { get; set; }
+            public float ResponsesError { get; set; }
+            public float MalformedResponses { get; set; }
+            public float Variance { get; set; }
         }
     }
 }

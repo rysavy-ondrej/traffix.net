@@ -74,8 +74,7 @@ namespace IcsMonitor
             )
         {
             var sw = new Stopwatch();
-            var mlContext = new MLContext(seed: 0);
-            var modbusDataModel = new ModbusDataModel();
+            var modbusDataModel = new ModbusDataModel(new MLContext(seed: 0));
             sw.Start();
             var inputFileInfo = new FileInfo(inputFile);
             Console.Write($"Processing input {inputFileInfo.Name}, {inputFileInfo.Length} bytes...");
@@ -87,11 +86,11 @@ namespace IcsMonitor
             var datapoints = modbusDataModel.GetDataPoints(records.ToEnumerable()).ToList();
             Console.WriteLine($"Done, {datapoints.Count} records [{sw.Elapsed}]");
             
-            var trainingData = mlContext.Data.LoadFromEnumerable(datapoints);
+            var trainingData = modbusDataModel.MlContext.Data.LoadFromEnumerable(datapoints);
 
             // Normalize data:
             // https://docs.microsoft.com/en-us/dotnet/api/microsoft.ml.normalizationcatalog?view=ml-dotnet
-            var normalizeFixZero = mlContext.Transforms.NormalizeMinMax("Features", fixZero: true);
+            var normalizeFixZero = modbusDataModel.MlContext.Transforms.NormalizeMinMax("Features", fixZero: true);
 
             var options = new KMeansTrainer.Options
             {
@@ -102,26 +101,24 @@ namespace IcsMonitor
             Console.Write("Traning predictor...");
             sw.Restart();
             // Define the trainer.
-            var pipeline = normalizeFixZero.Append(mlContext.Clustering.Trainers.KMeans(options));
+            var pipeline = normalizeFixZero.Append(modbusDataModel.MlContext.Clustering.Trainers.KMeans(options));
 
             // Train the model.
             var model = pipeline.Fit(trainingData);
             // we also need to compute variance for the data
             // to do so, we c reate a predictor and evaluate all points
-            var predictor = mlContext.Model.CreatePredictionEngine<ModbusDataModel.DataPoint, ModbusDataModel.Prediction>(model);
+            var predictor = modbusDataModel.MlContext.Model.CreatePredictionEngine<ModbusDataModel.DataPoint, ModbusDataModel.Prediction>(model);
             var predictions = datapoints.Select(p => predictor.Predict(p)).ToList();
-            var variances = predictions.GroupBy(x => x.PredictedClusterId).Select(p => (Key: p.Key, Variance: ComputeVariance(p))).OrderBy(p => p.Key).Select(p => p.Variance).ToArray();
+            var variances = predictions.GroupBy(x => x.ClusterId).Select(p => (Key: p.Key, Variance: ComputeVariance(p))).OrderBy(p => p.Key).Select(p => p.Variance).ToArray();
 
             Console.WriteLine($"Done. [{sw.Elapsed}]");
 
-            using (var centroidWriter = new StreamWriter(File.Open(Path.ChangeExtension(outputFile, Path.GetExtension(outputFile)+"_centroids"), FileMode.Create)))
-            {
-                // Write information on centroids of clusters
-                modbusDataModel.PrintCentroids(model, variances, centroidWriter);
-            }
+            
 
+            modbusDataModel.SaveModel(model, variances, trainingData.Schema, outputFile);
             // Save the model for the future use.
-            mlContext.Model.Save(model, trainingData.Schema, outputFile);
+           
+
         }
 
         /// <summary>
@@ -138,16 +135,16 @@ namespace IcsMonitor
         public void EvaluateModbusFlows(
             string inputFile,
             string modelFile,
-            string outputFile
+            string outputFile,
+            float acceptance = 1.0F
             )
         {
-            var mlContext = new MLContext(seed: 0);
-            var modbusDataModel = new ModbusDataModel();
+            var modbusDataModel = new ModbusDataModel(new MLContext(seed: 0));
 
-            // Load previously trained model.
-            var model = mlContext.Model.Load(modelFile, out var inputSchema);
+            var model  = modbusDataModel.LoadModel(modelFile, out var inputSchema, out var centroids);
+
             // Create a predictor.
-            var predictor = mlContext.Model.CreatePredictionEngine<ModbusDataModel.DataPoint, ModbusDataModel.Prediction>(model);
+            var predictor = modbusDataModel.MlContext.Model.CreatePredictionEngine<ModbusDataModel.DataPoint, ModbusDataModel.Prediction>(model);
 
             // Get flow records:
             using var cmd = new ExtractModbusFlowsCommand
@@ -157,7 +154,20 @@ namespace IcsMonitor
             var records = ExecuteCommandAsync(cmd).Cast<ConversationRecord<ModbusFlowData>>();
             var datapoints = modbusDataModel.GetDataPoints(records.ToEnumerable());
             using var csv = new CsvWriter(new StreamWriter(new FileInfo(outputFile).Open(FileMode.Create)), CultureInfo.InvariantCulture);
-            csv.WriteRecords(datapoints.Select(p => predictor.Predict(p)));
+
+            ModbusDataModel.Prediction Decide(ModbusDataModel.Prediction pred)
+            {
+                var variance = centroids[pred.ClusterId - 1].Variance;
+
+
+                pred.Variance = variance;
+                pred.Threshold = (float)Math.Sqrt(variance) * acceptance;
+                pred.Threshold2 = (float)Math.Sqrt(variance) * acceptance * 2;
+                pred.Threshold3 = (float)Math.Sqrt(variance) * acceptance * 3;
+                return pred;
+            }
+
+            csv.WriteRecords(datapoints.Select(p => Decide(predictor.Predict(p))));
         }
     }
 }
