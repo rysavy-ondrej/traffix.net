@@ -22,21 +22,21 @@ namespace IcsMonitor.S7Comm
         protected override S7CommConversationData Invoke(IReadOnlyCollection<(FrameMetadata Meta, Packet Packet)> fwdPackets, IReadOnlyCollection<(FrameMetadata Meta, Packet Packet)> revPackets)
         {
             var conversation = new S7CommConversationData();
-            foreach (var packet in fwdPackets) UpdateConversation(packet, conversation, FlowDirection.Forward);
-            foreach (var packet in revPackets) UpdateConversation(packet, conversation, FlowDirection.Reverse);
+            foreach (var packet in fwdPackets) UpdateConversation(conversation, packet.Meta, packet.Packet, FlowDirection.Forward);
+            foreach (var packet in revPackets) UpdateConversation(conversation, packet.Meta, packet.Packet, FlowDirection.Reverse);
             return conversation;
         }
 
         /// <summary>
         /// Updates a conversation with the specified packet.
         /// </summary>
-        /// <param name="packet"></param>
         /// <param name="conversation"></param>
+        /// <param name="packet"></param>
         /// <param name="direction"></param>
-        /// <returns>true if the conversation was updated with the information in the packt. false if the packet does not contain any related information.</returns>
-        bool UpdateConversation((FrameMetadata Meta, Packet Packet) packet, S7CommConversationData conversation, FlowDirection direction)
+        /// <returns>true if the conversation was updated with the information in the packet; false if the packet does not contain any related information.</returns>
+        bool UpdateConversation(S7CommConversationData conversation, FrameMetadata meta, Packet packet, FlowDirection direction)
         {
-            var tcpPacket = packet.Packet.Extract<TcpPacket>();
+            var tcpPacket = packet.Extract<TcpPacket>();
             if (tcpPacket.PayloadData?.Length != 0)
             {
                 var tptkStream = new KaitaiStream(tcpPacket.PayloadData);
@@ -49,7 +49,10 @@ namespace IcsMonitor.S7Comm
                     }
                     else
                     {
-                        conversation.UnknownRequests++;
+                        if (direction == FlowDirection.Forward)
+                            conversation.UnknownRequestCount++;
+                        else
+                            conversation.UnknownResponseCount++;
                     }
                 }
                 return true;
@@ -130,7 +133,9 @@ namespace IcsMonitor.S7Comm
                     }
                     break;
                 case S7commPacket.AckDataMessage ackDataMessage:
-                    switch(ackDataMessage.Function)
+                    if (packet.Error?.ErrorClass != 0) flow.ErrorInResponseCount++;
+
+                    switch (ackDataMessage.Function)
                     {
                         case S7commPacket.AckDataReadVariable ackReadVariable:
                             flow.AckReadVarCount++;
@@ -166,11 +171,11 @@ namespace IcsMonitor.S7Comm
                     {
                         if (direction == FlowDirection.Forward)
                         {
-                            flow.UserDataRequestsCount++;
+                            flow.UserDataRequestCount++;
                         }
                         else
                         {
-                            flow.UserDataResponsesCount++;
+                            flow.UserDataResponseCount++;
                         }
                     }
                     break;

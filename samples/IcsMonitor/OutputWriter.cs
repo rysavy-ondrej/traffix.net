@@ -2,6 +2,7 @@
 using CsvHelper.Configuration;
 using CsvHelper.TypeConversion;
 using IcsMonitor.Modbus;
+using IcsMonitor.S7Comm;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -61,6 +62,7 @@ namespace IcsMonitor
                         csv.Configuration.RegisterClassMap<MapConversationRecord<ModbusFlowData.Compact>>();
                         csv.Configuration.RegisterClassMap<MapConversationRecord<ModbusFlowData.Complete>>();
                         csv.Configuration.RegisterClassMap<MapConversationRecord<ModbusFlowData.Extended>>();
+                        csv.Configuration.RegisterClassMap<MapConversationRecord<S7CommConversationData>>();
                         await csv.WriteRecordsAsync(records.ToEnumerable());
                     }
                     break;

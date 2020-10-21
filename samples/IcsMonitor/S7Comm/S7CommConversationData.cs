@@ -25,24 +25,25 @@ namespace IcsMonitor.S7Comm {
       byte[] descriptorData = global::System.Convert.FromBase64String(
           string.Concat(
             "ChxTN0NvbW1Db252ZXJzYXRpb25EYXRhLnByb3RvEhFJY3NNb25pdG9yLlM3",
-            "Q29tbSLKBAoWUzdDb21tQ29udmVyc2F0aW9uRGF0YRIWCg5wYXJhbUxlbmd0",
+            "Q29tbSLSBAoWUzdDb21tQ29udmVyc2F0aW9uRGF0YRIWCg5wYXJhbUxlbmd0",
             "aFN1bRgBIAEoDRIVCg1kYXRhTGVuZ3RoU3VtGAIgASgNEhcKD2pvYlJlYWRW",
-            "YXJDb3VudBgDIAEoDRIbChNqb2JSZWFkVmFySXRlbUNvdW50GAQgASgNEhgK",
-            "EGpvYldyaXRlVmFyQ291bnQYBSABKA0SHAoUam9iV3JpdGVWYXJJdGVtQ291",
-            "bnQYBiABKA0SFwoPYWNrUmVhZFZhckNvdW50GAcgASgNEh4KFmFja1JlYWRW",
-            "YXJTdWNjZXNzQ291bnQYCCABKA0SGAoQYWNrV3JpdGVWYXJDb3VudBgJIAEo",
+            "YXJDb3VudBgDIAEoDRIbChNqb2JSZWFkVmFySXRlbUNvdW50GAQgASgNEhcK",
+            "D2Fja1JlYWRWYXJDb3VudBgFIAEoDRIeChZhY2tSZWFkVmFyU3VjY2Vzc0Nv",
+            "dW50GAYgASgNEhgKEGpvYldyaXRlVmFyQ291bnQYByABKA0SHAoUam9iV3Jp",
+            "dGVWYXJJdGVtQ291bnQYCCABKA0SGAoQYWNrV3JpdGVWYXJDb3VudBgJIAEo",
             "DRIcChRhY2tXcml0ZVN1Y2Nlc3NDb3VudBgKIAEoDRIWCg5qb2JVcGxvYWRD",
             "b3VudBgLIAEoDRIWCg5hY2tVcGxvYWRDb3VudBgMIAEoDRIYChBqb2JEb3du",
             "bG9hZENvdW50GA0gASgNEhgKEGFja0Rvd25sb2FkQ291bnQYDiABKA0SFwoP",
             "am9iQ29udHJvbENvdW50GA8gASgNEhcKD2Fja0NvbnRyb2xDb3VudBgQIAEo",
-            "DRIdChV1c2VyRGF0YVJlcXVlc3RzQ291bnQYESABKA0SHgoWdXNlckRhdGFS",
-            "ZXNwb25zZXNDb3VudBgSIAEoDRIaChJlcnJvclJlc3BvbnNlQ291bnQYEyAB",
-            "KA0SFwoPdW5rbm93blJlcXVlc3RzGBQgASgNEhgKEHVua25vd25SZXNwb25z",
-            "ZXMYFSABKA1CFKoCEUljc01vbml0b3IuUzdDb21tYgZwcm90bzM="));
+            "DRIcChRlcnJvckluUmVzcG9uc2VDb3VudBgRIAEoDRIcChR1c2VyRGF0YVJl",
+            "cXVlc3RDb3VudBgSIAEoDRIdChV1c2VyRGF0YVJlc3BvbnNlQ291bnQYEyAB",
+            "KA0SGwoTdW5rbm93blJlcXVlc3RDb3VudBgUIAEoDRIcChR1bmtub3duUmVz",
+            "cG9uc2VDb3VudBgVIAEoDUIUqgIRSWNzTW9uaXRvci5TN0NvbW1iBnByb3Rv",
+            "Mw=="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
-            new pbr::GeneratedClrTypeInfo(typeof(global::IcsMonitor.S7Comm.S7CommConversationData), global::IcsMonitor.S7Comm.S7CommConversationData.Parser, new[]{ "ParamLengthSum", "DataLengthSum", "JobReadVarCount", "JobReadVarItemCount", "JobWriteVarCount", "JobWriteVarItemCount", "AckReadVarCount", "AckReadVarSuccessCount", "AckWriteVarCount", "AckWriteSuccessCount", "JobUploadCount", "AckUploadCount", "JobDownloadCount", "AckDownloadCount", "JobControlCount", "AckControlCount", "UserDataRequestsCount", "UserDataResponsesCount", "ErrorResponseCount", "UnknownRequests", "UnknownResponses" }, null, null, null, null)
+            new pbr::GeneratedClrTypeInfo(typeof(global::IcsMonitor.S7Comm.S7CommConversationData), global::IcsMonitor.S7Comm.S7CommConversationData.Parser, new[]{ "ParamLengthSum", "DataLengthSum", "JobReadVarCount", "JobReadVarItemCount", "AckReadVarCount", "AckReadVarSuccessCount", "JobWriteVarCount", "JobWriteVarItemCount", "AckWriteVarCount", "AckWriteSuccessCount", "JobUploadCount", "AckUploadCount", "JobDownloadCount", "AckDownloadCount", "JobControlCount", "AckControlCount", "ErrorInResponseCount", "UserDataRequestCount", "UserDataResponseCount", "UnknownRequestCount", "UnknownResponseCount" }, null, null, null, null)
           }));
     }
     #endregion
@@ -82,10 +83,10 @@ namespace IcsMonitor.S7Comm {
       dataLengthSum_ = other.dataLengthSum_;
       jobReadVarCount_ = other.jobReadVarCount_;
       jobReadVarItemCount_ = other.jobReadVarItemCount_;
-      jobWriteVarCount_ = other.jobWriteVarCount_;
-      jobWriteVarItemCount_ = other.jobWriteVarItemCount_;
       ackReadVarCount_ = other.ackReadVarCount_;
       ackReadVarSuccessCount_ = other.ackReadVarSuccessCount_;
+      jobWriteVarCount_ = other.jobWriteVarCount_;
+      jobWriteVarItemCount_ = other.jobWriteVarItemCount_;
       ackWriteVarCount_ = other.ackWriteVarCount_;
       ackWriteSuccessCount_ = other.ackWriteSuccessCount_;
       jobUploadCount_ = other.jobUploadCount_;
@@ -94,11 +95,11 @@ namespace IcsMonitor.S7Comm {
       ackDownloadCount_ = other.ackDownloadCount_;
       jobControlCount_ = other.jobControlCount_;
       ackControlCount_ = other.ackControlCount_;
-      userDataRequestsCount_ = other.userDataRequestsCount_;
-      userDataResponsesCount_ = other.userDataResponsesCount_;
-      errorResponseCount_ = other.errorResponseCount_;
-      unknownRequests_ = other.unknownRequests_;
-      unknownResponses_ = other.unknownResponses_;
+      errorInResponseCount_ = other.errorInResponseCount_;
+      userDataRequestCount_ = other.userDataRequestCount_;
+      userDataResponseCount_ = other.userDataResponseCount_;
+      unknownRequestCount_ = other.unknownRequestCount_;
+      unknownResponseCount_ = other.unknownResponseCount_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -163,36 +164,8 @@ namespace IcsMonitor.S7Comm {
       }
     }
 
-    /// <summary>Field number for the "jobWriteVarCount" field.</summary>
-    public const int JobWriteVarCountFieldNumber = 5;
-    private uint jobWriteVarCount_;
-    /// <summary>
-    ///	Count of Job Write Var requests.
-    /// </summary>
-    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public uint JobWriteVarCount {
-      get { return jobWriteVarCount_; }
-      set {
-        jobWriteVarCount_ = value;
-      }
-    }
-
-    /// <summary>Field number for the "jobWriteVarItemCount" field.</summary>
-    public const int JobWriteVarItemCountFieldNumber = 6;
-    private uint jobWriteVarItemCount_;
-    /// <summary>
-    ///	Count of items in Job Write Var requests.
-    /// </summary>
-    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public uint JobWriteVarItemCount {
-      get { return jobWriteVarItemCount_; }
-      set {
-        jobWriteVarItemCount_ = value;
-      }
-    }
-
     /// <summary>Field number for the "ackReadVarCount" field.</summary>
-    public const int AckReadVarCountFieldNumber = 7;
+    public const int AckReadVarCountFieldNumber = 5;
     private uint ackReadVarCount_;
     /// <summary>
     ///	Count of Ack Data Read Var responses.
@@ -206,7 +179,7 @@ namespace IcsMonitor.S7Comm {
     }
 
     /// <summary>Field number for the "ackReadVarSuccessCount" field.</summary>
-    public const int AckReadVarSuccessCountFieldNumber = 8;
+    public const int AckReadVarSuccessCountFieldNumber = 6;
     private uint ackReadVarSuccessCount_;
     /// <summary>
     ///	Count of success items in Ack Data Read Var responses.
@@ -216,6 +189,34 @@ namespace IcsMonitor.S7Comm {
       get { return ackReadVarSuccessCount_; }
       set {
         ackReadVarSuccessCount_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "jobWriteVarCount" field.</summary>
+    public const int JobWriteVarCountFieldNumber = 7;
+    private uint jobWriteVarCount_;
+    /// <summary>
+    ///	Count of Job Write Var requests.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public uint JobWriteVarCount {
+      get { return jobWriteVarCount_; }
+      set {
+        jobWriteVarCount_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "jobWriteVarItemCount" field.</summary>
+    public const int JobWriteVarItemCountFieldNumber = 8;
+    private uint jobWriteVarItemCount_;
+    /// <summary>
+    ///	Count of items in Job Write Var requests.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public uint JobWriteVarItemCount {
+      get { return jobWriteVarItemCount_; }
+      set {
+        jobWriteVarItemCount_ = value;
       }
     }
 
@@ -331,73 +332,73 @@ namespace IcsMonitor.S7Comm {
       }
     }
 
-    /// <summary>Field number for the "userDataRequestsCount" field.</summary>
-    public const int UserDataRequestsCountFieldNumber = 17;
-    private uint userDataRequestsCount_;
-    /// <summary>
-    ///	Count of user data request messages.
-    /// </summary>
-    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public uint UserDataRequestsCount {
-      get { return userDataRequestsCount_; }
-      set {
-        userDataRequestsCount_ = value;
-      }
-    }
-
-    /// <summary>Field number for the "userDataResponsesCount" field.</summary>
-    public const int UserDataResponsesCountFieldNumber = 18;
-    private uint userDataResponsesCount_;
-    /// <summary>
-    ///	Count of user data response messages.
-    /// </summary>
-    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public uint UserDataResponsesCount {
-      get { return userDataResponsesCount_; }
-      set {
-        userDataResponsesCount_ = value;
-      }
-    }
-
-    /// <summary>Field number for the "errorResponseCount" field.</summary>
-    public const int ErrorResponseCountFieldNumber = 19;
-    private uint errorResponseCount_;
+    /// <summary>Field number for the "errorInResponseCount" field.</summary>
+    public const int ErrorInResponseCountFieldNumber = 17;
+    private uint errorInResponseCount_;
     /// <summary>
     ///	Count of responses that report some error.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public uint ErrorResponseCount {
-      get { return errorResponseCount_; }
+    public uint ErrorInResponseCount {
+      get { return errorInResponseCount_; }
       set {
-        errorResponseCount_ = value;
+        errorInResponseCount_ = value;
       }
     }
 
-    /// <summary>Field number for the "unknownRequests" field.</summary>
-    public const int UnknownRequestsFieldNumber = 20;
-    private uint unknownRequests_;
+    /// <summary>Field number for the "userDataRequestCount" field.</summary>
+    public const int UserDataRequestCountFieldNumber = 18;
+    private uint userDataRequestCount_;
+    /// <summary>
+    ///	Count of user data request messages.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public uint UserDataRequestCount {
+      get { return userDataRequestCount_; }
+      set {
+        userDataRequestCount_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "userDataResponseCount" field.</summary>
+    public const int UserDataResponseCountFieldNumber = 19;
+    private uint userDataResponseCount_;
+    /// <summary>
+    ///	Count of user data response messages.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public uint UserDataResponseCount {
+      get { return userDataResponseCount_; }
+      set {
+        userDataResponseCount_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "unknownRequestCount" field.</summary>
+    public const int UnknownRequestCountFieldNumber = 20;
+    private uint unknownRequestCount_;
     /// <summary>
     ///	Count of requests with unknow message type or function code.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public uint UnknownRequests {
-      get { return unknownRequests_; }
+    public uint UnknownRequestCount {
+      get { return unknownRequestCount_; }
       set {
-        unknownRequests_ = value;
+        unknownRequestCount_ = value;
       }
     }
 
-    /// <summary>Field number for the "unknownResponses" field.</summary>
-    public const int UnknownResponsesFieldNumber = 21;
-    private uint unknownResponses_;
+    /// <summary>Field number for the "unknownResponseCount" field.</summary>
+    public const int UnknownResponseCountFieldNumber = 21;
+    private uint unknownResponseCount_;
     /// <summary>
     ///	Count of responses with unknow message type or function code.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public uint UnknownResponses {
-      get { return unknownResponses_; }
+    public uint UnknownResponseCount {
+      get { return unknownResponseCount_; }
       set {
-        unknownResponses_ = value;
+        unknownResponseCount_ = value;
       }
     }
 
@@ -418,10 +419,10 @@ namespace IcsMonitor.S7Comm {
       if (DataLengthSum != other.DataLengthSum) return false;
       if (JobReadVarCount != other.JobReadVarCount) return false;
       if (JobReadVarItemCount != other.JobReadVarItemCount) return false;
-      if (JobWriteVarCount != other.JobWriteVarCount) return false;
-      if (JobWriteVarItemCount != other.JobWriteVarItemCount) return false;
       if (AckReadVarCount != other.AckReadVarCount) return false;
       if (AckReadVarSuccessCount != other.AckReadVarSuccessCount) return false;
+      if (JobWriteVarCount != other.JobWriteVarCount) return false;
+      if (JobWriteVarItemCount != other.JobWriteVarItemCount) return false;
       if (AckWriteVarCount != other.AckWriteVarCount) return false;
       if (AckWriteSuccessCount != other.AckWriteSuccessCount) return false;
       if (JobUploadCount != other.JobUploadCount) return false;
@@ -430,11 +431,11 @@ namespace IcsMonitor.S7Comm {
       if (AckDownloadCount != other.AckDownloadCount) return false;
       if (JobControlCount != other.JobControlCount) return false;
       if (AckControlCount != other.AckControlCount) return false;
-      if (UserDataRequestsCount != other.UserDataRequestsCount) return false;
-      if (UserDataResponsesCount != other.UserDataResponsesCount) return false;
-      if (ErrorResponseCount != other.ErrorResponseCount) return false;
-      if (UnknownRequests != other.UnknownRequests) return false;
-      if (UnknownResponses != other.UnknownResponses) return false;
+      if (ErrorInResponseCount != other.ErrorInResponseCount) return false;
+      if (UserDataRequestCount != other.UserDataRequestCount) return false;
+      if (UserDataResponseCount != other.UserDataResponseCount) return false;
+      if (UnknownRequestCount != other.UnknownRequestCount) return false;
+      if (UnknownResponseCount != other.UnknownResponseCount) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -445,10 +446,10 @@ namespace IcsMonitor.S7Comm {
       if (DataLengthSum != 0) hash ^= DataLengthSum.GetHashCode();
       if (JobReadVarCount != 0) hash ^= JobReadVarCount.GetHashCode();
       if (JobReadVarItemCount != 0) hash ^= JobReadVarItemCount.GetHashCode();
-      if (JobWriteVarCount != 0) hash ^= JobWriteVarCount.GetHashCode();
-      if (JobWriteVarItemCount != 0) hash ^= JobWriteVarItemCount.GetHashCode();
       if (AckReadVarCount != 0) hash ^= AckReadVarCount.GetHashCode();
       if (AckReadVarSuccessCount != 0) hash ^= AckReadVarSuccessCount.GetHashCode();
+      if (JobWriteVarCount != 0) hash ^= JobWriteVarCount.GetHashCode();
+      if (JobWriteVarItemCount != 0) hash ^= JobWriteVarItemCount.GetHashCode();
       if (AckWriteVarCount != 0) hash ^= AckWriteVarCount.GetHashCode();
       if (AckWriteSuccessCount != 0) hash ^= AckWriteSuccessCount.GetHashCode();
       if (JobUploadCount != 0) hash ^= JobUploadCount.GetHashCode();
@@ -457,11 +458,11 @@ namespace IcsMonitor.S7Comm {
       if (AckDownloadCount != 0) hash ^= AckDownloadCount.GetHashCode();
       if (JobControlCount != 0) hash ^= JobControlCount.GetHashCode();
       if (AckControlCount != 0) hash ^= AckControlCount.GetHashCode();
-      if (UserDataRequestsCount != 0) hash ^= UserDataRequestsCount.GetHashCode();
-      if (UserDataResponsesCount != 0) hash ^= UserDataResponsesCount.GetHashCode();
-      if (ErrorResponseCount != 0) hash ^= ErrorResponseCount.GetHashCode();
-      if (UnknownRequests != 0) hash ^= UnknownRequests.GetHashCode();
-      if (UnknownResponses != 0) hash ^= UnknownResponses.GetHashCode();
+      if (ErrorInResponseCount != 0) hash ^= ErrorInResponseCount.GetHashCode();
+      if (UserDataRequestCount != 0) hash ^= UserDataRequestCount.GetHashCode();
+      if (UserDataResponseCount != 0) hash ^= UserDataResponseCount.GetHashCode();
+      if (UnknownRequestCount != 0) hash ^= UnknownRequestCount.GetHashCode();
+      if (UnknownResponseCount != 0) hash ^= UnknownResponseCount.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -494,21 +495,21 @@ namespace IcsMonitor.S7Comm {
         output.WriteRawTag(32);
         output.WriteUInt32(JobReadVarItemCount);
       }
-      if (JobWriteVarCount != 0) {
-        output.WriteRawTag(40);
-        output.WriteUInt32(JobWriteVarCount);
-      }
-      if (JobWriteVarItemCount != 0) {
-        output.WriteRawTag(48);
-        output.WriteUInt32(JobWriteVarItemCount);
-      }
       if (AckReadVarCount != 0) {
-        output.WriteRawTag(56);
+        output.WriteRawTag(40);
         output.WriteUInt32(AckReadVarCount);
       }
       if (AckReadVarSuccessCount != 0) {
-        output.WriteRawTag(64);
+        output.WriteRawTag(48);
         output.WriteUInt32(AckReadVarSuccessCount);
+      }
+      if (JobWriteVarCount != 0) {
+        output.WriteRawTag(56);
+        output.WriteUInt32(JobWriteVarCount);
+      }
+      if (JobWriteVarItemCount != 0) {
+        output.WriteRawTag(64);
+        output.WriteUInt32(JobWriteVarItemCount);
       }
       if (AckWriteVarCount != 0) {
         output.WriteRawTag(72);
@@ -542,25 +543,25 @@ namespace IcsMonitor.S7Comm {
         output.WriteRawTag(128, 1);
         output.WriteUInt32(AckControlCount);
       }
-      if (UserDataRequestsCount != 0) {
+      if (ErrorInResponseCount != 0) {
         output.WriteRawTag(136, 1);
-        output.WriteUInt32(UserDataRequestsCount);
+        output.WriteUInt32(ErrorInResponseCount);
       }
-      if (UserDataResponsesCount != 0) {
+      if (UserDataRequestCount != 0) {
         output.WriteRawTag(144, 1);
-        output.WriteUInt32(UserDataResponsesCount);
+        output.WriteUInt32(UserDataRequestCount);
       }
-      if (ErrorResponseCount != 0) {
+      if (UserDataResponseCount != 0) {
         output.WriteRawTag(152, 1);
-        output.WriteUInt32(ErrorResponseCount);
+        output.WriteUInt32(UserDataResponseCount);
       }
-      if (UnknownRequests != 0) {
+      if (UnknownRequestCount != 0) {
         output.WriteRawTag(160, 1);
-        output.WriteUInt32(UnknownRequests);
+        output.WriteUInt32(UnknownRequestCount);
       }
-      if (UnknownResponses != 0) {
+      if (UnknownResponseCount != 0) {
         output.WriteRawTag(168, 1);
-        output.WriteUInt32(UnknownResponses);
+        output.WriteUInt32(UnknownResponseCount);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
@@ -587,21 +588,21 @@ namespace IcsMonitor.S7Comm {
         output.WriteRawTag(32);
         output.WriteUInt32(JobReadVarItemCount);
       }
-      if (JobWriteVarCount != 0) {
-        output.WriteRawTag(40);
-        output.WriteUInt32(JobWriteVarCount);
-      }
-      if (JobWriteVarItemCount != 0) {
-        output.WriteRawTag(48);
-        output.WriteUInt32(JobWriteVarItemCount);
-      }
       if (AckReadVarCount != 0) {
-        output.WriteRawTag(56);
+        output.WriteRawTag(40);
         output.WriteUInt32(AckReadVarCount);
       }
       if (AckReadVarSuccessCount != 0) {
-        output.WriteRawTag(64);
+        output.WriteRawTag(48);
         output.WriteUInt32(AckReadVarSuccessCount);
+      }
+      if (JobWriteVarCount != 0) {
+        output.WriteRawTag(56);
+        output.WriteUInt32(JobWriteVarCount);
+      }
+      if (JobWriteVarItemCount != 0) {
+        output.WriteRawTag(64);
+        output.WriteUInt32(JobWriteVarItemCount);
       }
       if (AckWriteVarCount != 0) {
         output.WriteRawTag(72);
@@ -635,25 +636,25 @@ namespace IcsMonitor.S7Comm {
         output.WriteRawTag(128, 1);
         output.WriteUInt32(AckControlCount);
       }
-      if (UserDataRequestsCount != 0) {
+      if (ErrorInResponseCount != 0) {
         output.WriteRawTag(136, 1);
-        output.WriteUInt32(UserDataRequestsCount);
+        output.WriteUInt32(ErrorInResponseCount);
       }
-      if (UserDataResponsesCount != 0) {
+      if (UserDataRequestCount != 0) {
         output.WriteRawTag(144, 1);
-        output.WriteUInt32(UserDataResponsesCount);
+        output.WriteUInt32(UserDataRequestCount);
       }
-      if (ErrorResponseCount != 0) {
+      if (UserDataResponseCount != 0) {
         output.WriteRawTag(152, 1);
-        output.WriteUInt32(ErrorResponseCount);
+        output.WriteUInt32(UserDataResponseCount);
       }
-      if (UnknownRequests != 0) {
+      if (UnknownRequestCount != 0) {
         output.WriteRawTag(160, 1);
-        output.WriteUInt32(UnknownRequests);
+        output.WriteUInt32(UnknownRequestCount);
       }
-      if (UnknownResponses != 0) {
+      if (UnknownResponseCount != 0) {
         output.WriteRawTag(168, 1);
-        output.WriteUInt32(UnknownResponses);
+        output.WriteUInt32(UnknownResponseCount);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
@@ -676,17 +677,17 @@ namespace IcsMonitor.S7Comm {
       if (JobReadVarItemCount != 0) {
         size += 1 + pb::CodedOutputStream.ComputeUInt32Size(JobReadVarItemCount);
       }
-      if (JobWriteVarCount != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeUInt32Size(JobWriteVarCount);
-      }
-      if (JobWriteVarItemCount != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeUInt32Size(JobWriteVarItemCount);
-      }
       if (AckReadVarCount != 0) {
         size += 1 + pb::CodedOutputStream.ComputeUInt32Size(AckReadVarCount);
       }
       if (AckReadVarSuccessCount != 0) {
         size += 1 + pb::CodedOutputStream.ComputeUInt32Size(AckReadVarSuccessCount);
+      }
+      if (JobWriteVarCount != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeUInt32Size(JobWriteVarCount);
+      }
+      if (JobWriteVarItemCount != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeUInt32Size(JobWriteVarItemCount);
       }
       if (AckWriteVarCount != 0) {
         size += 1 + pb::CodedOutputStream.ComputeUInt32Size(AckWriteVarCount);
@@ -712,20 +713,20 @@ namespace IcsMonitor.S7Comm {
       if (AckControlCount != 0) {
         size += 2 + pb::CodedOutputStream.ComputeUInt32Size(AckControlCount);
       }
-      if (UserDataRequestsCount != 0) {
-        size += 2 + pb::CodedOutputStream.ComputeUInt32Size(UserDataRequestsCount);
+      if (ErrorInResponseCount != 0) {
+        size += 2 + pb::CodedOutputStream.ComputeUInt32Size(ErrorInResponseCount);
       }
-      if (UserDataResponsesCount != 0) {
-        size += 2 + pb::CodedOutputStream.ComputeUInt32Size(UserDataResponsesCount);
+      if (UserDataRequestCount != 0) {
+        size += 2 + pb::CodedOutputStream.ComputeUInt32Size(UserDataRequestCount);
       }
-      if (ErrorResponseCount != 0) {
-        size += 2 + pb::CodedOutputStream.ComputeUInt32Size(ErrorResponseCount);
+      if (UserDataResponseCount != 0) {
+        size += 2 + pb::CodedOutputStream.ComputeUInt32Size(UserDataResponseCount);
       }
-      if (UnknownRequests != 0) {
-        size += 2 + pb::CodedOutputStream.ComputeUInt32Size(UnknownRequests);
+      if (UnknownRequestCount != 0) {
+        size += 2 + pb::CodedOutputStream.ComputeUInt32Size(UnknownRequestCount);
       }
-      if (UnknownResponses != 0) {
-        size += 2 + pb::CodedOutputStream.ComputeUInt32Size(UnknownResponses);
+      if (UnknownResponseCount != 0) {
+        size += 2 + pb::CodedOutputStream.ComputeUInt32Size(UnknownResponseCount);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -750,17 +751,17 @@ namespace IcsMonitor.S7Comm {
       if (other.JobReadVarItemCount != 0) {
         JobReadVarItemCount = other.JobReadVarItemCount;
       }
-      if (other.JobWriteVarCount != 0) {
-        JobWriteVarCount = other.JobWriteVarCount;
-      }
-      if (other.JobWriteVarItemCount != 0) {
-        JobWriteVarItemCount = other.JobWriteVarItemCount;
-      }
       if (other.AckReadVarCount != 0) {
         AckReadVarCount = other.AckReadVarCount;
       }
       if (other.AckReadVarSuccessCount != 0) {
         AckReadVarSuccessCount = other.AckReadVarSuccessCount;
+      }
+      if (other.JobWriteVarCount != 0) {
+        JobWriteVarCount = other.JobWriteVarCount;
+      }
+      if (other.JobWriteVarItemCount != 0) {
+        JobWriteVarItemCount = other.JobWriteVarItemCount;
       }
       if (other.AckWriteVarCount != 0) {
         AckWriteVarCount = other.AckWriteVarCount;
@@ -786,20 +787,20 @@ namespace IcsMonitor.S7Comm {
       if (other.AckControlCount != 0) {
         AckControlCount = other.AckControlCount;
       }
-      if (other.UserDataRequestsCount != 0) {
-        UserDataRequestsCount = other.UserDataRequestsCount;
+      if (other.ErrorInResponseCount != 0) {
+        ErrorInResponseCount = other.ErrorInResponseCount;
       }
-      if (other.UserDataResponsesCount != 0) {
-        UserDataResponsesCount = other.UserDataResponsesCount;
+      if (other.UserDataRequestCount != 0) {
+        UserDataRequestCount = other.UserDataRequestCount;
       }
-      if (other.ErrorResponseCount != 0) {
-        ErrorResponseCount = other.ErrorResponseCount;
+      if (other.UserDataResponseCount != 0) {
+        UserDataResponseCount = other.UserDataResponseCount;
       }
-      if (other.UnknownRequests != 0) {
-        UnknownRequests = other.UnknownRequests;
+      if (other.UnknownRequestCount != 0) {
+        UnknownRequestCount = other.UnknownRequestCount;
       }
-      if (other.UnknownResponses != 0) {
-        UnknownResponses = other.UnknownResponses;
+      if (other.UnknownResponseCount != 0) {
+        UnknownResponseCount = other.UnknownResponseCount;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -832,19 +833,19 @@ namespace IcsMonitor.S7Comm {
             break;
           }
           case 40: {
-            JobWriteVarCount = input.ReadUInt32();
-            break;
-          }
-          case 48: {
-            JobWriteVarItemCount = input.ReadUInt32();
-            break;
-          }
-          case 56: {
             AckReadVarCount = input.ReadUInt32();
             break;
           }
-          case 64: {
+          case 48: {
             AckReadVarSuccessCount = input.ReadUInt32();
+            break;
+          }
+          case 56: {
+            JobWriteVarCount = input.ReadUInt32();
+            break;
+          }
+          case 64: {
+            JobWriteVarItemCount = input.ReadUInt32();
             break;
           }
           case 72: {
@@ -880,23 +881,23 @@ namespace IcsMonitor.S7Comm {
             break;
           }
           case 136: {
-            UserDataRequestsCount = input.ReadUInt32();
+            ErrorInResponseCount = input.ReadUInt32();
             break;
           }
           case 144: {
-            UserDataResponsesCount = input.ReadUInt32();
+            UserDataRequestCount = input.ReadUInt32();
             break;
           }
           case 152: {
-            ErrorResponseCount = input.ReadUInt32();
+            UserDataResponseCount = input.ReadUInt32();
             break;
           }
           case 160: {
-            UnknownRequests = input.ReadUInt32();
+            UnknownRequestCount = input.ReadUInt32();
             break;
           }
           case 168: {
-            UnknownResponses = input.ReadUInt32();
+            UnknownResponseCount = input.ReadUInt32();
             break;
           }
         }
@@ -930,19 +931,19 @@ namespace IcsMonitor.S7Comm {
             break;
           }
           case 40: {
-            JobWriteVarCount = input.ReadUInt32();
-            break;
-          }
-          case 48: {
-            JobWriteVarItemCount = input.ReadUInt32();
-            break;
-          }
-          case 56: {
             AckReadVarCount = input.ReadUInt32();
             break;
           }
-          case 64: {
+          case 48: {
             AckReadVarSuccessCount = input.ReadUInt32();
+            break;
+          }
+          case 56: {
+            JobWriteVarCount = input.ReadUInt32();
+            break;
+          }
+          case 64: {
+            JobWriteVarItemCount = input.ReadUInt32();
             break;
           }
           case 72: {
@@ -978,23 +979,23 @@ namespace IcsMonitor.S7Comm {
             break;
           }
           case 136: {
-            UserDataRequestsCount = input.ReadUInt32();
+            ErrorInResponseCount = input.ReadUInt32();
             break;
           }
           case 144: {
-            UserDataResponsesCount = input.ReadUInt32();
+            UserDataRequestCount = input.ReadUInt32();
             break;
           }
           case 152: {
-            ErrorResponseCount = input.ReadUInt32();
+            UserDataResponseCount = input.ReadUInt32();
             break;
           }
           case 160: {
-            UnknownRequests = input.ReadUInt32();
+            UnknownRequestCount = input.ReadUInt32();
             break;
           }
           case 168: {
-            UnknownResponses = input.ReadUInt32();
+            UnknownResponseCount = input.ReadUInt32();
             break;
           }
         }
