@@ -9,7 +9,7 @@ namespace Traffix.Extensions.Decoders.Industrial
     /// <summary>
     /// A simplified DNP3 parser. It only extracts information up to the application function code 
     /// which needs to be located wihtin the first data chunk. It ignores objects and does not
-    /// processes other than the first fragment/chunk. 
+    /// process other fragments/chunks. 
     /// </summary>
     public partial class Dnp3Packet : KaitaiStruct
     {

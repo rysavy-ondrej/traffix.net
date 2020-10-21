@@ -6,12 +6,12 @@ using Traffix.Storage.Faster;
 
 namespace IcsMonitor
 {
-    public abstract class CustomBiflowProcessor<TData> : BiflowProcessor<ConversationRecord<TData>>
+    public abstract class CustomConversationProcessor<TData> : ConversationProcessor<ConversationRecord<TData>>
     {
         public override ConversationRecord<TData> Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
         {
-            var fwdPackets = new List<Packet>();
-            var revPackets = new List<Packet>();
+            var fwdPackets = new List<(FrameMetadata, Packet)>();
+            var revPackets = new List<(FrameMetadata, Packet)>();
             var forwardKeyHash = flowKey.GetHashCode64();
             var meta = new FrameMetadata();
             FlowMetrics fwdMetrics = new FlowMetrics();
@@ -49,14 +49,14 @@ namespace IcsMonitor
             };
         }
         static DateTime nullDate = new DateTime();
-        private static void AddPacket(List<Packet> packets, FlowMetrics metrics, FrameMetadata meta, Packet packet)
+        private static void AddPacket(List<(FrameMetadata,Packet)> packets, FlowMetrics metrics, FrameMetadata meta, Packet packet)
         {
             metrics.Octets += meta.IncludedLength;
             metrics.Packets++;
             var packetTimestamp = new DateTime(meta.Ticks);
             if (metrics.Start == nullDate || packetTimestamp < metrics.Start) metrics.Start = packetTimestamp;
             if (metrics.End == nullDate || packetTimestamp > metrics.End) metrics.End = packetTimestamp;
-            packets.Add(packet);
+            packets.Add((meta, packet));
         }
         private void AdjustMetrics(ref FlowMetrics metrics, DateTime timestamp)
         {
@@ -70,6 +70,6 @@ namespace IcsMonitor
             }
         }
 
-        protected abstract TData Invoke(IReadOnlyCollection<Packet> fwdPackets, IReadOnlyCollection<Packet> revPackets);
+        protected abstract TData Invoke(IReadOnlyCollection<(FrameMetadata Meta,Packet Packet)> fwdPackets, IReadOnlyCollection<(FrameMetadata Meta,Packet Packet)> revPackets);
     }
 }

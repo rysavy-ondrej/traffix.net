@@ -1,7 +1,4 @@
-﻿using AutoMapper;
-using IcsMonitor.Modbus;
-using System;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using System.Management.Automation;
 using System.Threading.Tasks;
@@ -10,8 +7,8 @@ using Traffix.Storage.Faster;
 
 namespace IcsMonitor.Commands
 {
-    [Cmdlet("Extract", "Dnp3Flows")]
-    public class ExtractDnp3FlowsCommand : AsyncCmdlet
+    [Cmdlet("Extract", "S7CommConversations")]
+    public class ExtractS7CommConversationsCommand : AsyncCmdlet
     {
         public FileInfo InputFile { get; set; }
 
@@ -33,10 +30,10 @@ namespace IcsMonitor.Commands
 
         protected override Task ProcessRecordAsync()
         {
-            var dnp3Processor = new Dnp3BiflowProcessor();
-            foreach (var dnp3flowData in _flowTable.ProcessConversations(_flowTable.ConversationKeys.Where(k => k.FlowKey.DestinationPort == 20000), dnp3Processor))
+            var processor = new S7Comm.S7CommConversationProcessor();
+            foreach (var conversationData in _flowTable.ProcessConversations(_flowTable.ConversationKeys.Where(k => k.FlowKey.DestinationPort == 102), processor))
             {
-                WriteObject(dnp3flowData);
+                WriteObject(conversationData);
             }
             return Task.CompletedTask;
         }

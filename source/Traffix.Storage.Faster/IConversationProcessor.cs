@@ -7,7 +7,21 @@ using Traffix.Core.Flows;
 namespace Traffix.Storage.Faster
 {
 
-    public abstract class BiflowProcessor<T> : IBiflowProcessor<T>
+    /// <summary>
+    /// Represents a flowdirection within a conversation.
+    /// </summary>
+    public enum FlowDirection
+    {
+        /// <summary>
+        /// Forward flow consists of packets sent by the client to the server.
+        /// </summary>
+        Forward, 
+        /// <summary>
+        /// Reverse flow consists of packets sent by the server to the client. 
+        /// </summary>
+        Reverse
+    }
+    public abstract class ConversationProcessor<T> : IConversationProcessor<T>
     {
         /// <summary>
         /// Gets the frame from the provided <see cref="Memory{byte}"/> reference.
@@ -37,7 +51,7 @@ namespace Traffix.Storage.Faster
         public abstract T Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames);
     }
 
-    public interface IBiflowProcessor<T>
+    public interface IConversationProcessor<T>
     {
         /// <summary>
         /// When applied to a flow and its frames, it creates the result of type <typeparamref name="T"/>.

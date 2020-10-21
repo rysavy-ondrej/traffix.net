@@ -13,12 +13,12 @@ namespace IcsMonitor.Commands
     [Cmdlet("Extract", "ModbusFlows")]
     public class ExtractModbusFlowsCommand : AsyncCmdlet
     {
-        private FasterFlowTable _flowTable;
+        private FasterConversationTable _flowTable;
         public FileInfo InputFile { get; set; }
 
         protected override Task BeginProcessingAsync()
         {
-            _flowTable = new FasterFlowTable("tmp");
+            _flowTable = new FasterConversationTable("tmp");
             using (var stream = InputFile.OpenRead())
             {
                 _flowTable.LoadFromStream(stream, CancellationTokenSource.Token, null);

@@ -16,7 +16,7 @@ namespace Traffix.Storage.Faster
     /// Implements a flow table backed by FASTER Key-Value Database. This class provides API for 
     /// adding packets and accessing conversations.
     /// </summary>
-    public class FasterFlowTable : IDisposable
+    public class FasterConversationTable : IDisposable
     {
         private readonly string _rootFolder;
 
@@ -45,7 +45,7 @@ namespace Traffix.Storage.Faster
         /// Creates a store that uses the specified folder for saving data.
         /// </summary>
         /// <param name="folder"></param>
-        public FasterFlowTable(string folder)
+        public FasterConversationTable(string folder)
         {
             _rootFolder = folder;
 
@@ -167,7 +167,7 @@ namespace Traffix.Storage.Faster
             }
         }
 
-        public IEnumerable<Result> ProcessConversations<Result>(IEnumerable<IConversationKey> keys, IBiflowProcessor<Result> processor)
+        public IEnumerable<Result> ProcessConversations<Result>(IEnumerable<IConversationKey> keys, IConversationProcessor<Result> processor)
         {
             using var conversationsSession = _conversationsDb.NewSession();
             using var framesSession = _framesDb.NewSession();

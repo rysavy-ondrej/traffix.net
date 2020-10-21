@@ -2,6 +2,7 @@
 using CsvHelper;
 using IcsMonitor.Commands;
 using IcsMonitor.Modbus;
+using IcsMonitor.S7Comm;
 using Microsoft.ML;
 using Microsoft.ML.Trainers;
 using System;
@@ -62,6 +63,18 @@ namespace IcsMonitor
             using var outWriter = OutputWriter.Create(outFile != null ? new FileInfo(outFile) : null);
             var records = ExecuteCommandAsync(cmd).Cast<ConversationRecord<Dnp3FlowData>>();
             await outWriter.WriteOutputAsync<Dnp3FlowData>(outFormat, records);
+        }
+
+        [Command("Extract-S7Conversations")]
+        public async Task ExtractS7CommFlows(string inputFile, OutputFormat outFormat = OutputFormat.Yaml, string outFile = null)
+        {
+            using var cmd = new ExtractS7CommConversationsCommand
+            {
+                InputFile = new FileInfo(inputFile),
+            };
+            using var outWriter = OutputWriter.Create(outFile != null ? new FileInfo(outFile) : null);
+            var records = ExecuteCommandAsync(cmd).Cast<ConversationRecord<S7CommConversationData>>();
+            await outWriter.WriteOutputAsync<S7CommConversationData>(outFormat, records);
         }
 
 

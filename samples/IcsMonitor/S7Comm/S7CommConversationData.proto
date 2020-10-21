@@ -1,0 +1,27 @@
+﻿syntax = "proto3";
+package IcsMonitor.S7Comm;
+option csharp_namespace = "IcsMonitor.S7Comm";
+
+message S7CommConversationData {
+    uint32 paramLengthSum = 1;          //	Sum of all parameter lengths presented in the header.	
+    uint32 dataLengthSum =  2;          //	Sum of all data lengths presented in the header.
+    uint32 jobReadVarCount =  3;        //	Count of Job Read Var requests.
+    uint32 jobReadVarItemCount = 4;     //	Count of items in Job Read Var requests.
+    uint32 jobWriteVarCount =  5;       //	Count of Job Write Var requests.
+    uint32 jobWriteVarItemCount =  6;   //	Count of items in Job Write Var requests.
+    uint32 ackReadVarCount =  7;        //	Count of Ack Data Read Var responses.
+    uint32 ackReadVarSuccessCount =  8; //	Count of success items in Ack Data Read Var responses.
+    uint32 ackWriteVarCount =  9;       //	Count of Ack Data Write Var responses.
+    uint32 ackWriteSuccessCount =  10;  //	Count of success items in Ack Data Write Var responses.
+    uint32 jobUploadCount =  11;        //	Count of upload job request messages.
+    uint32 ackUploadCount =  12;        //	Count of upload job messages.
+    uint32 jobDownloadCount =  13;      //	Count of download job messages.
+    uint32 ackDownloadCount =  14;      //	Count of upload job messages.
+    uint32 jobControlCount =  15;       //	Count of PLC control messages.
+    uint32 ackControlCount =  16;       //	Count of upload job messages.
+    uint32 userDataRequestsCount =  17; //	Count of user data request messages.
+    uint32 userDataResponsesCount = 18; //	Count of user data response messages.
+    uint32 errorResponseCount =  19;    //	Count of responses that report some error.
+    uint32 unknownRequests =  20;       //	Count of requests with unknow message type or function code.
+    uint32 unknownResponses =  21;      //	Count of responses with unknow message type or function code.
+}

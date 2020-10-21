@@ -4,17 +4,18 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using Traffix.Extensions.Decoders.Industrial;
+using Traffix.Storage.Faster;
 
 namespace IcsMonitor.Modbus
 {
-    public class Dnp3BiflowProcessor : CustomBiflowProcessor<Dnp3FlowData>
+    public class Dnp3BiflowProcessor : CustomConversationProcessor<Dnp3FlowData>
     {
-        protected override Dnp3FlowData Invoke(IReadOnlyCollection<Packet> fwdPackets, IReadOnlyCollection<Packet> revPackets)
+        protected override Dnp3FlowData Invoke(IReadOnlyCollection<(FrameMetadata Meta, Packet Packet)> fwdPackets, IReadOnlyCollection<(FrameMetadata Meta, Packet Packet)> revPackets)
         {
             var dnp3FlowData = new Dnp3FlowData();
             foreach (var packet in fwdPackets)
             {
-                var tcpPacket = packet.Extract<TcpPacket>();
+                var tcpPacket = packet.Packet.Extract<TcpPacket>();
                 if (tcpPacket.PayloadData?.Length != 0)
                 {
                     var packetData = new ReadOnlySequence<byte>(tcpPacket.PayloadDataSegment.Bytes, tcpPacket.PayloadDataSegment.Offset, tcpPacket.PayloadDataSegment.Length);
@@ -31,7 +32,7 @@ namespace IcsMonitor.Modbus
             }
             foreach (var packet in revPackets)
             {
-                var tcpPacket = packet.Extract<TcpPacket>();
+                var tcpPacket = packet.Packet.Extract<TcpPacket>();
                 if (tcpPacket.PayloadData?.Length != 0)
                 {
                     var packetData = new ReadOnlySequence<byte>(tcpPacket.PayloadDataSegment.Bytes, tcpPacket.PayloadDataSegment.Offset, tcpPacket.PayloadDataSegment.Length);

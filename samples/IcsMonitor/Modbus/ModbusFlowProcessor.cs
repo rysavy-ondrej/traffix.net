@@ -3,21 +3,22 @@ using PacketDotNet;
 using System;
 using System.Collections.Generic;
 using Traffix.Extensions.Decoders.Industrial;
+using Traffix.Storage.Faster;
 
 namespace IcsMonitor.Modbus
 {
-    public class ModbusBiflowProcessor : CustomBiflowProcessor<ModbusFlowData>
+    public class ModbusBiflowProcessor : CustomConversationProcessor<ModbusFlowData>
     {
         public ModbusBiflowProcessor()
         {
         }
 
-        protected override ModbusFlowData Invoke(IReadOnlyCollection<Packet> fwdPackets, IReadOnlyCollection<Packet> revPackets)
+        protected override ModbusFlowData Invoke(IReadOnlyCollection<(FrameMetadata Meta, Packet Packet)> fwdPackets, IReadOnlyCollection<(FrameMetadata Meta, Packet Packet)> revPackets)
         {
             var modbusFlowData = new ModbusFlowData();
             foreach (var packet in fwdPackets)
             {
-                var tcpPacket = packet.Extract<TcpPacket>();
+                var tcpPacket = packet.Packet.Extract<TcpPacket>();
                 if (tcpPacket.PayloadData?.Length != 0)
                 {
                     var stream = new KaitaiStream(tcpPacket.PayloadData);
@@ -33,7 +34,7 @@ namespace IcsMonitor.Modbus
             }
             foreach (var packet in revPackets)
             {
-                var tcpPacket = packet.Extract<TcpPacket>();
+                var tcpPacket = packet.Packet.Extract<TcpPacket>();
                 if (tcpPacket.PayloadData?.Length != 0)
                 {
                     var stream = new KaitaiStream(tcpPacket.PayloadData);

@@ -1,5 +1,4 @@
 ﻿using MessagePack;
-using Traffix.Extensions.Decoders.Industrial;
 
 namespace IcsMonitor.Modbus
 {

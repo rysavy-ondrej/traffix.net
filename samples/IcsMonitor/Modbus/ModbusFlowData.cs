@@ -2,7 +2,8 @@
 
 namespace IcsMonitor.Modbus
 {
-    public struct ModbusFlowData
+    [MessagePackObject]
+    public class ModbusFlowData
     {
         #region REQUESTS
         [Key("MODBUS_UNIT_ID")]

@@ -16,6 +16,11 @@
       "commandName": "Project",
       "commandLineArgs": "Extract-Dnp3Flows -inputFile D:\\Captures\\dnp3\\dnp3.pcap -outFormat csv -outFile D:\\Captures\\dnp3\\dnp3.csv"
     },
+    "Extract-S7Flows": {
+      "commandName": "Project",
+      "commandLineArgs": "Extract-S7Conversations -inputFile D:\\Captures\\s7\\hmi.pcap -outFormat csv -outFile D:\\Captures\\s7\\hmi.csv"
+    },
+
     "Train-ModbusModel": {
       "commandName": "Project",
       "commandLineArgs": "Train-ModbusModel -inputFile D:\\Captures\\modbus\\modbus.pcap -outputFile D:\\Captures\\modbus\\modbus.model.zip -numberOfClusters 4"
