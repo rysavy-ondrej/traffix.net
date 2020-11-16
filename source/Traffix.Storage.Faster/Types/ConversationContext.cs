@@ -1,14 +1,18 @@
+using System;
 using System.Collections.Generic;
+using System.Dynamic;
 
 namespace Traffix.Storage.Faster
 {
     internal class ConversationContext
     {
-        public List<ConversationOutput> OutputValues { get; } = new List<ConversationOutput>();
+        private static List<ConversationOutput> _outputValues = new List<ConversationOutput>();
+        public static ConversationContext Empty => new ConversationContext();
+        public IReadOnlyList<ConversationOutput> OutputValues => _outputValues;
 
-        public static ConversationContext Create()
+        public void AddOutputValue(ConversationOutput output)
         {
-            return new ConversationContext();
+            _outputValues.Add(output);
         }
     }
 }

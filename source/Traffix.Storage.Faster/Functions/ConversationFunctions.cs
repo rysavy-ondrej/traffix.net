@@ -80,7 +80,7 @@ namespace Traffix.Storage.Faster
 
         public void ReadCompletionCallback(ref ConversationKey key, ref ConversationInput input, ref ConversationOutput output, ConversationContext ctx, Status status)
         {
-            ctx.OutputValues.Add(output);    
+            ctx.AddOutputValue(output);    
         }
 
         public void RMWCompletionCallback(ref ConversationKey key, ref ConversationInput input, ConversationContext ctx, Status status)

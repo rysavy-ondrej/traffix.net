@@ -16,8 +16,6 @@ using Traffix.Hosting.Console;
 
 namespace IcsMonitor
 {
-    public enum DetailLevel { Full, Extended, Compact }
-    public enum OutputFormat { Yaml, Csv }
     public partial class Program : TraffixConsoleApp
     {
         public static async Task Main(string[] args)
@@ -139,7 +137,7 @@ namespace IcsMonitor
         /// </summary>
         /// <param name="p">The collection of predictions.</param>
         /// <returns>The variance value.</returns>
-        private float ComputeVariance(IEnumerable<ModbusDataModel.Prediction> p)
+        static private float ComputeVariance(IEnumerable<ModbusDataModel.Prediction> p)
         {
             return (float)(p.Sum(s => Math.Pow(s.Distance, 2)) / p.Count());
         }

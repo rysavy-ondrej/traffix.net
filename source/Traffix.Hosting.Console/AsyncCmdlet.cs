@@ -12,7 +12,7 @@ namespace Traffix.Hosting.Console
     {
         ILogger _logger;
 
-        public CmdletExecutor(ILogger<CmdletExecutor> logger)
+        public CmdletExecutor(ILogger<CmdletExecutor> logger = null)
         {
             _logger = logger;
         }

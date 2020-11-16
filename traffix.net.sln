@@ -19,6 +19,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IcsMonitor", "samples\IcsMo
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Traffix.Hosting.Console", "source\Traffix.Hosting.Console\Traffix.Hosting.Console.csproj", "{F39B7834-F2DB-4D80-9894-D28EF0041F21}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "traffix.ics.interactive", "samples\traffix.ics.interactive\traffix.ics.interactive.csproj", "{2AE478C2-284E-4BAB-B1DA-1D900253529E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -49,6 +51,10 @@ Global
 		{F39B7834-F2DB-4D80-9894-D28EF0041F21}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F39B7834-F2DB-4D80-9894-D28EF0041F21}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F39B7834-F2DB-4D80-9894-D28EF0041F21}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2AE478C2-284E-4BAB-B1DA-1D900253529E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2AE478C2-284E-4BAB-B1DA-1D900253529E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2AE478C2-284E-4BAB-B1DA-1D900253529E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2AE478C2-284E-4BAB-B1DA-1D900253529E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -60,6 +66,7 @@ Global
 		{B044F667-0C44-4546-A0E6-0A336032FEAB} = {98D8FEC4-E6DB-445B-90DE-D5BA4D6F6B74}
 		{A91E7EEE-21D4-4009-9600-6A8C058E7277} = {7DCDFFE5-D874-4EDE-92DC-B900E76A9104}
 		{F39B7834-F2DB-4D80-9894-D28EF0041F21} = {98D8FEC4-E6DB-445B-90DE-D5BA4D6F6B74}
+		{2AE478C2-284E-4BAB-B1DA-1D900253529E} = {7DCDFFE5-D874-4EDE-92DC-B900E76A9104}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7F60D44A-7A9B-4ADF-916D-C1CC93F10BC6}

@@ -1,6 +1,7 @@
 ﻿using MessagePack;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Namotion.Reflection;
 using System;
-using System.Security.Cryptography.Xml;
 using Traffix.Core.Flows;
 
 namespace IcsMonitor
@@ -17,6 +18,11 @@ namespace IcsMonitor
         public float Score;
     }
 
+    /// <summary>
+    /// The record produced by conversation processor. It contains a fixed part and 
+    /// processor specific data. 
+    /// </summary>
+    /// <typeparam name="TData">The data specific to flow processor.</typeparam>
     [MessagePackObject]
     public class ConversationRecord<TData>
     {
@@ -27,15 +33,27 @@ namespace IcsMonitor
         [Key("CONVERSATION_LABEL")]
         public RecordLabel Label;
 
+        /// <summary>
+        /// The conversation key.
+        /// </summary>
         [Key("CONVERSATION_KEY")]
         public FlowKey Key;
 
+        /// <summary>
+        /// The forward flow metrics.
+        /// </summary>
         [Key("FORWARD_FLOW_METRICS")]
         public FlowMetrics ForwardMetrics;
 
+        /// <summary>
+        /// Teh reverse flow metrics.
+        /// </summary>
         [Key("REVERSE_FLOW_METRICS")]
         public FlowMetrics ReverseMetrics;
 
+        /// <summary>
+        /// The conversation data.
+        /// </summary>
         [Key("CONVERSATION_DATA")]
         public TData Data;
 
@@ -56,5 +74,6 @@ namespace IcsMonitor
         {
             return x => x.Transform<TTarget>(transform);
         }
+
     }
 }

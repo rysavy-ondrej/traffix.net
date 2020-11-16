@@ -29,7 +29,11 @@
     "Evaluate-ModbusFlows": {
       "commandName": "Project",
       "commandLineArgs": "Evaluate-ModbusFlows -inputFile D:\\Captures\\modbus\\modbus.pcap -modelFile D:\\Captures\\modbus\\modbus.model.zip -outputFile D:\\Captures\\modbus\\modbus.out.csv"
-    }
+    },
+    "Export-TcpPayload": {
+      "commandName": "Project",
+      "commandLineArgs": "Export-TcpPayload -inputFile D:\\Captures\\s7\\hmi.pcap -port 102 -outputFile D:\\Captures\\s7\\hmi.zip"
 
+    }
   }
 }

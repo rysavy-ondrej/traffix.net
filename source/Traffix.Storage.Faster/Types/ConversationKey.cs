@@ -45,6 +45,11 @@ namespace Traffix.Storage.Faster
 
         public override bool Equals(object other) => other is ConversationKey l && Equals(l);
 
+        public override string ToString()
+        {
+            return FlowKey.ToString();
+        }
+
         public static bool operator ==(ConversationKey left, ConversationKey right)
         {
             return left.Equals(right);

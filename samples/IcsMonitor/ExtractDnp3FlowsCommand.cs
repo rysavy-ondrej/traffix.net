@@ -1,6 +1,4 @@
-﻿using AutoMapper;
-using IcsMonitor.Modbus;
-using System;
+﻿using IcsMonitor.Modbus;
 using System.IO;
 using System.Linq;
 using System.Management.Automation;

@@ -51,7 +51,11 @@ namespace Traffix.Storage.Faster
         /// <summary>
         /// Default parameterless constructor.
         /// </summary>
-        public ConversationValue() { }
+        public ConversationValue() 
+        {
+            FrameAddresses = Array.Empty<long>();
+        }
+
         /// <summary>
         /// Creates a new object and allocates the <see cref="FrameAddresses"/> to the specified size.
         /// </summary>

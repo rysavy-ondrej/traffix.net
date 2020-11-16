@@ -40,7 +40,7 @@ namespace IcsMonitor.S7Comm
             if (tcpPacket.PayloadData?.Length != 0)
             {
                 var tptkStream = new KaitaiStream(tcpPacket.PayloadData);
-                if (TryParseTptk(tptkStream, out var tptkPacket, out var tptkError) && tptkPacket.Cotp.PduType == TpktPacket.CotpType.DataTransfer && tptkPacket.Payload?.Length > 0)
+                if (TryParseTptk(tptkStream, out var tptkPacket, out var tptkError) && tptkPacket.Cotp.PduType == (byte)TpktPacket.CotpType.DataTransfer && tptkPacket.Payload?.Length > 0)
                 {
                     var s7stream = new KaitaiStream(tptkPacket.Payload);
                     if (TryParseS7Comm(s7stream, out var s7Packet, out var s7error))
