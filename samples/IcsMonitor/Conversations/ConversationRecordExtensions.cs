@@ -1,4 +1,5 @@
-﻿using MessagePack;
+﻿using Markdig.Syntax.Inlines;
+using MessagePack;
 using Microsoft.Data.Analysis;
 using System;
 using System.Collections.Generic;
@@ -163,19 +164,24 @@ namespace IcsMonitor
         {
             var members = new List<(string Path, Type MemberType, Func<object, object> Accessor)>();
 
-            static string MemberPathCombine(IEnumerable<string> path, string v)
+            /// Combines path with the end element and creates full path string using the given delimiter. 
+            static string MemberPathCombine(IEnumerable<string> path, string v, string delimiter = "_")
             {
-                return String.Join("_", path.Append(v));
+                return String.Join(delimiter, path.Append(v));
             }
 
+            /// Tests if the provided type canbe considered to be a basic type, which are:
+            /// Boolean, Byte, SByte, Int16, UInt16, Int32, UInt32, Int64, UInt64, IntPtr, UIntPtr, Char, Double, and Single
+            /// String and DateTime.
             static bool IsBasicValueType(Type type)
             {
                 return type.IsEnum
-                    || type.IsPrimitive  // Boolean, Byte, SByte, Int16, UInt16, Int32, UInt32, Int64, UInt64, IntPtr, UIntPtr, Char, Double, and Single.
+                    || type.IsPrimitive  // 
                     || type == typeof(String)
                     || type == typeof(DateTime);
             }
 
+            /// Gets all members (public properties and fields) that has MessagePack.KeyAttribute.
             static IEnumerable<MemberInfo> GetMembers(Type type)
             {
                 var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance).Where(x => x.GetCustomAttribute<KeyAttribute>() != null).Cast<MemberInfo>();
@@ -183,10 +189,11 @@ namespace IcsMonitor
                 return fields.Concat(props);
             }
 
+            /// Adds properties and fields to the members collection.
             void AddMembers(IEnumerable<string> path, Type typ, Func<object, object> funcAccessor)
             {
                 if (typ == typeof(FlowKey))
-                {   // handling of Flow Key is specific:
+                {  
                     members.Add((MemberPathCombine(path, nameof(FlowKey.ProtocolType)), typeof(System.Net.Sockets.ProtocolType), obj => (funcAccessor(obj) as FlowKey).ProtocolType));
 
                     members.Add((MemberPathCombine(path, nameof(FlowKey.SourceIpAddress)), typeof(string), obj => (funcAccessor(obj) as FlowKey).SourceIpAddress.ToString()));
@@ -197,7 +204,7 @@ namespace IcsMonitor
 
                     members.Add((MemberPathCombine(path, nameof(FlowKey.DestinationPort)), typeof(ushort), obj => (funcAccessor(obj) as FlowKey).DestinationPort));
                 }
-                else
+                else                                            
                 {
                     foreach (var info in GetMembers(typ))
                     {
