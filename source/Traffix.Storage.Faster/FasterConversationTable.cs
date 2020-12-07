@@ -171,7 +171,7 @@ namespace Traffix.Storage.Faster
         /// </para>
         /// </summary>
         /// <returns>The loader instance.</returns>
-        FrameStreamer GetFrameLoader()
+        public FrameStreamer GetFrameLoader()
         {
             using var conversationsSession = _conversationsDb.NewSession() ?? throw new InvalidOperationException("Cannot create conversation session.");
             using var framesSession = _framesDb.NewSession() ?? throw new InvalidOperationException("Cannot create conversation session.");
