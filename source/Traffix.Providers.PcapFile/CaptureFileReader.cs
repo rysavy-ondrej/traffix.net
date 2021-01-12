@@ -1,10 +1,116 @@
 using PacketDotNet;
+using SharpPcap;
+using SharpPcap.LibPcap;
 using System;
 using System.IO;
 
 namespace Traffix.Providers.PcapFile
 {
-    public class CaptureFileReader : IDisposable
+
+    public class SharpPcapWriter
+    {
+        private string _path;
+        CaptureFileWriterDevice _device;
+
+        public SharpPcapWriter(string path)
+        {
+            _path = path;
+            _device = new CaptureFileWriterDevice(path);
+            
+        }
+
+        public void Close()
+        {
+            _device.Close();
+        }
+
+        public void WriteFrame(RawFrame frame)
+        {
+            var cap = new RawCapture(frame.LinkLayer, TicksToUnix(frame.Ticks), frame.Data);
+            _device.Write(cap);
+        }
+
+        private PosixTimeval TicksToUnix(long ticks)
+        {  
+            return new PosixTimeval(new DateTime(ticks));
+        }
+    }
+
+
+    public class SharpPcapReader : ICaptureFileReader
+    {
+        ICaptureDevice _device;
+        int _frameNumber;
+        long _frameOffset;
+        public SharpPcapReader(string captureFile)
+        {
+            // Get an offline device
+            _device = new CaptureFileReaderDevice(captureFile);
+
+            // Open the device
+            _device.Open();
+            
+        }
+
+        public LinkLayers LinkLayer => _device.LinkType;
+
+        public long Position => throw new NotImplementedException();
+
+        public void Close()
+        {
+            _device.Close();
+        }
+
+        public bool GetNextFrame(out RawFrame frame, bool readData = true)
+        {
+            var capture = _device.GetNextPacket();
+           
+            if (capture != null)
+            {
+                frame = new RawFrame(LinkLayer, _frameNumber, GetTicksFromPosixTimeval(capture.Timeval), _frameOffset, capture.Data.Length, capture.Data.Length)
+                {
+                    Data = capture.Data
+                };
+                _frameNumber++;
+                _frameOffset += capture.Data.Length;
+                return true;
+            }
+            else
+            {
+                frame = default;
+                return false;
+            }
+        }
+
+        #region IDisposable Support
+        private bool _disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                if (disposing)
+                {
+                    _device.Close();
+                    _device = null;
+                }
+                _disposedValue = true;
+            }
+        }
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
+        }
+        #endregion
+
+        internal static long GetTicksFromPosixTimeval(PosixTimeval timeval)
+        {
+            return timeval.Date.Ticks;
+        }
+    }
+
+    public class CaptureFileReader : ICaptureFileReader
     {
         private Stream _stream;
         private readonly long _length;
@@ -14,7 +120,7 @@ namespace Traffix.Providers.PcapFile
         /// </summary>
         /// <param name="stream">A stream containing pcap data.</param>
         /// <param name="length">A real length of the stream. If none is specified the length is taken from the stream.</param>
-        public CaptureFileReader(Stream stream, long? length=null)
+        public CaptureFileReader(Stream stream, long? length = null)
         {
             _stream = stream ?? throw new ArgumentNullException(nameof(stream));
             _length = length ?? stream.Length;
@@ -26,7 +132,7 @@ namespace Traffix.Providers.PcapFile
         public long Position => _stream.Position;
 
         const int PACKET_HEADER_LENGTH = 16;
-        
+
         /// <summary>
         /// Reads the next available frame from the stream. 
         /// </summary>
@@ -46,7 +152,7 @@ namespace Traffix.Providers.PcapFile
                 }
                 else
                 {
-                    SkipFrameBytes(frame.IncludedLength);    
+                    SkipFrameBytes(frame.IncludedLength);
                 }
                 return true;
             }
@@ -83,12 +189,12 @@ namespace Traffix.Providers.PcapFile
 
         public int SkipFrameBytes(int byteCount)
         {
-            var skippedBytes = Math.Min(_length - _stream.Position, byteCount); 
+            var skippedBytes = Math.Min(_length - _stream.Position, byteCount);
             _stream.Seek(skippedBytes, SeekOrigin.Current);
             return (int)skippedBytes;
         }
-        
-        
+
+
         private unsafe (long Ticks, uint IncludedLength, uint OriginalLength) ReadFrameHeader()
         {
             var headerBytes = stackalloc byte[PACKET_HEADER_LENGTH];
@@ -102,7 +208,7 @@ namespace Traffix.Providers.PcapFile
             return (ticks, includedLength, originalLength);
         }
 
-        private static Int64 UnixTimeValToTicks(Int64 tvSec, Int64 tvUsec)
+        internal static Int64 UnixTimeValToTicks(Int64 tvSec, Int64 tvUsec)
         {
 
             long ticks = (tvUsec * (TimeSpan.TicksPerMillisecond / 1000)) +

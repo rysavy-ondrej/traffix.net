@@ -18,7 +18,7 @@ namespace IcsMonitor.Commands
 
         protected override Task BeginProcessingAsync()
         {
-            _flowTable = new FasterConversationTable("tmp");
+            _flowTable = FasterConversationTable.Create("tmp");
             using (var stream = InputFile.OpenRead())
             {
                 _flowTable.LoadFromStream(stream, CancellationTokenSource.Token, null);

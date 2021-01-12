@@ -65,49 +65,34 @@ namespace IcsMonitor.Modbus
         #region RESPONSES - SUCCESS
         [Key("MODBUS_READ_COILS_RESPONSES_SUCCESS")]
         public int ReadCoilsResponsesSuccess;
-
         [Key("MODBUS_READ_DISCRETE_INPUTS_RESPONSES_SUCCESS")]
         public int ReadDiscreteInputsResponsesSuccess;
-
         [Key("MODBUS_READ_INPUT_REGISTERS_RESPONSES_SUCCESS")]
         public int ReadInputRegistersResponsesSuccess;
-
         [Key("MODBUS_READ_HOLDING_REGISTERS_RESPONSES_SUCCESS")]
         public int ReadHoldingRegistersResponsesSuccess;
-
         [Key("MODBUS_WRITE_SINGLE_COIL_RESPONSES_SUCCESS")]
         public int WriteSingleCoilResponsesSuccess;
-
         [Key("MODBUS_WRITE_SINGLE_REGISTER_RESPONSES_SUCCESS")]
         public int WriteSingleRegisterResponsesSuccess;
-
         [Key("MODBUS_WRITE_MULT_COILS_RESPONSES_SUCCESS")]
         public int WriteMultCoilsResponsesSuccess;
-
         [Key("MODBUS_WRITE_MULT_REGISTERS_RESPONSES_SUCCESS")]
         public int WriteMultRegistersResponsesSuccess;
-
         [Key("MODBUS_READ_FILE_RECORD_RESPONSES_SUCCESS")]
         public int ReadFileRecordResponsesSuccess;
-
         [Key("MODBUS_WRITE_FILE_RECORD_RESPONSES_SUCCESS")]
         public int WriteFileRecordResponsesSuccess;
-
         [Key("MODBUS_MASK_WRITE_REGISTER_RESPONSES_SUCCESS")]
         public int MaskWriteRegisterResponsesSuccess;
-
         [Key("MODBUS_READ_WRITE_MULT_REGISTERS_RESPONSES_SUCCESS")]
         public int ReadWriteMultRegistersResponsesSuccess;
-
         [Key("MODBUS_READ_FIFO_RESPONSES_SUCCESS")]
         public int ReadFifoResponsesSuccess;
-
         [Key("MODBUS_DIAGNOSTIC_RESPONSES_SUCCESS")]
         public int DiagnosticFunctionsResponsesSuccess;
-
         [Key("MODBUS_OTHER_RESPONSES_SUCCESS")]
         public int OtherFunctionsResponsesSuccess;
-
         [Key("MODBUS_UNDEFINED_RESPONSES_SUCCESS")]
         public int UndefinedFunctionsResponsesSuccess;
 
@@ -117,19 +102,14 @@ namespace IcsMonitor.Modbus
 
         [Key("MODBUS_READ_COILS_RESPONSES_ERROR")]
         public int ReadCoilsResponsesError;
-
         [Key("MODBUS_READ_DISCRETE_INPUTS_RESPONSES_ERROR")]
         public int ReadDiscreteInputsResponsesError;
-
         [Key("MODBUS_READ_INPUT_REGISTERS_RESPONSES_ERROR")]
         public int ReadInputRegistersResponsesError;
-
         [Key("MODBUS_READ_HOLDING_REGISTERS_RESPONSES_ERROR")]
         public int ReadHoldingRegistersResponsesError;
-
         [Key("MODBUS_WRITE_SINGLE_COIL_RESPONSES_ERROR")]
         public int WriteSingleCoilResponsesError;
-
         [Key("MODBUS_WRITE_SINGLE_REGISTER_RESPONSES_ERROR")]
         public int WriteSingleRegisterResponsesError;
 
@@ -174,6 +154,80 @@ namespace IcsMonitor.Modbus
         public int MalformedResponses;
 
         #endregion
+
+
+
+        #region Combinator function
+        public static ModbusFlowData Combine(ModbusFlowData x, ModbusFlowData y)
+        {
+            return new ModbusFlowData
+            {
+                UnitId = x.UnitId,
+                DiagnosticFunctionsRequests = x.DiagnosticFunctionsRequests + y.DiagnosticFunctionsRequests,
+                DiagnosticFunctionsResponsesError = x.DiagnosticFunctionsResponsesError + y.DiagnosticFunctionsResponsesError,
+                DiagnosticFunctionsResponsesSuccess = x.DiagnosticFunctionsResponsesSuccess + y.DiagnosticFunctionsResponsesSuccess,
+                MalformedRequests = x.MalformedRequests + y.MalformedRequests,
+                MalformedResponses = x.MalformedResponses + y.MalformedResponses,
+                MaskWriteRegisterRequests = x.MaskWriteRegisterRequests + y.MaskWriteRegisterRequests,
+                MaskWriteRegisterResponsesError = x.MaskWriteRegisterResponsesError + y.MaskWriteRegisterResponsesError,
+                MaskWriteRegisterResponsesSuccess = x.MaskWriteRegisterResponsesSuccess + y.MaskWriteRegisterResponsesSuccess,
+                OtherFunctionsRequests = x.OtherFunctionsRequests + y.OtherFunctionsRequests,
+                OtherFunctionsResponsesError = x.OtherFunctionsResponsesError + y.OtherFunctionsResponsesError,
+                OtherFunctionsResponsesSuccess = x.OtherFunctionsResponsesSuccess + y.OtherFunctionsResponsesSuccess,
+                ReadCoilsBits = x.ReadCoilsBits + y.ReadCoilsBits,
+                ReadCoilsRequests = x.ReadCoilsRequests + y.ReadCoilsRequests,
+                ReadCoilsResponsesError = x.ReadCoilsResponsesError + y.ReadCoilsResponsesError,
+                ReadCoilsResponsesSuccess = x.ReadCoilsResponsesSuccess + y.ReadCoilsResponsesSuccess,
+                ReadDiscreteInputsBits = x.ReadDiscreteInputsBits + y.ReadDiscreteInputsBits,
+                ReadDiscreteInputsRequests = x.ReadDiscreteInputsRequests + y.ReadDiscreteInputsRequests,
+                ReadDiscreteInputsResponsesError = x.ReadDiscreteInputsResponsesError + y.ReadDiscreteInputsResponsesError,
+                ReadDiscreteInputsResponsesSuccess = x.ReadDiscreteInputsResponsesSuccess + y.ReadDiscreteInputsResponsesSuccess,
+                ReadFifoRequests = x.ReadFifoRequests + y.ReadFifoRequests,
+                ReadFifoResponsesError = x.ReadFifoResponsesError + y.ReadFifoResponsesError,
+                ReadFifoResponsesSuccess = x.ReadFifoResponsesSuccess + y.ReadFifoResponsesSuccess,
+                ReadFileRecordCount = x.ReadFileRecordCount + y.ReadFileRecordCount,
+                ReadFileRecordRequests = x.ReadFileRecordRequests + y.ReadFileRecordRequests,
+                ReadFileRecordResponsesError = x.ReadFileRecordResponsesError + y.ReadFileRecordResponsesError,
+                ReadFileRecordResponsesSuccess = x.ReadFileRecordResponsesSuccess + y.ReadFileRecordResponsesSuccess,
+                ReadHoldingRegistersRequests = x.ReadHoldingRegistersRequests + y.ReadHoldingRegistersRequests,
+                ReadHoldingRegistersResponsesError = x.ReadHoldingRegistersResponsesError + y.ReadHoldingRegistersResponsesError,
+                ReadHoldingRegistersResponsesSuccess = x.ReadHoldingRegistersResponsesSuccess + y.ReadHoldingRegistersResponsesSuccess,
+                ReadHoldingRegistersWords = x.ReadHoldingRegistersWords + y.ReadHoldingRegistersWords,
+                ReadInputRegistersRequests = x.ReadInputRegistersRequests + y.ReadInputRegistersRequests,
+                ReadInputRegistersResponsesError = x.ReadInputRegistersResponsesError + y.ReadInputRegistersResponsesError,
+                ReadInputRegistersResponsesSuccess = x.ReadInputRegistersResponsesSuccess + y.ReadInputRegistersResponsesSuccess,
+                ReadInputRegistersWords = x.ReadInputRegistersWords + y.ReadInputRegistersWords,
+                ReadWriteMultRegistersReadWords = x.ReadWriteMultRegistersReadWords + y.ReadWriteMultRegistersReadWords,
+                ReadWriteMultRegistersRequests = x.ReadWriteMultRegistersRequests + y.ReadWriteMultRegistersRequests,
+                ReadWriteMultRegistersResponsesError = x.ReadWriteMultRegistersResponsesError + y.ReadWriteMultRegistersResponsesError,
+                ReadWriteMultRegistersResponsesSuccess = x.ReadWriteMultRegistersResponsesSuccess + y.ReadWriteMultRegistersResponsesSuccess,
+                ReadWriteMultRegistersWriteWords = x.ReadWriteMultRegistersWriteWords + y.ReadWriteMultRegistersWriteWords,
+                UndefinedFunctionsRequests = x.UndefinedFunctionsRequests + y.UndefinedFunctionsRequests,
+                UndefinedFunctionsResponsesError = x.UndefinedFunctionsResponsesError + y.UndefinedFunctionsResponsesError,
+                UndefinedFunctionsResponsesSuccess = x.UndefinedFunctionsResponsesSuccess + y.UndefinedFunctionsResponsesSuccess,
+                WriteFileRecordCount = x.WriteFileRecordCount + y.WriteFileRecordCount,
+                WriteFileRecordRequests = x.WriteFileRecordRequests + y.WriteFileRecordRequests,
+                WriteFileRecordResponsesError = x.WriteFileRecordResponsesError + y.WriteFileRecordResponsesError,
+                WriteFileRecordResponsesSuccess = x.WriteFileRecordResponsesSuccess + y.WriteFileRecordResponsesSuccess,
+                WriteMultCoilsBits = x.WriteMultCoilsBits + y.WriteMultCoilsBits,
+                WriteMultCoilsRequests = x.WriteMultCoilsRequests + y.WriteMultCoilsRequests,
+                WriteMultCoilsResponsesError = x.WriteMultCoilsResponsesError + y.WriteMultCoilsResponsesError,
+                WriteMultCoilsResponsesSuccess = x.WriteMultCoilsResponsesSuccess + y.WriteMultCoilsResponsesSuccess,
+                WriteMultRegistersRequests = x.WriteMultRegistersRequests + y.WriteMultRegistersRequests,
+                WriteMultRegistersResponsesError = x.WriteMultRegistersResponsesError + y.WriteMultRegistersResponsesError,
+                WriteMultRegistersResponsesSuccess = x.WriteMultRegistersResponsesSuccess + y.WriteMultRegistersResponsesSuccess,
+                WriteMultRegistersWords = x.WriteMultRegistersWords + y.WriteMultRegistersWords,
+                WriteSingleCoilRequests = x.WriteSingleCoilRequests + y.WriteSingleCoilRequests,
+                WriteSingleCoilResponsesError = x.WriteSingleCoilResponsesError + y.WriteSingleCoilResponsesError,
+                WriteSingleCoilResponsesSuccess = x.WriteSingleCoilResponsesSuccess + y.WriteSingleCoilResponsesSuccess,
+                WriteSingleRegisterRequests = x.WriteSingleRegisterRequests + y.WriteSingleRegisterRequests,
+                WriteSingleRegisterResponsesError = x.WriteSingleRegisterResponsesError + y.WriteSingleRegisterResponsesError,
+                WriteSingleRegisterResponsesSuccess = x.WriteSingleRegisterResponsesSuccess + y.WriteSingleRegisterResponsesSuccess
+            };
+        }
+
+        #endregion
+
         /// <summary>
         /// A MODBUS flow extension.
         /// </summary>

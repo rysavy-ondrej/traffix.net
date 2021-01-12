@@ -19,7 +19,7 @@ namespace IcsMonitor.Modbus
             foreach (var packet in fwdPackets)
             {
                 var tcpPacket = packet.Packet.Extract<TcpPacket>();
-                if (tcpPacket.PayloadData?.Length != 0)
+                if (tcpPacket?.PayloadData?.Length >= 8)
                 {
                     var stream = new KaitaiStream(tcpPacket.PayloadData);
                     if (TryParseModbusRequestPacket(stream, out var modbusPacket, out var error))
@@ -35,7 +35,7 @@ namespace IcsMonitor.Modbus
             foreach (var packet in revPackets)
             {
                 var tcpPacket = packet.Packet.Extract<TcpPacket>();
-                if (tcpPacket.PayloadData?.Length != 0)
+                if (tcpPacket?.PayloadData?.Length >= 8)
                 {
                     var stream = new KaitaiStream(tcpPacket.PayloadData);
                     if (TryParseModbusResponsePacket(stream, out var modbusPacket, out var error))

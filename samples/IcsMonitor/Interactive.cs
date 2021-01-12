@@ -1,15 +1,14 @@
-﻿using Kaitai;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.Extensions.Logging;
+﻿using IcsMonitor.Modbus;
 using PacketDotNet;
 using System;
 using System.Collections.Generic;
-using System.DirectoryServices.ActiveDirectory;
 using System.IO;
-using System.ServiceModel.Security.Tokens;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
-using Traffix.Hosting.Console;
+using Traffix.Core.Flows;
 using Traffix.Providers.PcapFile;
 using Traffix.Storage.Faster;
 
@@ -18,23 +17,68 @@ namespace IcsMonitor
     /// <summary>
     /// Interactive class exposes various API methods usable in C# interactive sessions. 
     /// </summary>
-    public class Interactive
+    public class Interactive : IDisposable
     {
-        public FasterConversationTable ReadToConversationTable(string pcapFile, string conversationTablePath, CancellationToken token)
+        public Interactive(DirectoryInfo rootDirectory = null)
+        {
+            #if LogSupport
+            ConfigureLogger();
+            #endif
+            ConfigureDirectories(rootDirectory ?? new DirectoryInfo(Directory.GetCurrentDirectory()));
+        }
+
+        public FasterConversationTable ReadToConversationTable(string pcapFile, string conversationTablePath, CancellationToken? token = null)
         {
             using var stream = new FileInfo(pcapFile).OpenRead();
             return ReadToConversationTable(stream, conversationTablePath, token);
         }
-        public FasterConversationTable ReadToConversationTable(Stream stream, string conversationTablePath, CancellationToken token)
+        public FasterConversationTable ReadToConversationTable(Stream stream, string conversationTablePath, CancellationToken? token = null)
         {
-            var flowTable = new FasterConversationTable(conversationTablePath);
-            flowTable.LoadFromStream(stream, token, null);
+            var flowTable = FasterConversationTable.Create(conversationTablePath);
+            flowTable.LoadFromStream(stream, token ?? CancellationToken.None, null);
             return flowTable;
         }
 
-        public IEnumerable<T> GetConversations<T> (FasterConversationTable table, IConversationProcessor<T> processor)
+        public FasterConversationTable CreateConversationTable(IEnumerable<RawFrame> frames, string conversationTablePath, CancellationToken? token = null)
         {
-            return table.ProcessConversations<T>(table.ConversationKeys, processor);
+            var flowTable = FasterConversationTable.Create(Path.Combine(conversationTablePath));
+            using (var loader = flowTable.GetFrameLoader())
+            {
+                foreach (var frame in frames)
+                {
+                    loader.AddFrame(frame, frame.Data, frame.Number);
+                    if (token?.IsCancellationRequested ?? false) break;
+                }
+            }
+            flowTable.Commit();
+            return flowTable;
+        }
+
+        /// <summary>
+        /// Gets the data using cnversation processor and the result function transformer.
+        /// </summary>
+        /// <typeparam name="Tdata"></typeparam>
+        /// <typeparam name="Tout"></typeparam>
+        /// <param name="table">The conversation table.</param>
+        /// <param name="processor">The conversation processor used to get conversation from the conversation table.</param>
+        /// <param name="resultFuncTransformer">Transform data produced by the conversation processor to the result objects.</param>
+        /// <returns></returns>
+        public IEnumerable<TData> GetConversations<TData>(FasterConversationTable table, IConversationProcessor<TData> processor)
+        {
+            return table.ProcessConversations<TData>(table.ConversationKeys, processor);
+        }
+
+        public IEnumerable<(long Ticks, Packet Packet)> GetPackets(FasterConversationTable table)
+        {
+            static FasterConversationTable.ProcessingResult<(long,Packet)> GetPacket(FrameMetadata meta, Memory<byte> bytes)
+            {
+                return new FasterConversationTable.ProcessingResult<(long, Packet)>
+                {
+                    State = FasterConversationTable.ProcessingState.Success,
+                    Result = (meta.Ticks, Packet.ParsePacket((LinkLayers)meta.LinkLayer, bytes.ToArray()))
+                };
+            }
+            return table.ProcessFrames<(long, Packet)>(GetPacket);
         }
 
         /// <summary>
@@ -49,46 +93,89 @@ namespace IcsMonitor
         /// <param name="timeInterval">The time interval for capturing packets to a conversation table.</param>
         /// <param name="token">the cancellation token.</param>
         /// <returns>A collection of conversation tables.</returns>
-        public IEnumerable<FasterConversationTable> ReadToConversationTables(CaptureFileReader reader, string conversationTablePath, TimeSpan timeInterval, CancellationToken token)
+        public IEnumerable<FasterConversationTable> ReadToConversationTables(ICaptureFileReader reader, string conversationTablePath, TimeSpan timeInterval, CancellationToken? token = null)
         {
             return PopulateConversationTables(GetNextFrames(reader), conversationTablePath, timeInterval, token);
         }
 
-        public IEnumerable<FasterConversationTable> PopulateConversationTables(IEnumerable<RawFrame> frames, string conversationTablePath, TimeSpan timeInterval, CancellationToken token)
+
+        public void WriteToFile(IEnumerable<RawFrame> frames, string path)
+        {
+            var writer = new SharpPcapWriter(path);
+            foreach (var frame in frames)
+            {
+                writer.WriteFrame(frame);
+            }
+            writer.Close();
+        }
+
+        /// <summary>
+        /// Computes a collection of conversation tables by splitting the input frames to specified time intervals.
+        /// <para/>
+        /// Each table is computed for a single time interval given by <paramref name="timeInterval"/> time span. 
+        /// It is thus possible to consider a use case when IPFIX monitoring is used for fixed time intervals, e.g, 1 minute.
+        /// In this interval the conversations are computed and can be further analyzed.
+        /// </summary>
+        /// <param name="frames">An input collection of frames.</param>
+        /// <param name="conversationTablePath">The path to conversation table files.</param>
+        /// <param name="timeInterval">The time interval used for splitting the input frames in conversation tables.</param>
+        /// <param name="token">Cancellation token used to cancel the operation.</param>
+        /// <returns></returns>
+        public IEnumerable<FasterConversationTable> PopulateConversationTables(IEnumerable<RawFrame> frames, string conversationTablePath, TimeSpan timeInterval, CancellationToken? token = null)
         {
             long? startWindowTicks = null;
             long timeIntervalTicks = timeInterval.Ticks;
             int flowTableNum = 0;
-            var flowTable = new FasterConversationTable(Path.Combine(conversationTablePath, flowTableNum.ToString("D4")));
+            var flowTablePath = Path.Combine(conversationTablePath, flowTableNum.ToString("D4"));
+            Console.WriteLine($">> {flowTablePath}");
 
+            var flowTable = FasterConversationTable.Create(flowTablePath);
             var loader = flowTable.GetFrameLoader();
-            foreach(var frame in frames)
+            foreach (var frame in frames)
             {
                 if (startWindowTicks is null) startWindowTicks = frame.Ticks;
                 if (frame.Ticks > startWindowTicks + timeIntervalTicks)
                 {
+                    loader.Dispose();
+                    flowTable.Commit();
                     yield return flowTable;
                     flowTableNum++;
-                    flowTable = new FasterConversationTable(Path.Combine(conversationTablePath, flowTableNum.ToString("D4")));
-                    loader.Dispose();
+                    flowTablePath = Path.Combine(conversationTablePath, flowTableNum.ToString("D4"));
+                    flowTable = FasterConversationTable.Create(flowTablePath);
                     loader = flowTable.GetFrameLoader();
                     startWindowTicks += timeIntervalTicks;
                 }
 
-                loader.AddFrame(frame, frame.Data, frame.Offset);
-                if (token.IsCancellationRequested) break;
+                loader.AddFrame(frame, frame.Data, frame.Number);
+                if (token?.IsCancellationRequested ?? false) break;
             }
             loader.Dispose();
+            flowTable.Commit();
             yield return flowTable;
         }
 
-        public CaptureFileReader CreateCaptureFileReader(string path)
+        
+
+        /// <summary>
+        /// Creates the capture file reader.
+        /// </summary>
+        /// <param name="path">The source pcap file to read.</param>
+        /// <param name="useManaged">Use the managed reader implementation. If false it uses SharpPcap and external library.</param>
+        /// <returns>The capture reader.</returns>
+        public ICaptureFileReader CreateCaptureFileReader(string path, bool useManaged = true)
         {
-            return new CaptureFileReader(new FileInfo(path).OpenRead());
+            if (useManaged)
+            {
+                return new CaptureFileReader(new FileInfo(path).OpenRead());
+            }
+            else
+            {
+                return new SharpPcapReader(path);
+            }
         }
 
-        public IEnumerable<RawFrame> GetNextFrames(CaptureFileReader reader, int count = Int32.MaxValue)
-        { 
+        public IEnumerable<RawFrame> GetNextFrames(ICaptureFileReader reader, int count = Int32.MaxValue)
+        {
             for (int i = 0; i < count; i++)
             {
                 if (reader.GetNextFrame(out var frame, true))
@@ -101,76 +188,192 @@ namespace IcsMonitor
                 }
             }
         }
-    }
 
+        public bool ContainsPacket(FasterConversationTable table, FlowKey conversationKey, Packet packet)
+        {
+            var packetKey = table.GetPacketKey(packet);
+            return conversationKey.EqualsOrReverse(packetKey);
+        }
+                
+        /// <summary>
+        /// Computes the ICS dataset from the source PCAP file. 
+        /// <para/>
+        /// This is all-in-one method that enables to read pcap file, compute flow tables and extract ICS 
+        /// conversations using provided processor. 
+        /// </summary>
+        /// <typeparam name="TFlowData"></typeparam>
+        /// <typeparam name="TTargetData"></typeparam>
+        /// <param name="inputFile"></param>
+        /// <param name="timeInterval"></param>
+        /// <param name="processor"></param>
+        /// <param name="transformer"></param>
+        /// <returns></returns>
+        public IcsDataset<TFlowData> ComputeDataset<TFlowData>(string inputFile, TimeSpan timeInterval, Func<RawFrame, bool> frameFilter, IConversationProcessor<ConversationRecord<TFlowData>> processor)
+        {
+            // provide existing dataset or create a new one for the input file.
+            // input file name is used to determine whether we already have
+            // existing conversation tables or we need to compute a new set of ones.
+            var inputFilePath = Path.GetFullPath(inputFile);
+            var datasetHash = GetHash($"{inputFilePath}[{timeInterval}]");
+            var dbTableDirectory = Path.Combine(TempDirectory.FullName, datasetHash);
+            List<FasterConversationTable> tables = null;
+            List<RawFrame> frames = null;
+            if (Directory.Exists(dbTableDirectory))
+            {
+                Console.WriteLine($"Conversation table has already existed for '{inputFile}[{timeInterval}]', reading from db '{dbTableDirectory}'.");
+                frames = new List<RawFrame>();
+                tables = new List<FasterConversationTable>();
 
-    public static class PacketHelper
-    {
-        public static UdpPacket GetUdpPacket(this RawFrame frame)
-        {
-            var packet = Packet.ParsePacket(frame.LinkLayer, frame.Data);
-            return packet.Extract<UdpPacket>();
-        }
-        public static TcpPacket GetTcpPacket(this RawFrame frame)
-        {
-            var packet = Packet.ParsePacket(frame.LinkLayer, frame.Data);
-            return packet.Extract<TcpPacket>();
-        }
-        public static Packet GetPacket(this RawFrame frame)
-        {
-            var packet = Packet.ParsePacket(frame.LinkLayer, frame.Data);
-            return packet;
+                foreach (var folder in Directory.GetDirectories(dbTableDirectory))
+                {
+                    var table = FasterConversationTable.Create(folder);
+                    tables.Add(table);
+                    int frameNumber = 0;
+                    FasterConversationTable.ProcessingResult<RawFrame> frameProcessor(FrameMetadata meta, Memory<byte> frame)
+                    {
+                        return new FasterConversationTable.ProcessingResult<RawFrame>
+                        {
+                            State = FasterConversationTable.ProcessingState.Success,
+                            Result = new RawFrame((PacketDotNet.LinkLayers)meta.LinkLayer, ++frameNumber, meta.Ticks, 0, meta.OriginalLength, frame.ToArray())
+                        };
+                    }
+                    frames.AddRange(table.ProcessFrames<RawFrame>(frameProcessor));
+                }
+                Console.WriteLine($"Frames count = {frames.Count}");
+            }
+            else
+            {
+                Directory.CreateDirectory(dbTableDirectory);
+                Console.WriteLine($"Creating conversation table '{inputFile}[{timeInterval}]' at '{dbTableDirectory}'.");
+                var reader = CreateCaptureFileReader(inputFile, false);
+                frames = GetNextFrames(reader).ToList();
+                var firstFrame = frames.First();
+                tables = PopulateConversationTables(frames.Where(frameFilter), dbTableDirectory, timeInterval, CancellationToken.None).ToList();
+                reader.Close();
+            }
+            var conversations = tables.Select(x => new ConversationTable<TFlowData>(GetConversations<ConversationRecord<TFlowData>>(x, processor))).ToList();
+            Console.WriteLine("Stats:");
+            Console.WriteLine($"  Frames count={frames.Count}, First={new DateTime(frames.First().Ticks)}, Last={new DateTime(frames.Last().Ticks)}");
+            Console.WriteLine($"  Tables count={tables.Count}, Avg.Conversations={conversations.Average(c=>c.Count)}, Max.Conversations={conversations.Max(c => c.Count)}, Min.Conversations={conversations.Min(c => c.Count)}");
+            return new IcsDataset<TFlowData> { ConversationTables = conversations, Frames = frames };
         }
 
-        public static bool TryDecode<T>(this TcpPacket packet, Func<byte[],T> decoder, out T pdu)
+        private static string GetHash(string input)
+        {
+            using (SHA256 hashAlgorithm = SHA256.Create())
+            {
+                // Convert the input string to a byte array and compute the hash.
+                byte[] data = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes(input));
+
+                // Create a new Stringbuilder to collect the bytes
+                // and create a string.
+                var sBuilder = new StringBuilder();
+
+                // Loop through each byte of the hashed data
+                // and format each one as a hexadecimal string.
+                for (int i = 0; i < data.Length; i++)
+                {
+                    sBuilder.Append(data[i].ToString("x2"));
+                }
+
+                // Return the hexadecimal string.
+                return sBuilder.ToString();
+            }
+        }
+
+#if LogSupport
+        private ILogger _logger;
+        private ConsoleLoggerProvider _consoleLoggerProvider;
+        void ConfigureLogger()
+        {
+            _consoleLoggerProvider = new ConsoleLoggerProvider(new LoggerOptions(), new[] { new LoggerFormatter() });
+            _logger = _consoleLoggerProvider.CreateLogger("Interactive");
+        }
+        public ILogger Logger => _logger;
+
+#endif
+        public DirectoryInfo RootDirectory { get => _rootDirectory; set => _rootDirectory = value; }
+        public DirectoryInfo TempDirectory { get => _tempDirectory; set => _tempDirectory = value; }
+
+        DirectoryInfo _rootDirectory;
+        DirectoryInfo _tempDirectory;
+        private bool m_disposedValue;
+
+        void ConfigureDirectories(DirectoryInfo rootDirectory)
+        {
+            _rootDirectory = rootDirectory;
+            _tempDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "icsmonitor.interactive"));
+            if (!_tempDirectory.Exists) _tempDirectory.Create(); 
+        }
+
+        private void CleanUp()
         {
             try
             {
-                if (packet.HasPayloadData)
-                {
-                    pdu = decoder(packet.PayloadData);
-                    return true;
-                }
-                else
-                {
-                    pdu = default;
-                    return false;
-                }
+                this.TempDirectory.Delete(true);
             }
-            catch(Exception)
+            catch(Exception e)
             {
-                pdu = default;
-                return false;
+                Console.Error.WriteLine($"Cannot delete temp directory '{this.TempDirectory.FullName}' : {e.Message}");
             }
         }
-        public static T DecodeOrDefault<T>(this TcpPacket packet, Func<byte[], T> decoder)
+
+        protected virtual void Dispose(bool disposing)
         {
-            return TryDecode<T>(packet, decoder, out var pdu) ? pdu : default;
-        }
-        public static bool TryDecode<T>(this TcpPacket packet, Func<KaitaiStream, T> decoder, out T pdu)
-        {
-            try
+            if (!m_disposedValue)
             {
-                if (packet.HasPayloadData)
+                if (disposing)
                 {
-                    pdu = decoder(new KaitaiStream(packet.PayloadData));
-                    return true;
+                    CleanUp();
                 }
-                else
-                {
-                    pdu = default;
-                    return false;
-                }
-            }
-            catch (Exception)
-            {
-                pdu = default;
-                return false;
+                m_disposedValue = true;
             }
         }
-        public static T DecodeOrDefault<T>(this TcpPacket packet, Func<KaitaiStream, T> decoder)
+        public void Dispose()
         {
-            return TryDecode<T>(packet,decoder, out var pdu) ? pdu : default;
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+
+        public class ConversationTable<TData> : List<ConversationRecord<TData>> 
+        {
+            public DateTime StartTime;
+            public TimeSpan Interval;
+
+            public ConversationTable(IEnumerable<ConversationRecord<TData>> collection) : base(collection)
+            {
+            }
+            /// <summary>
+            /// Aggregates conversations by grouping conversation susing <paramref name="keySelector"/> and then by applying <paramref name="aggregator"/> function 
+            /// to all conversations in the group. The result is a collection of aggregated conversations.
+            /// </summary>
+            /// <typeparam name="Tin">The type of the input.</typeparam>
+            /// <typeparam name="Tout">The type of the output.</typeparam>
+            /// <typeparam name="TKey">The type of the keys.</typeparam>
+            /// <param name="conversations">The input collection of conversations.</param>
+            /// <param name="keySelector">The selector of key fields for the aggregated conversations.</param>
+            /// <param name="accumulator">The initial value of the aggregation.</param>
+            /// <param name="aggregator">The aggregattor function that implements a way to add a new conversation to the aggregation.</param>
+            /// <returns>A collection of conversations. Number of returned items equals to a number of groups created by <paramref name="keySelector"/>.</returns>
+            public IEnumerable<Tout> AggregateConversations<Tout, TKey>(Func<ConversationRecord<TData>, TKey> keySelector, Func<ConversationRecord<TData>, Tout>  getTarget, Func<Tout, Tout, Tout> aggregator)
+            {
+                var groups = this.GroupBy(keySelector);
+                foreach (var g in groups)
+                {
+                    yield return g.Select(getTarget).Aggregate(aggregator);
+                }
+            }
+
+        }
+        /// <summary>
+        /// Contains related information for the ICS dataset.
+        /// </summary>
+        public class IcsDataset<TData>
+        {
+            public long TimebaseTicks => Frames.FirstOrDefault()?.Ticks ?? 0;
+            public List<ConversationTable<TData>> ConversationTables;
+            public List<RawFrame> Frames;
         }
     }
 }

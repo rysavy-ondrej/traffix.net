@@ -21,5 +21,16 @@ namespace IcsMonitor
 
         [Key("METRICS_OCTETS")]
         public long Octets; 
+
+        public static FlowMetrics Combine(FlowMetrics x, FlowMetrics y)
+        {
+            return new FlowMetrics
+            {
+                Start = x.Start < y.Start ? x.Start : y.Start,
+                End = x.End > y.End ? x.End : y.End,
+                Packets = x.Packets + y.Packets,
+                Octets = x.Octets + y.Octets
+            };
+        }
     }
 }

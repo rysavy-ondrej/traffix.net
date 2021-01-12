@@ -2,7 +2,9 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Namotion.Reflection;
 using System;
+using System.Reflection.Metadata.Ecma335;
 using Traffix.Core.Flows;
+using Traffix.Storage.Faster;
 
 namespace IcsMonitor
 {
@@ -39,6 +41,15 @@ namespace IcsMonitor
         [Key("CONVERSATION_KEY")]
         public FlowKey Key;
 
+
+        /// <summary>
+        /// A number of flows used to create a converation record.
+        /// Usually, forward and reverse flows are used,ie., it equals 2.
+        /// <para/>
+        /// The conversation record may be an aggregation of multiple flows.
+        /// </summary>
+        [Key("ORIGINAL_FLOWS_PRESENT")]
+        public int OriginalFlowsPresent;
         /// <summary>
         /// The forward flow metrics.
         /// </summary>
@@ -75,5 +86,16 @@ namespace IcsMonitor
             return x => x.Transform<TTarget>(transform);
         }
 
+        public static ConversationRecord<TData> Combine(Func<TData, TData, TData> combineData, ConversationRecord<TData> left, ConversationRecord<TData> right)
+        {
+            return new ConversationRecord<TData>
+            {
+                Key = left.Key,
+                OriginalFlowsPresent = left.OriginalFlowsPresent + right.OriginalFlowsPresent,
+                ForwardMetrics = FlowMetrics.Combine(left.ForwardMetrics, right.ForwardMetrics),
+                ReverseMetrics = FlowMetrics.Combine(left.ReverseMetrics, right.ReverseMetrics),
+                Data = combineData(left.Data, right.Data)
+            };
+        }
     }
 }

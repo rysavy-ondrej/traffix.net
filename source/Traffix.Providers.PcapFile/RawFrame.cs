@@ -15,6 +15,16 @@ namespace Traffix.Providers.PcapFile
             IncludedLength = includedLength;
             OriginalLength = originalLength;
         }
+        public RawFrame(LinkLayers linkLayer, int number, long ticks, long offset, int originalLength, byte[] bytes)
+        {
+            LinkLayer = linkLayer;
+            Number = number;
+            Ticks = ticks;
+            Offset = offset;
+            IncludedLength = bytes.Length;
+            OriginalLength = originalLength;
+            Data = bytes;
+        }
 
         public int OriginalLength { get; }
         public int IncludedLength { get; }

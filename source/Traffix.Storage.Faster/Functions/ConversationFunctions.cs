@@ -1,5 +1,6 @@
 using FASTER.core;
 using System;
+using System.ComponentModel.Design;
 using System.Runtime.CompilerServices;
 
 namespace Traffix.Storage.Faster
@@ -104,21 +105,18 @@ namespace Traffix.Storage.Faster
             throw new System.NotImplementedException();
         }
                                                                                                          
-        public static FasterKV<ConversationKey, ConversationValue, ConversationInput, ConversationOutput, ConversationContext, ConversationFunctions> CreateFaster(IDevice log, IDevice objLog)
-        {
-            return new FasterKV<ConversationKey, ConversationValue, ConversationInput, ConversationOutput, ConversationContext, ConversationFunctions>(
-                size: 1L << 20,  // about 1M conversations
-                functions: new ConversationFunctions(), 
-                logSettings: new LogSettings { LogDevice = log, ObjectLogDevice = objLog },
-                comparer: new ConversationKeyFastComparer(),
-                serializerSettings: new SerializerSettings<ConversationKey, ConversationValue> { keySerializer = () => new ConversationKeySerializer(), valueSerializer = () => new ConversationValueSerializer() }
-                
-                );
-        }
-
         public void DeleteCompletionCallback(ref ConversationKey key, ConversationContext ctx)
         {
             throw new System.NotImplementedException();
+        }
+
+
+    }
+
+    internal class ConversationsStore : StoreDb<ConversationKey, ConversationValue, ConversationInput, ConversationOutput, ConversationContext, ConversationFunctions>
+    {
+        public ConversationsStore(string folder) : base(folder, new ConversationKeyFastComparer(), new ConversationFunctions(), () => new ConversationKeySerializer(), () => new ConversationValueSerializer())
+        {
         }
     }
 }

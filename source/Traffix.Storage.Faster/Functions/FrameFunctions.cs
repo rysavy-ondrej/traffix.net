@@ -18,7 +18,7 @@ namespace Traffix.Storage.Faster
 
         public bool ConcurrentWriter(ref FrameKey key, ref FrameValue src, ref FrameValue dst)
         {
-            throw new System.NotImplementedException();
+            throw new System.InvalidOperationException("Each frame must have a unique key.");
         }
 
         public void CopyUpdater(ref FrameKey key, ref FrameInput input, ref FrameValue oldValue, ref FrameValue newValue)
@@ -67,17 +67,11 @@ namespace Traffix.Storage.Faster
         {
             throw new System.NotImplementedException();
         }
-
-
-        public static FasterKV<FrameKey, FrameValue, FrameInput, FrameOutput, FrameContext, FrameFunctions> CreateFaster(IDevice log, IDevice objLog)
+    }
+    internal class FramesStore : StoreDb<FrameKey, FrameValue, FrameInput, FrameOutput, FrameContext, FrameFunctions>
+    {
+        public FramesStore(string folder) : base(folder, new FrameKeyFastComparer(), new FrameFunctions(), new FrameKeyLength(), new FrameValueLength())
         {
-            return new FasterKV<FrameKey, FrameValue, FrameInput, FrameOutput, FrameContext, FrameFunctions>(
-                size: 1L << 20,  // about 1M conversations
-                functions: new FrameFunctions(),
-                logSettings: new LogSettings { LogDevice = log, ObjectLogDevice = objLog },
-                comparer: new FrameKeyFastComparer(), 
-                variableLengthStructSettings: new VariableLengthStructSettings<FrameKey, FrameValue> {  keyLength = new FrameKeyLength(), valueLength = new FrameValueLength() }
-            );
         }
     }
 }

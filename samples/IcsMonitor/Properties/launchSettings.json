@@ -11,7 +11,6 @@
       "commandName": "Project",
       "commandLineArgs": "Extract-ModbusFlows -inputFile \"G:\\Shared drives\\BONNET\\AD Metody\\Modbus\\Datasets.pcap\\lemay\\normal\\run1_6rtu.cap\" -outformat csv -outFile D:\\\\Captures\\\\modbus\\\\run1_6rtu.csv"
     },
-
     "Extract-Dnp3Flows": {
       "commandName": "Project",
       "commandLineArgs": "Extract-Dnp3Flows -inputFile D:\\Captures\\dnp3\\dnp3.pcap -outFormat csv -outFile D:\\Captures\\dnp3\\dnp3.csv"
@@ -20,12 +19,10 @@
       "commandName": "Project",
       "commandLineArgs": "Extract-S7Conversations -inputFile D:\\Captures\\s7\\hmi.pcap -outFormat csv -outFile D:\\Captures\\s7\\hmi.csv"
     },
-
     "Train-ModbusModel": {
       "commandName": "Project",
       "commandLineArgs": "Train-ModbusModel -inputFile D:\\Captures\\modbus\\modbus.pcap -outputFile D:\\Captures\\modbus\\modbus.model.zip -numberOfClusters 4"
     },
-
     "Evaluate-ModbusFlows": {
       "commandName": "Project",
       "commandLineArgs": "Evaluate-ModbusFlows -inputFile D:\\Captures\\modbus\\modbus.pcap -modelFile D:\\Captures\\modbus\\modbus.model.zip -outputFile D:\\Captures\\modbus\\modbus.out.csv"
@@ -33,7 +30,10 @@
     "Export-TcpPayload": {
       "commandName": "Project",
       "commandLineArgs": "Export-TcpPayload -inputFile D:\\Captures\\s7\\hmi.pcap -port 102 -outputFile D:\\Captures\\s7\\hmi.zip"
-
+    },
+    "Copy-Pcap": {
+      "commandName": "Project",
+      "commandLineArgs": "Copy-Pcap -inputFile \"g:\\Shared drives\\BONNET\\AD Metody\\Modbus\\ModbusFactory\\Data\\Production Line\\Net-ProductionLine_Basic_Normal.cap\" -outputFile out.pcap"
     }
   }
 }

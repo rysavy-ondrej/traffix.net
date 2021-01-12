@@ -59,6 +59,11 @@ namespace Traffix.Core.Flows
                 return Equals((FlowKey)obj);
         }
 
+        public bool EqualsOrReverse(FlowKey other)
+        {
+            return Equals(this, other) || Equals(this, other.Reverse());
+        }
+
         public abstract long GetHashCode64();
 
         public abstract bool Equals(FlowKey other);

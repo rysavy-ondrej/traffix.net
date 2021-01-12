@@ -77,6 +77,12 @@ namespace IcsMonitor
 
 
 
+        /// <summary>
+        /// Trains the Modbus Model (OC-Kmeans), which represents a normal profile.
+        /// </summary>
+        /// <param name="inputFile">Input packet capture file.</param>
+        /// <param name="outputFile">The model file to be created.</param>
+        /// <param name="numberOfClusters">A number of required clusters. Default is 8.</param>
         [Command("Train-ModbusModel")]
         public void TrainModbusModel(
             string inputFile,
@@ -123,23 +129,18 @@ namespace IcsMonitor
             var variances = predictions.GroupBy(x => x.ClusterId).Select(p => (Key: p.Key, Variance: ComputeVariance(p))).OrderBy(p => p.Key).Select(p => p.Variance).ToArray();
 
             Console.WriteLine($"Done. [{sw.Elapsed}]");
-
-            
-
             modbusDataModel.SaveModel(model, variances, trainingData.Schema, outputFile);
-            // Save the model for the future use.
-           
 
-        }
 
-        /// <summary>
-        /// Variance is computed as v = 1/n \sum_{i=1}^{n}(x_i - x_{mean})^2 .
-        /// </summary>
-        /// <param name="p">The collection of predictions.</param>
-        /// <returns>The variance value.</returns>
-        static private float ComputeVariance(IEnumerable<ModbusDataModel.Prediction> p)
-        {
-            return (float)(p.Sum(s => Math.Pow(s.Distance, 2)) / p.Count());
+            /// <summary>
+            /// Variance is computed as v = 1/n \sum_{i=1}^{n}(x_i - x_{mean})^2 .
+            /// </summary>
+            /// <param name="p">The collection of predictions.</param>
+            /// <returns>The variance value.</returns>
+            static float ComputeVariance(IEnumerable<ModbusDataModel.Prediction> p)
+            {
+                return (float)(p.Sum(s => Math.Pow(s.Distance, 2)) / p.Count());
+            }
         }
 
         [Command("Evaluate-ModbusFlows")]
@@ -154,10 +155,8 @@ namespace IcsMonitor
 
             var model  = modbusDataModel.LoadModel(modelFile, out var inputSchema, out var centroids);
 
-            // Create a predictor.
             var predictor = modbusDataModel.MlContext.Model.CreatePredictionEngine<ModbusDataModel.DataPoint, ModbusDataModel.Prediction>(model);
 
-            // Get flow records:
             using var cmd = new ExtractModbusFlowsCommand
             {
                 InputFile = new FileInfo(inputFile),
@@ -169,8 +168,6 @@ namespace IcsMonitor
             ModbusDataModel.Prediction Decide(ModbusDataModel.Prediction pred)
             {
                 var variance = centroids[pred.ClusterId - 1].Variance;
-
-
                 pred.Variance = variance;
                 pred.Threshold = (float)Math.Sqrt(variance) * acceptance;
                 pred.Threshold2 = (float)Math.Sqrt(variance) * acceptance * 2;
