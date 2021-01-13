@@ -1,30 +1,22 @@
 using FASTER.core;
 using System;
-using System.ComponentModel.Design;
-using System.Runtime.CompilerServices;
-
 namespace Traffix.Storage.Faster
 {
-    internal class ConversationFunctions : IFunctions<ConversationKey, ConversationValue, ConversationInput, ConversationOutput, ConversationContext>
+    internal class ConversationFunctions : KeyValueStore<ConversationKey, ConversationValue, ConversationInput, ConversationOutput, ConversationFunctions>.StoreFunctions
     {
-        public void CheckpointCompletionCallback(string sessionId, CommitPoint commitPoint)
-        {
-            throw new System.NotImplementedException();
-        }
-
-        public void ConcurrentReader(ref ConversationKey key, ref ConversationInput input, ref ConversationValue value, ref ConversationOutput dst)
+        public override void ConcurrentReader(ref ConversationKey key, ref ConversationInput input, ref ConversationValue value, ref ConversationOutput dst)
         {
             dst.Key = key;
             dst.Value = value;
         }
 
-        public bool ConcurrentWriter(ref ConversationKey key, ref ConversationValue src, ref ConversationValue dst)
+        public override bool ConcurrentWriter(ref ConversationKey key, ref ConversationValue src, ref ConversationValue dst)
         {
             dst = src;
             return true;
         }
 
-        public void CopyUpdater(ref ConversationKey key, ref ConversationInput input, ref ConversationValue oldValue, ref ConversationValue newValue)
+        public override void CopyUpdater(ref ConversationKey key, ref ConversationInput input, ref ConversationValue oldValue, ref ConversationValue newValue)
         {
             newValue = new ConversationValue(oldValue.FrameAddresses.Length * 2)
             {
@@ -36,10 +28,10 @@ namespace Traffix.Storage.Faster
             InPlaceUpdater(ref key, ref input, ref newValue);
         }
 
-        public void InitialUpdater(ref ConversationKey key, ref ConversationInput input, ref ConversationValue value)
+        public override void InitialUpdater(ref ConversationKey key, ref ConversationInput input, ref ConversationValue value)
         {
-            value = new ConversationValue(16)
-            { 
+            value = new ConversationValue(32)
+            {
                 FrameCount = 1,
                 ForwardFlow = new FlowMetrics
                 {
@@ -51,9 +43,8 @@ namespace Traffix.Storage.Faster
             };
             value.FrameAddresses[0] = input.FrameAddress;
         }
-
-        ConversationKeyFastComparer comparer = new ConversationKeyFastComparer();
-        public bool InPlaceUpdater(ref ConversationKey key, ref ConversationInput input, ref ConversationValue value)
+    
+        public override bool InPlaceUpdater(ref ConversationKey key, ref ConversationInput input, ref ConversationValue value)
         {
             // cannot update in-place
             if (value.FrameCount == value.FrameAddresses.Length) return false;
@@ -78,44 +69,21 @@ namespace Traffix.Storage.Faster
             flow.Packets++;
             flow.Octets += (ulong)input.FrameSize;
         }
-
-        public void ReadCompletionCallback(ref ConversationKey key, ref ConversationInput input, ref ConversationOutput output, ConversationContext ctx, Status status)
-        {
-            ctx.AddOutputValue(output);    
-        }
-
-        public void RMWCompletionCallback(ref ConversationKey key, ref ConversationInput input, ConversationContext ctx, Status status)
-        {
-            throw new System.NotImplementedException();
-        }
-
-        public void SingleReader(ref ConversationKey key, ref ConversationInput input, ref ConversationValue value, ref ConversationOutput dst)
+        public override void SingleReader(ref ConversationKey key, ref ConversationInput input, ref ConversationValue value, ref ConversationOutput dst)
         {
             dst.Key = key;
             dst.Value = value;
         }
 
-        public void SingleWriter(ref ConversationKey key, ref ConversationValue src, ref ConversationValue dst)
+        public override void SingleWriter(ref ConversationKey key, ref ConversationValue src, ref ConversationValue dst)
         {
             dst = src;
         }
-
-        public void UpsertCompletionCallback(ref ConversationKey key, ref ConversationValue value, ConversationContext ctx)
-        {
-            throw new System.NotImplementedException();
-        }
-                                                                                                         
-        public void DeleteCompletionCallback(ref ConversationKey key, ConversationContext ctx)
-        {
-            throw new System.NotImplementedException();
-        }
-
-
     }
 
-    internal class ConversationsStore : StoreDb<ConversationKey, ConversationValue, ConversationInput, ConversationOutput, ConversationContext, ConversationFunctions>
+    internal class ConversationsStore : KeyValueStore<ConversationKey, ConversationValue, ConversationInput, ConversationOutput, ConversationFunctions>
     {
-        public ConversationsStore(string folder) : base(folder, new ConversationKeyFastComparer(), new ConversationFunctions(), () => new ConversationKeySerializer(), () => new ConversationValueSerializer())
+        public ConversationsStore(string folder, long capacity) : base(folder, (int)Math.Log(capacity,2)+1, new ConversationKeyFastComparer(), new ConversationFunctions(), () => new ConversationKeySerializer(), () => new ConversationValueSerializer())
         {
         }
     }

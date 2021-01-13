@@ -35,28 +35,29 @@ namespace Traffix.Storage.Faster
         IFlowKeyProvider<FlowKey, Packet> _packetKeyProvider = new PacketKeyProvider();
 
         private bool _disposedValue;
+        private const int averageFramesPerFlow = 24;
 
-
-        public static FasterConversationTable Create(string folder)
+        public static FasterConversationTable Create(string folder, long framesCapacity=100000)
         {
             // ensure that root folder does exist:
             if (!Directory.Exists(folder))
             {
                 Directory.CreateDirectory(folder);
             }
-            var table = new FasterConversationTable(folder);
+            var table = new FasterConversationTable(folder, framesCapacity);
             table._conversationsStore.InitAndRecover();
             table._framesStore.InitAndRecover();
             return table;
         }
 
-        public static FasterConversationTable Open(string folder)
+        public static FasterConversationTable Open(string folder, long framesCapacity=100000)
         {
             if (!Directory.Exists(folder))
             {
                 throw new DirectoryNotFoundException($"Specified folder '{folder}' not found.");
             }
-            var table = new FasterConversationTable(folder);
+            
+            var table = new FasterConversationTable(folder, framesCapacity);
             table._conversationsStore.InitAndRecover();
             table._framesStore.InitAndRecover();
             return table;
@@ -67,11 +68,11 @@ namespace Traffix.Storage.Faster
         /// If the folder does not exist, it will be created.
         /// </summary>
         /// <param name="folder"></param>
-        protected FasterConversationTable(string folder)
+        protected FasterConversationTable(string folder, long framesCapacity)
         {
             _rootFolder = folder;
-            _conversationsStore = new ConversationsStore(Path.Combine(folder, "conversations"));
-            _framesStore = new FramesStore(Path.Combine(folder, "frames"));
+            _conversationsStore = new ConversationsStore(Path.Combine(folder, "conversations"), framesCapacity/(averageFramesPerFlow * 2));
+            _framesStore = new FramesStore(Path.Combine(folder, "frames"), framesCapacity);
         }
         #region Dispose Implementation
         protected virtual void Dispose(bool disposing)
@@ -102,11 +103,11 @@ namespace Traffix.Storage.Faster
         /// </summary>
         /// <param name="stream">The input stream of tcpdump pcap format.</param>
         /// <param name="cancellationToken"></param>
-        public void LoadFromStream(Stream stream, CancellationToken cancellationToken, Action<long, Packet>? onNextPacket = null)
+        public int LoadFromStream(Stream stream, CancellationToken cancellationToken, Action<long, Packet>? onNextPacket = null, int maxPacketCount=int.MaxValue)
         {
             using var captureReader = new CaptureFileReader(stream) ?? throw new ArgumentException("Invalid stream provided.", nameof(stream));
             using var loader = GetFrameLoader();
-
+            var packetCount = 0;
             // reads all frames from the capture file stream:
             while (captureReader.GetNextFrameHeader(out var frame))
             {
@@ -116,10 +117,15 @@ namespace Traffix.Storage.Faster
                 var address = captureReader.Position;
                 captureReader.ReadFrameBytes(bytes);
                 loader.AddFrame(frame, bytes, address);
+                packetCount++;
                 if (cancellationToken.IsCancellationRequested) break;
+                
+                
+                if (packetCount == maxPacketCount) return packetCount;
             }
 
             loader.Close();
+            return packetCount;
         }
 
         /// <summary>
@@ -143,20 +149,20 @@ namespace Traffix.Storage.Faster
             return packetKey;
         }
 
-        private void UpsertConversation(ClientSession<ConversationKey, ConversationValue, ConversationInput, ConversationOutput, ConversationContext, ConversationFunctions> conversationsSession, RawFrame frame, FlowKey frameKey, long frameAddress)
+        private bool UpdateConversationWithFrame(ConversationsStore.KeyValueStoreClient client, long frameAddress, FlowKey flowKey, int originalLength, long ticks)
         {
             var input = new ConversationInput
             {
                 FrameAddress = frameAddress,
-                FrameSize = frame.OriginalLength,
-                FrameTicks = frame.Ticks,
-                FrameKey = frameKey
+                FrameSize = originalLength,
+                FrameTicks = ticks,
+                FrameKey = flowKey
             };
-            var conversationKey = GetConversationKey(frameKey);
-            conversationsSession.RMW(ref conversationKey, ref input, ConversationContext.Empty, 0);
+            var conversationKey = GetConversationKey(flowKey);
+            return client.Update(ref conversationKey, ref input);
         }
 
-        private unsafe long UpsertFrame(ClientSession<FrameKey, FrameValue, FrameInput, FrameOutput, FrameContext, FrameFunctions> framesSession, RawFrame frame, Span<byte> bytes, long address, FlowKey frameFlowKey)
+        private unsafe FrameKey InsertFrame(FramesStore.KeyValueStoreClient client, RawFrame frame, Span<byte> bytes, long address, FlowKey frameFlowKey)
         {
             var size = FrameValue.ComputeLength(frame.IncludedLength);
             using var buffer = _memoryPool.Rent(size);
@@ -168,15 +174,14 @@ namespace Traffix.Storage.Faster
                 frameValue.Meta.IncludedLength = (ushort)frame.IncludedLength;
                 frameValue.Meta.OriginalLength = (ushort)frame.OriginalLength;
                 frameValue.Meta.LinkLayer = (ushort)frame.LinkLayer;
+                frameValue.Meta.FlowKeyHash = frameFlowKey.GetHashCode64();
 
                 var frameBytesSpan = new Span<byte>(Unsafe.AsPointer(ref frameValue.Bytes), frame.IncludedLength);
                 bytes.TryCopyTo(frameBytesSpan);
 
-                frameValue.Meta.FlowKeyHash = frameFlowKey.GetHashCode64();
-
                 var frameKey = new FrameKey { Address = address };
-                framesSession.Upsert(ref frameKey, ref frameValue, FrameContext.Empty, 0);
-                return address;
+                client.Put(ref frameKey, ref frameValue);
+                return frameKey;
             }
         }
 
@@ -188,11 +193,11 @@ namespace Traffix.Storage.Faster
         /// </para>
         /// </summary>
         /// <returns>The loader instance.</returns>
-        public FrameStreamer GetFrameLoader()
+        public FrameStreamer GetFrameLoader(int autoFlush = 1024)
         {
-            using var conversationsSession = _conversationsStore.NewSession() ?? throw new InvalidOperationException("Cannot create conversation session.");
-            using var framesSession = _framesStore.NewSession() ?? throw new InvalidOperationException("Cannot create conversation session.");
-            return new FrameStreamer(this, conversationsSession, framesSession);
+            var conversationsClient = _conversationsStore.GetClient() ?? throw new InvalidOperationException("Cannot create conversation session.");
+            var framesClient = _framesStore.GetClient() ?? throw new InvalidOperationException("Cannot create conversation session.");
+            return new FrameStreamer(this, conversationsClient, framesClient, autoFlush);
         }
 
 
@@ -225,25 +230,20 @@ namespace Traffix.Storage.Faster
         /// <returns>The enumerable collection of resulting objects produced by the <paramref name="processor"/>.</returns>
         public IEnumerable<TResult> ProcessConversations<TResult>(IEnumerable<IConversationKey> keys, IConversationProcessor<TResult> processor)
         {
-            using var conversationsSession = _conversationsStore.NewSession() ?? throw new InvalidOperationException("Cannot create conversations DB session.");
-            using var framesSession = _framesStore.NewSession() ?? throw new InvalidOperationException("Cannot create frames DB session.");
+            using var conversationsClient = _conversationsStore.GetClient() ?? throw new InvalidOperationException("Cannot create conversations DB session.");
+            using var framesClient = _framesStore.GetClient() ?? throw new InvalidOperationException("Cannot create frames DB session.");
 
-
-            unsafe TResult ProcessConversation(ref ConversationKey key)
+            TResult ProcessConversation(ref ConversationKey key)
             {
-
-                var input = new ConversationInput();
-                var output = new ConversationOutput();
-                _ = conversationsSession.Read(ref key, ref input, ref output, ConversationContext.Empty, 0);
-
+                ConversationOutput output = new ConversationOutput();
+                conversationsClient.TryGet(ref key, ref output);
                 var frameKey = new FrameKey();
                 var frameInput = new FrameInput() { Pool = MemoryPool<byte>.Shared };
                 var frameList = new List<IMemoryOwner<byte>>();
                 for(int i = 0; i < output.Value.FrameCount; i++)
                 {
-                    var frameOutput = new FrameOutput();
                     frameKey.Address = output.Value.FrameAddresses[i];
-                    _ = framesSession.Read(ref frameKey, ref frameInput, ref frameOutput, FrameContext.Empty, 0);
+                    var frameOutput = framesClient.Get(ref frameKey);
                     frameList.Add(frameOutput.FrameBuffer);
                 }
                 var result = processor.Invoke(key.FlowKey, frameList.Select(x=>x.Memory));
@@ -261,6 +261,8 @@ namespace Traffix.Storage.Faster
             }
             return keys.Select(key => ProcessConversationSafe(key));
         }
+
+
 
 
 
@@ -388,6 +390,8 @@ namespace Traffix.Storage.Faster
 
         }
 
+        public int WrittenFrames => _framesStore.Written;
+
 
         /// <summary>
         /// Frame streamer is responsible for streaming external frame into table. 
@@ -397,15 +401,20 @@ namespace Traffix.Storage.Faster
         public class FrameStreamer : IDisposable
         {
             private readonly FasterConversationTable _table;
-            private ClientSession<ConversationKey, ConversationValue, ConversationInput, ConversationOutput, ConversationContext, ConversationFunctions> _conversationsSession;
-            private ClientSession<FrameKey, FrameValue, FrameInput, FrameOutput, FrameContext, FrameFunctions> _framesSession;
+            private ConversationsStore.KeyValueStoreClient _conversationsStoreClient;
+            private FramesStore.KeyValueStoreClient _framesStoreClient;
+            private readonly int _autoFlushRequests;
             private bool _closed;
-
-            internal FrameStreamer(FasterConversationTable table, ClientSession<ConversationKey, ConversationValue, ConversationInput, ConversationOutput, ConversationContext, ConversationFunctions> conversationsSession, ClientSession<FrameKey, FrameValue, FrameInput, FrameOutput, FrameContext, FrameFunctions> framesSession)
+            private int _outstandingRequests;
+            internal FrameStreamer(FasterConversationTable table, 
+                ConversationsStore.KeyValueStoreClient conversationsStoreClient,
+                FramesStore.KeyValueStoreClient framesStoreClient,
+                int autoFlush)
             {
                 _table = table;
-                _conversationsSession = conversationsSession;
-                _framesSession = framesSession;
+                _conversationsStoreClient = conversationsStoreClient;
+                _framesStoreClient = framesStoreClient;
+                _autoFlushRequests = autoFlush;
             }
 
             /// <summary>
@@ -423,9 +432,12 @@ namespace Traffix.Storage.Faster
             public void AddFrame(RawFrame frame, Span<byte> frameBytes, long address)
             {
                 if (_closed) throw new InvalidOperationException("Cannot add new data. The stream is closed.");
-                var frameKey = _table.GetFrameKey(frame.LinkLayer, frameBytes);
-                var frameAddress = _table.UpsertFrame(_framesSession, frame, frameBytes, address, frameKey);
-                _table.UpsertConversation(_conversationsSession, frame, frameKey, frameAddress);
+                var frameFlowKey = _table.GetFrameKey(frame.LinkLayer, frameBytes);
+                var frameKey = _table.InsertFrame(_framesStoreClient, frame, frameBytes, address, frameFlowKey);
+                _table.UpdateConversationWithFrame(_conversationsStoreClient, frameKey.Address, frameFlowKey, frame.OriginalLength, frame.Ticks);
+                
+                _outstandingRequests++;
+                if (_outstandingRequests > _autoFlushRequests) Flush();
             }
 
             /// <summary>
@@ -433,8 +445,9 @@ namespace Traffix.Storage.Faster
             /// </summary>
             public void Flush()
             {
-                _conversationsSession.CompletePending(true);
-                _framesSession.CompletePending(true);
+                _conversationsStoreClient.CompletePending(true);
+                _framesStoreClient.CompletePending(true);
+                _outstandingRequests = 0;
             }
 
             /// <summary>
@@ -449,8 +462,8 @@ namespace Traffix.Storage.Faster
             public void Dispose()
             {
                 if (!_closed) Close();
-                ((IDisposable)_conversationsSession).Dispose();
-                ((IDisposable)_framesSession).Dispose();
+                ((IDisposable)_conversationsStoreClient).Dispose();
+                ((IDisposable)_framesStoreClient).Dispose();
             }
         }
     }

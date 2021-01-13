@@ -1,7 +1,6 @@
 namespace Traffix.Storage.Faster
 {
-    internal class FrameContext
+    internal class FrameContext : StoreContext<FrameOutput>
     {
-        public static FrameContext Empty => new FrameContext();
     }
 }
