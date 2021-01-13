@@ -4,6 +4,7 @@ using System;
 using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -81,8 +82,6 @@ namespace Traffix.Storage.Faster
             {
                 if (disposing)
                 {
-                    // always commit on dispose
-                    Commit();
                     _framesStore.Dispose();
                     _conversationsStore.Dispose();
                 }
@@ -97,41 +96,15 @@ namespace Traffix.Storage.Faster
         }
         #endregion
 
-
         /// <summary>
-        /// Loads frames and identifies their conversations from the provided packet capture stream.
+        /// Persists the current state. 
+        /// <para/>
+        /// After new data are added by the <seealso cref="FrameStreamer"/>
+        /// it is necessary to call <seealso cref="SaveChanges"/> to 
+        /// save them in the persistent location. If this is not called then 
+        /// data are volatile and cannot be restored.
         /// </summary>
-        /// <param name="stream">The input stream of tcpdump pcap format.</param>
-        /// <param name="cancellationToken"></param>
-        public int LoadFromStream(Stream stream, CancellationToken cancellationToken, Action<long, Packet>? onNextPacket = null, int maxPacketCount=int.MaxValue)
-        {
-            using var captureReader = new CaptureFileReader(stream) ?? throw new ArgumentException("Invalid stream provided.", nameof(stream));
-            using var loader = GetFrameLoader();
-            var packetCount = 0;
-            // reads all frames from the capture file stream:
-            while (captureReader.GetNextFrameHeader(out var frame))
-            {
-                using var buffer = _memoryPool.Rent(frame.IncludedLength);    
-                // get and use only the required portion of the buffer:
-                var bytes = buffer.Memory.Span.Slice(0, frame.IncludedLength);
-                var address = captureReader.Position;
-                captureReader.ReadFrameBytes(bytes);
-                loader.AddFrame(frame, bytes, address);
-                packetCount++;
-                if (cancellationToken.IsCancellationRequested) break;
-                
-                
-                if (packetCount == maxPacketCount) return packetCount;
-            }
-
-            loader.Close();
-            return packetCount;
-        }
-
-        /// <summary>
-        /// Commit the current state and persist changes to disk database.
-        /// </summary>
-        public void Commit()
+        public void SaveChanges()
         {
             _conversationsStore.Checkpoint();
             _framesStore.Checkpoint();
@@ -186,14 +159,15 @@ namespace Traffix.Storage.Faster
         }
 
         /// <summary>
-        /// Gets the loader that can be used for the batch insertation of new frames to the table.
-        /// Call <see cref="FrameStreamer.Close"/> to complete all pending insert operations.
+        /// Gets the streamer object that can be used for the batch insertation of new frames to the table.
+        /// Call <see cref="FrameStreamer.Close"/> to complete all pending operations.
         /// <para>
-        /// The FrameLoader should be  properly disposed when no longer in use.  
+        /// The FrameStreamer should be properly disposed when no longer in use. It is possible to open multiple streamers 
+        /// to insert data.
         /// </para>
         /// </summary>
-        /// <returns>The loader instance.</returns>
-        public FrameStreamer GetFrameLoader(int autoFlush = 1024)
+        /// <returns>The new streamer instance.</returns>
+        public FrameStreamer GetStreamer(int autoFlush = 1024)
         {
             var conversationsClient = _conversationsStore.GetClient() ?? throw new InvalidOperationException("Cannot create conversation session.");
             var framesClient = _framesStore.GetClient() ?? throw new InvalidOperationException("Cannot create conversation session.");
@@ -352,6 +326,20 @@ namespace Traffix.Storage.Faster
             }
         }
 
+        public int GetFramesCount()
+        {
+            int frameNumber = 0;
+            ProcessingResult<int> GetRawFrame(FrameMetadata meta, Memory<byte> frame)
+            {
+                return new ProcessingResult<int>
+                {
+                    State = ProcessingState.Success,
+                    Result = ++frameNumber
+                };
+            }
+            return ProcessFrames(GetRawFrame).Count();
+        }
+
         public IEnumerable<RawFrame> Frames
         {
             get
@@ -437,13 +425,17 @@ namespace Traffix.Storage.Faster
                 _table.UpdateConversationWithFrame(_conversationsStoreClient, frameKey.Address, frameFlowKey, frame.OriginalLength, frame.Ticks);
                 
                 _outstandingRequests++;
-                if (_outstandingRequests > _autoFlushRequests) Flush();
+                if (_outstandingRequests > _autoFlushRequests) CompletePending();
             }
 
             /// <summary>
-            /// Streams any remaining data, but doesn't close the streamer.
+            /// Waits until all pending operations are completed.
+            /// <para/>
+            /// This causes that pending operations of the loader is completed but it does not mean that 
+            /// they are persisted in the storage. It is necessary to call <seealso cref="FasterConversationTable.SaveChanges"/>
+            /// method.
             /// </summary>
-            public void Flush()
+            public void CompletePending()
             {
                 _conversationsStoreClient.CompletePending(true);
                 _framesStoreClient.CompletePending(true);
@@ -451,12 +443,11 @@ namespace Traffix.Storage.Faster
             }
 
             /// <summary>
-            /// Streams any remaining data and closes this streamer.
+            /// Waits until all pending operations are completed and closes this streamer.
             /// </summary>
             public void Close()
             {
-                // complete operations
-                Flush();
+                CompletePending();
                 _closed = true;
             }
             public void Dispose()

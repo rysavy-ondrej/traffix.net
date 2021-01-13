@@ -4,6 +4,7 @@ using System.Linq;
 using System.Management.Automation;
 using System.Threading.Tasks;
 using Traffix.Hosting.Console;
+using Traffix.Providers.PcapFile;
 using Traffix.Storage.Faster;
 
 namespace IcsMonitor.Commands
@@ -17,10 +18,18 @@ namespace IcsMonitor.Commands
         protected override Task BeginProcessingAsync()
         {
             _flowTable = FasterConversationTable.Create("tmp");
-            using (var stream = InputFile.OpenRead())
+
+            var frameNumber = 0;
+            using (var loader = _flowTable.GetStreamer())
+            using (var pcapReader = new SharpPcapReader(InputFile.FullName))
             {
-                _flowTable.LoadFromStream(stream, CancellationTokenSource.Token, null);
+                while (pcapReader.GetNextFrame(out var rawFrame))
+                {
+                    loader.AddFrame(rawFrame, rawFrame.Data, ++frameNumber);
+                }
+                loader.Close();
             }
+
             return Task.CompletedTask;
         }
 

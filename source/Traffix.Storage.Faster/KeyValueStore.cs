@@ -71,7 +71,8 @@ namespace Traffix.Storage.Faster
                     checkpointSettings:
                         new CheckpointSettings
                         {
-                            CheckpointDir = $"{this._dataFolder}/data/checkpoints"
+                            CheckpointDir = $"{this._dataFolder}/data/checkpoints",
+                            CheckPointType = CheckpointType.FoldOver
                         },
                     serializerSettings: _serializerSettings,
                     variableLengthStructSettings: _variableLenSettings
@@ -87,6 +88,11 @@ namespace Traffix.Storage.Faster
 
         }
 
+        /// <summary>
+        /// Performs the incremental checkpoint, which cause 
+        /// to persist unsaved changes.
+        /// </summary>
+        /// <returns>The Id of the checkpoint created.</returns>
         public Guid Checkpoint()
         {
             if (_fasterKvh == null) throw new InvalidOperationException("The store is closed.");

@@ -35,14 +35,14 @@ namespace IcsMonitor
         public FasterConversationTable ReadToConversationTable(Stream stream, string conversationTablePath, CancellationToken? token = null)
         {
             var flowTable = FasterConversationTable.Create(conversationTablePath);
-            flowTable.LoadFromStream(stream, token ?? CancellationToken.None, null);
+            // flowTable.LoadFromStream(stream, token ?? CancellationToken.None, null);
             return flowTable;
         }
 
         public FasterConversationTable CreateConversationTable(IEnumerable<RawFrame> frames, string conversationTablePath, CancellationToken? token = null)
         {
             var flowTable = FasterConversationTable.Create(Path.Combine(conversationTablePath));
-            using (var loader = flowTable.GetFrameLoader())
+            using (var loader = flowTable.GetStreamer())
             {
                 foreach (var frame in frames)
                 {
@@ -50,7 +50,7 @@ namespace IcsMonitor
                     if (token?.IsCancellationRequested ?? false) break;
                 }
             }
-            flowTable.Commit();
+            flowTable.SaveChanges();
             return flowTable;
         }
 
@@ -130,19 +130,19 @@ namespace IcsMonitor
             Console.WriteLine($">> {flowTablePath}");
 
             var flowTable = FasterConversationTable.Create(flowTablePath);
-            var loader = flowTable.GetFrameLoader();
+            var loader = flowTable.GetStreamer();
             foreach (var frame in frames)
             {
                 if (startWindowTicks is null) startWindowTicks = frame.Ticks;
                 if (frame.Ticks > startWindowTicks + timeIntervalTicks)
                 {
                     loader.Dispose();
-                    flowTable.Commit();
+                    flowTable.SaveChanges();
                     yield return flowTable;
                     flowTableNum++;
                     flowTablePath = Path.Combine(conversationTablePath, flowTableNum.ToString("D4"));
                     flowTable = FasterConversationTable.Create(flowTablePath);
-                    loader = flowTable.GetFrameLoader();
+                    loader = flowTable.GetStreamer();
                     startWindowTicks += timeIntervalTicks;
                 }
 
@@ -150,7 +150,7 @@ namespace IcsMonitor
                 if (token?.IsCancellationRequested ?? false) break;
             }
             loader.Dispose();
-            flowTable.Commit();
+            flowTable.SaveChanges();
             yield return flowTable;
         }
 
