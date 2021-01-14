@@ -51,7 +51,7 @@ namespace IcsMonitor
         static DateTime nullDate = new DateTime();
         private static void AddPacket(List<(FrameMetadata,Packet)> packets, FlowMetrics metrics, FrameMetadata meta, Packet packet)
         {
-            metrics.Octets += meta.IncludedLength;
+            metrics.Octets += meta.OriginalLength;
             metrics.Packets++;
             var packetTimestamp = new DateTime(meta.Ticks);
             if (metrics.Start == nullDate || packetTimestamp < metrics.Start) metrics.Start = packetTimestamp;

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using static Traffix.Storage.Faster.FasterConversationTable;
 
 namespace Traffix.Storage.Faster
 {
@@ -104,8 +105,8 @@ namespace Traffix.Storage.Faster
         public void Dispose()
         {
             _fasterKvh?.Dispose();
-            _logDevice?.Close();
-            _objDevice?.Close();
+            _logDevice?.Dispose();
+            _objDevice?.Dispose();
         }
 
 
@@ -121,21 +122,24 @@ namespace Traffix.Storage.Faster
             return _fasterKvh.NewSession(sessionId, threadAffinitized);
         }
 
-        public IEnumerable<KeyValuePair<TKey, TValue>> Items
+        public IEnumerable<(ProcessingState State, TResult Result)> ProcessEntries<TResult>(IEntryProcessor<TKey, TValue,TResult> processor)
         {
-            get
+            if (_fasterKvh == null) throw new InvalidOperationException("The store is closed.");
+            var iterator = _fasterKvh.Iterate() ?? throw new InvalidOperationException("Cannot create conversations database iterator.");
+            while (iterator.GetNext(out _))
             {
-                if (_fasterKvh == null) throw new InvalidOperationException("The store is closed.");
-                var iterator = _fasterKvh.Iterate() ?? throw new InvalidOperationException("Cannot create conversations database iterator.");
-                while (iterator.GetNext(out _))
-                {
-                    var key = iterator.GetKey();
-                    var value = iterator.GetValue();
-                    yield return KeyValuePair.Create(key, value);
-                }
-                iterator.Dispose();
+                var key = iterator.GetKey();
+                var value = iterator.GetValue();
+                var state = processor.Invoke(ref key, ref value, out var result);
+                yield return (state, result);
             }
+            iterator.Dispose();
         }
+
+        /// <summary>
+        /// Gets the number of entries in the store.
+        /// </summary>
+        public long EntryCount => _fasterKvh.EntryCount;
 
 
         public class KeyValueStoreClient : IDisposable

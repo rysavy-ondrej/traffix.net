@@ -25,28 +25,28 @@ namespace Traffix.Storage.Faster
     /// Provides the conversation value, which consists of pair of flow meta data and 
     /// a collection of frames.
     /// </summary>
-    internal class ConversationValue : IConversationValue
+    public class ConversationValue : IConversationValue
     {
         /// <summary>
         /// Provides meta information about the forward flow.
         /// </summary>
-        internal FlowMetrics ForwardFlow;
+        public FlowMetrics ForwardFlow;
 
         /// <summary>
         /// Provides meta information about the reverse flow.
         /// </summary>
-        internal FlowMetrics ReverseFlow;
+        public FlowMetrics ReverseFlow;
         /// <summary>
         /// The actual number of flows. 
         /// <para/>
         /// <see cref="FrameAddresses"/> can be larger than <see cref="FrameCount"/>.
         /// It enables to use In-place update which is faster for most of the RMW operations.
         /// </summary>
-        internal int FrameCount;
+        public int FrameCount;
         /// <summary>
         /// An array of frame numbers.
         /// </summary>
-        internal long[] FrameAddresses;
+        public long[] FrameAddresses;
 
         /// <summary>
         /// Default parameterless constructor.
@@ -99,8 +99,9 @@ namespace Traffix.Storage.Faster
             }
         }
 
-        public override void Deserialize(ref ConversationValue value)
+        public override void Deserialize(out ConversationValue value)
         {
+            value = new ConversationValue();
             value.ForwardFlow.FirstSeen = reader.ReadInt64();
             value.ForwardFlow.LastSeen = reader.ReadInt64();
             value.ForwardFlow.Octets = reader.ReadUInt64();

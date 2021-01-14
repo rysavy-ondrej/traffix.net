@@ -1,26 +1,25 @@
-using FASTER.core;
+using Microsoft.Extensions.Configuration.Json;
 using PacketDotNet;
 using System;
 using System.Buffers;
-using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using Traffix.Core.Flows;
 using Traffix.Providers.PcapFile;
+using FASTER.core;
 
 namespace Traffix.Storage.Faster
 {
     /// <summary>
-    /// Implements a flow table backed by FASTER Key-Value Database. This class provides API for 
-    /// adding packets and accessing conversations.
+    /// Implements a flow table backed by the FASTER Key-Value Database. This class provides API for 
+    /// adding packets and accessing conversations and frames.
     /// </summary>
     public class FasterConversationTable : IDisposable
     {
         private readonly string _rootFolder;
+        private readonly Configuration _config;
         private readonly ConversationsStore _conversationsStore;
         private readonly FramesStore _framesStore;
 
@@ -36,44 +35,68 @@ namespace Traffix.Storage.Faster
         IFlowKeyProvider<FlowKey, Packet> _packetKeyProvider = new PacketKeyProvider();
 
         private bool _disposedValue;
-        private const int averageFramesPerFlow = 24;
-
-        public static FasterConversationTable Create(string folder, long framesCapacity=100000)
+        /// <summary>
+        /// The default number for avg. frames per flow. This is according 
+        /// to http://rboutaba.cs.uwaterloo.ca/Papers/Conferences/2004/Kim04.pdf
+        /// </summary>
+        private const double DefaultFlowsFrameRatio = 0.04;
+            
+        /// <summary>
+        /// Creates a new conversation table.
+        /// </summary>
+        /// <param name="folder">The destination folder to persist conversation table.</param>
+        /// <param name="framesCapacity">The expected frame capacity of the table. The conversation table offerst bets performance and space 
+        /// if the actual frame number is around this value.</param>
+        /// <param name="flowFrameRatio">The expected ratio between flows and frames. It can be computed as "1 / average frames per flow".</param>
+        /// <returns>New instance of the conversation table.</returns>
+        public static FasterConversationTable Create(string folder, long framesCapacity, double flowFrameRatio = DefaultFlowsFrameRatio)
         {
             // ensure that root folder does exist:
             if (!Directory.Exists(folder))
             {
                 Directory.CreateDirectory(folder);
             }
-            var table = new FasterConversationTable(folder, framesCapacity);
-            table._conversationsStore.InitAndRecover();
-            table._framesStore.InitAndRecover();
-            return table;
-        }
-
-        public static FasterConversationTable Open(string folder, long framesCapacity=100000)
-        {
-            if (!Directory.Exists(folder))
-            {
-                throw new DirectoryNotFoundException($"Specified folder '{folder}' not found.");
-            }
-            
-            var table = new FasterConversationTable(folder, framesCapacity);
+            var config = new Configuration(Path.Combine(folder,"settings.json"));
+            config.FramesCapacity = framesCapacity;
+            config.ConversationsCapacity = (long)(framesCapacity * flowFrameRatio);
+            config.Save();  // need to save as we create a new configuration
+            var table = new FasterConversationTable(folder, config);
             table._conversationsStore.InitAndRecover();
             table._framesStore.InitAndRecover();
             return table;
         }
 
         /// <summary>
+        /// Opens an existing conversation table persisted in the specified folder.
+        /// </summary>
+        /// <param name="folder">The folder containing conversation table files.</param>
+        /// <returns>New instance of the conversation table.</returns>
+        public static FasterConversationTable Open(string folder)
+        {
+            if (!Directory.Exists(folder))
+            {
+                throw new DirectoryNotFoundException($"Specified folder '{folder}' not found.");
+            }
+            var config = new Configuration(Path.Combine(folder, "settings.json")).Load();
+            var table = new FasterConversationTable(folder, config);
+            table._conversationsStore.InitAndRecover();
+            table._framesStore.InitAndRecover();
+            return table;
+        }
+
+ 
+
+        /// <summary>
         /// Creates a store that uses the specified folder for saving data.
         /// If the folder does not exist, it will be created.
         /// </summary>
         /// <param name="folder"></param>
-        protected FasterConversationTable(string folder, long framesCapacity)
+        private FasterConversationTable(string folder,  Configuration config)
         {
             _rootFolder = folder;
-            _conversationsStore = new ConversationsStore(Path.Combine(folder, "conversations"), framesCapacity/(averageFramesPerFlow * 2));
-            _framesStore = new FramesStore(Path.Combine(folder, "frames"), framesCapacity);
+            _config = config;
+            _conversationsStore = new ConversationsStore(Path.Combine(folder, "conversations"), config.ConversationsCapacity);
+            _framesStore = new FramesStore(Path.Combine(folder, "frames"), config.FramesCapacity);
         }
         #region Dispose Implementation
         protected virtual void Dispose(bool disposing)
@@ -110,48 +133,58 @@ namespace Traffix.Storage.Faster
             _framesStore.Checkpoint();
         }
 
-        public FlowKey GetFrameKey(LinkLayers linkLayer, Span<byte> bytes)
+        /// <summary>
+        /// Ges the flow key for the given <paramref name="frame"/>.
+        /// </summary>
+        /// <param name="linkLayer">The link layer of the frame.</param>
+        /// <param name="frame">The frame bytes.</param>
+        /// <returns>The flow kye of the frame.</returns>
+        public FlowKey GetFlowKey(LinkLayers linkLayer, Span<byte> frame)
         {
-            var packet = Packet.ParsePacket(linkLayer, bytes.ToArray());
+            var packet = Packet.ParsePacket(linkLayer, frame.ToArray());
             var frameKey = _packetKeyProvider.GetKey(packet);
             return frameKey;
         }
-        public FlowKey GetPacketKey(Packet packet)
+        /// <summary>
+        /// Gets the flow key for the given <paramref name="packet"/>.
+        /// </summary>
+        /// <param name="packet"></param>
+        /// <returns></returns>
+        public FlowKey GetFlowKey(Packet packet)
         {
             var packetKey = _packetKeyProvider.GetKey(packet);
             return packetKey;
         }
 
-        private bool UpdateConversationWithFrame(ConversationsStore.KeyValueStoreClient client, long frameAddress, FlowKey flowKey, int originalLength, long ticks)
-        {
-            var input = new ConversationInput
-            {
-                FrameAddress = frameAddress,
-                FrameSize = originalLength,
-                FrameTicks = ticks,
-                FrameKey = flowKey
-            };
+        /// <summary>
+        /// Updates the conversation with the provided frame metadata.
+        /// </summary>
+        /// <param name="client">The client of the conversation store used to update the conversation record.</param>
+        /// <param name="flowKey">The flow key of the conversation.</param>
+        /// <param name="input">The information to update the conversation.</param>
+        /// <returns>true if the conversation was update; false if new conversation was created.</returns>
+        private bool UpdateConversationWithFrame(ConversationsStore.KeyValueStoreClient client, ref FlowKey flowKey, ref ConversationInput input)
+        { 
             var conversationKey = GetConversationKey(flowKey);
             return client.Update(ref conversationKey, ref input);
         }
 
-        private unsafe FrameKey InsertFrame(FramesStore.KeyValueStoreClient client, RawFrame frame, Span<byte> bytes, long address, FlowKey frameFlowKey)
+        /// <summary>
+        /// Insert a new frame to the frame store.
+        /// </summary>
+        /// <param name="client">The client used to insert the frame to the store.</param>
+        /// <param name="frame"></param>
+        /// <param name="bytes"></param>
+        /// <param name="address"></param>
+        /// <param name="frameFlowKey"></param>
+        /// <returns></returns>
+        private unsafe FrameKey InsertFrame(FramesStore.KeyValueStoreClient client, ref FlowKey frameFlowKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes, long address)
         {
-            var size = FrameValue.ComputeLength(frame.IncludedLength);
+            var size = FrameValue.GetRequiredSize(frameBytes.Length);
             using var buffer = _memoryPool.Rent(size);
             fixed (void* bufferPtr = buffer.Memory.Span)
             {
-                ref var frameValue = ref Unsafe.AsRef<FrameValue>(bufferPtr);
-
-                frameValue.Meta.Ticks = frame.Ticks;
-                frameValue.Meta.IncludedLength = (ushort)frame.IncludedLength;
-                frameValue.Meta.OriginalLength = (ushort)frame.OriginalLength;
-                frameValue.Meta.LinkLayer = (ushort)frame.LinkLayer;
-                frameValue.Meta.FlowKeyHash = frameFlowKey.GetHashCode64();
-
-                var frameBytesSpan = new Span<byte>(Unsafe.AsPointer(ref frameValue.Bytes), frame.IncludedLength);
-                bytes.TryCopyTo(frameBytesSpan);
-
+                var frameValue = FrameValue.Create(ref Unsafe.AsRef<FrameValue>(bufferPtr), ref frameMetadata, frameBytes); 
                 var frameKey = new FrameKey { Address = address };
                 client.Put(ref frameKey, ref frameValue);
                 return frameKey;
@@ -202,7 +235,7 @@ namespace Traffix.Storage.Faster
         /// <param name="keys">The collection of conversation keys to process.</param>
         /// <param name="processor">The conversation processor used to transform the conversation to the object of type <typeparamref name="TResult"/>.</param>
         /// <returns>The enumerable collection of resulting objects produced by the <paramref name="processor"/>.</returns>
-        public IEnumerable<TResult> ProcessConversations<TResult>(IEnumerable<IConversationKey> keys, IConversationProcessor<TResult> processor)
+        public IEnumerable<TResult> ProcessConversations<TResult>(IEnumerable<ConversationKey> keys, IConversationProcessor<TResult> processor)
         {
             using var conversationsClient = _conversationsStore.GetClient() ?? throw new InvalidOperationException("Cannot create conversations DB session.");
             using var framesClient = _framesStore.GetClient() ?? throw new InvalidOperationException("Cannot create frames DB session.");
@@ -213,27 +246,22 @@ namespace Traffix.Storage.Faster
                 conversationsClient.TryGet(ref key, ref output);
                 var frameKey = new FrameKey();
                 var frameInput = new FrameInput() { Pool = MemoryPool<byte>.Shared };
-                var frameList = new List<IMemoryOwner<byte>>();
+                var frameList = new List<FrameOutput>();
                 for(int i = 0; i < output.Value.FrameCount; i++)
                 {
                     frameKey.Address = output.Value.FrameAddresses[i];
-                    var frameOutput = framesClient.Get(ref frameKey);
-                    frameList.Add(frameOutput.FrameBuffer);
+                    var frameOutput = default(FrameOutput);
+                    if (framesClient.TryGet(ref frameKey, ref frameOutput))
+                    {
+                        frameList.Add(frameOutput);
+                    }
                 }
-                var result = processor.Invoke(key.FlowKey, frameList.Select(x=>x.Memory));
-                foreach (var m in frameList) m?.Dispose();
+                var result = processor.Invoke(key.FlowKey, frameList.Select(x=>x.GetBuffer()));
+                // dispose memory allocated bytes
+                foreach (var m in frameList) m.ReleaseBuffer();
                 return result;
             }
-
-            TResult ProcessConversationSafe(IConversationKey key)
-            {
-                if (key is ConversationKey _key)
-                {
-                    return ProcessConversation(ref _key);
-                }
-                return default;
-            }
-            return keys.Select(key => ProcessConversationSafe(key));
+            return keys.Select(key => ProcessConversation(ref key));
         }
 
 
@@ -264,28 +292,38 @@ namespace Traffix.Storage.Faster
             public TResult Result;
         }
 
+        class FrameProcessor<TResult> : IEntryProcessor<FrameKey, FrameValue, TResult>
+        {
+            private readonly Func<FrameMetadata, SpanByte, ProcessingResult<TResult>> _processor;
+
+            public FrameProcessor(Func<FrameMetadata, SpanByte,ProcessingResult<TResult>> processor)
+            {
+                _processor = processor;
+            }
+
+            unsafe public ProcessingState Invoke(ref FrameKey key, ref FrameValue value, out TResult result)
+            {
+                var buffer = SpanByte.FromPointer((byte*)Unsafe.AsPointer(ref value.Bytes), value.BytesLength);
+                var x = _processor.Invoke(value.Meta, buffer);
+                result = x.Result;
+                return x.State;
+            }
+        }
+
         /// <summary>
         /// Applies the provided <paramref name="processor"/> to all frames in the table yielding to a collection of results produced by the processor. 
         /// </summary>
         /// <typeparam name="TResult">The type of resulting objects.</typeparam>
         /// <param name="processor">The processor function to apply.</param>
         /// <returns>A collection of results produced by the processor.</returns>
-        public IEnumerable<TResult> ProcessFrames<TResult>(Func<FrameMetadata, Memory<byte>, ProcessingResult<TResult>> processor)
+        public IEnumerable<TResult> ProcessFrames<TResult>(Func<FrameMetadata, SpanByte, ProcessingResult<TResult>> processor)
         {
-            ProcessingState GetResult(FrameValue frame, out TResult result)
+            foreach (var item in _framesStore.ProcessEntries<TResult>(new FrameProcessor<TResult>(processor)))
             {
-                using var buffer = _memoryPool.Rent(frame.Meta.IncludedLength);
-                frame.GetFrameBytes(buffer.Memory.Span);
-                var x = processor.Invoke(frame.Meta, buffer.Memory);
-                result = x.Result;
-                return x.State;
-            }
-            foreach (var item in _framesStore.Items)
-            {
-                switch (GetResult(item.Value, out var result))
+                switch (item.State)
                 {
                     case ProcessingState.Success:
-                        yield return result;
+                        yield return item.Result;
                         break;
                     case ProcessingState.Skip:
                         continue;
@@ -300,14 +338,11 @@ namespace Traffix.Storage.Faster
         /// Provides enumerable for all stored conversations.
         /// </summary>
         /// <returns>An enumerable of conversations.</returns>
-        public IEnumerable<KeyValuePair<IConversationKey, IConversationValue>> Conversations
+        public IEnumerable<KeyValuePair<ConversationKey, ConversationValue>> Conversations
         {
             get
             {
-                foreach(var item in _conversationsStore.Items)
-                {
-                    yield return KeyValuePair.Create(item.Key as IConversationKey, item.Value as IConversationValue);
-                }
+                return _conversationsStore.ProcessEntries<KeyValuePair<ConversationKey, ConversationValue>>(new KeyValueConversationProcessor()).Select(x => x.Result);
             }
         }
 
@@ -315,71 +350,39 @@ namespace Traffix.Storage.Faster
         /// Gets all stored conversation keys.
         /// </summary>
         /// <returns>An enumerable of conversation keys.</returns>
-        public IEnumerable<IConversationKey> ConversationKeys
+        public IEnumerable<ConversationKey> ConversationKeys
         {
             get
             {
-                foreach (var item in _conversationsStore.Items)
-                {
-                    yield return item.Key;
-                }
+                return _conversationsStore.ProcessEntries<KeyValuePair<ConversationKey, ConversationValue>>(new KeyValueConversationProcessor()).Select(x => x.Result.Key);
             }
         }
 
-        public int GetFramesCount()
+        public int FramesCount => (int)_framesStore.EntryCount;
+
+        public int ConversationsCount => (int)_conversationsStore.EntryCount;
+
+
+        public IEnumerable<RawFrame> GetRawFrames()
         {
             int frameNumber = 0;
-            ProcessingResult<int> GetRawFrame(FrameMetadata meta, Memory<byte> frame)
+            ProcessingResult<RawFrame> GetRawFrame(FrameMetadata meta, SpanByte frame)
             {
-                return new ProcessingResult<int>
+                return new ProcessingResult<RawFrame>
                 {
                     State = ProcessingState.Success,
-                    Result = ++frameNumber
+                    Result = new RawFrame((PacketDotNet.LinkLayers)meta.LinkLayer, ++frameNumber, meta.Ticks, 0, meta.OriginalLength, frame.ToByteArray())
                 };
             }
-            return ProcessFrames(GetRawFrame).Count();
+            return ProcessFrames(GetRawFrame);
         }
 
-        public IEnumerable<RawFrame> Frames
-        {
-            get
-            {
-                int frameNumber = 0;
-                ProcessingResult<RawFrame> GetRawFrame(FrameMetadata meta, Memory<byte> frame)
-                {
-                    return new ProcessingResult<RawFrame>
-                    {
-                        State = ProcessingState.Success,
-                        Result = new RawFrame((PacketDotNet.LinkLayers)meta.LinkLayer, ++frameNumber, meta.Ticks, 0, meta.OriginalLength, frame.ToArray())
-                    };
-                }
-                return ProcessFrames(GetRawFrame);
-            }
-        }
-
-        class RawFrameProcessor : ConversationProcessor<IEnumerable<RawFrame>>
-        {
-            public override IEnumerable<RawFrame> Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
-            {
-                FrameMetadata meta = new FrameMetadata();
-                int frameNumber = 0;
-                foreach (var frame in frames)
-                {
-                    var data = GetFrame(frame, ref meta);
-                    yield return new RawFrame((PacketDotNet.LinkLayers)meta.LinkLayer, ++frameNumber, meta.Ticks, 0, meta.OriginalLength, data.ToArray()); 
-                }
-            }
-        }
-
-        public IEnumerable<RawFrame> GetFrames(IConversationKey conversation)
+        public IEnumerable<RawFrame> GetFrames(ConversationKey conversation)
         {
             var result = ProcessConversations(new[] { conversation }, new RawFrameProcessor());
             return result.FirstOrDefault();
 
         }
-
-        public int WrittenFrames => _framesStore.Written;
-
 
         /// <summary>
         /// Frame streamer is responsible for streaming external frame into table. 
@@ -417,12 +420,30 @@ namespace Traffix.Storage.Faster
             /// <param name="frameBytes">Data bytes of the raw frame.</param>
             /// <param name="address">Offset/key of the frame. Can be used to refer to the frame to the external data source.</param>
             /// <exception cref="InvalidOperationException">Raises when the stremer is closed.</exception>
-            public void AddFrame(RawFrame frame, Span<byte> frameBytes, long address)
+            public void AddFrame(RawFrame frame, long address)
             {
                 if (_closed) throw new InvalidOperationException("Cannot add new data. The stream is closed.");
-                var frameFlowKey = _table.GetFrameKey(frame.LinkLayer, frameBytes);
-                var frameKey = _table.InsertFrame(_framesStoreClient, frame, frameBytes, address, frameFlowKey);
-                _table.UpdateConversationWithFrame(_conversationsStoreClient, frameKey.Address, frameFlowKey, frame.OriginalLength, frame.Ticks);
+                var frameFlowKey = _table.GetFlowKey(frame.LinkLayer, frame.Data);
+
+                var frameMeta = new FrameMetadata   // stack allocated struct 
+                {
+                    Ticks = frame.Ticks,
+                    OriginalLength = (ushort)frame.OriginalLength,
+                    LinkLayer = (ushort)frame.LinkLayer,
+                    FlowKeyHash = frameFlowKey.GetHashCode64()
+                };
+
+                var frameKey = _table.InsertFrame(_framesStoreClient, ref frameFlowKey, ref frameMeta, frame.Data, address);
+
+                var conversationUpdate = new ConversationInput  // stack allocated struct
+                {
+                    FrameAddress = frameKey.Address,
+                    FrameSize = frame.OriginalLength,
+                    FrameTicks = frame.Ticks,
+                    FrameKey = frameFlowKey
+                };
+
+                _table.UpdateConversationWithFrame(_conversationsStoreClient, ref frameFlowKey, ref conversationUpdate);
                 
                 _outstandingRequests++;
                 if (_outstandingRequests > _autoFlushRequests) CompletePending();
@@ -455,6 +476,84 @@ namespace Traffix.Storage.Faster
                 if (!_closed) Close();
                 ((IDisposable)_conversationsStoreClient).Dispose();
                 ((IDisposable)_framesStoreClient).Dispose();
+            }
+        }
+        public sealed class Configuration 
+        {
+            private JsonConfigurationProvider _provider;
+
+            public Configuration(string path)
+            {
+                this._provider = new JsonConfigurationProvider(new JsonConfigurationSource { Path = Path.GetFullPath(path) }); ;
+            }
+            public long FramesCapacity
+            {
+                get
+                {
+                    return _provider.TryGet(nameof(FramesCapacity), out var value) ? long.Parse(value) : 100000;
+                }
+                set
+                {
+                    _provider.Set(nameof(FramesCapacity), value.ToString());
+                }
+            }
+            public long ConversationsCapacity
+            {
+                get
+                {
+                    return _provider.TryGet(nameof(ConversationsCapacity), out var value) ? long.Parse(value) : 5000;
+                }
+                set
+                {
+                    _provider.Set(nameof(ConversationsCapacity), value.ToString());
+                }
+            }
+
+            /// <summary>
+            /// Saves the configration file.
+            /// </summary>
+            public Configuration Save()
+            {
+                string json = System.Text.Json.JsonSerializer.Serialize<Configuration>(this, new System.Text.Json.JsonSerializerOptions { WriteIndented = true } );
+                System.IO.File.WriteAllText(_provider.Source.Path, json);
+                return this;
+            }
+
+            public Configuration Load()
+            {
+                using var stream = File.OpenRead(_provider.Source.Path);
+                _provider.Load(stream);
+                return this;
+            }
+        }
+
+        private class KeyValueConversationProcessor : IEntryProcessor<ConversationKey, ConversationValue, KeyValuePair<ConversationKey, ConversationValue>>
+        {
+            public ProcessingState Invoke(ref ConversationKey key, ref ConversationValue value, out KeyValuePair<ConversationKey, ConversationValue> result)
+            {
+                result = KeyValuePair.Create(key, value);
+                return ProcessingState.Success;
+            }
+        }
+        private class KeyConversationProcessor : IEntryProcessor<ConversationKey, ConversationValue, ConversationKey>
+        {
+            public ProcessingState Invoke(ref ConversationKey key, ref ConversationValue value, out ConversationKey result)
+            {
+                result = key;
+                return ProcessingState.Success;
+            }
+        }
+        private class RawFrameProcessor : ConversationProcessor<IEnumerable<RawFrame>>
+        {
+            public override IEnumerable<RawFrame> Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
+            {
+                FrameMetadata meta = new FrameMetadata();
+                int frameNumber = 0;
+                foreach (var frame in frames)
+                {
+                    var data = GetFrame(frame, ref meta);
+                    yield return new RawFrame((PacketDotNet.LinkLayers)meta.LinkLayer, ++frameNumber, meta.Ticks, 0, meta.OriginalLength, data.ToArray());
+                }
             }
         }
     }

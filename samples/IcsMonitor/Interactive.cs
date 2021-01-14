@@ -1,4 +1,5 @@
-﻿using IcsMonitor.Modbus;
+﻿using FASTER.core;
+using IcsMonitor.Modbus;
 using PacketDotNet;
 using System;
 using System.Collections.Generic;
@@ -34,19 +35,19 @@ namespace IcsMonitor
         }
         public FasterConversationTable ReadToConversationTable(Stream stream, string conversationTablePath, CancellationToken? token = null)
         {
-            var flowTable = FasterConversationTable.Create(conversationTablePath);
+            var flowTable = FasterConversationTable.Create(conversationTablePath, 100000);
             // flowTable.LoadFromStream(stream, token ?? CancellationToken.None, null);
             return flowTable;
         }
 
         public FasterConversationTable CreateConversationTable(IEnumerable<RawFrame> frames, string conversationTablePath, CancellationToken? token = null)
         {
-            var flowTable = FasterConversationTable.Create(Path.Combine(conversationTablePath));
+            var flowTable = FasterConversationTable.Create(Path.Combine(conversationTablePath), 100000);
             using (var loader = flowTable.GetStreamer())
             {
                 foreach (var frame in frames)
                 {
-                    loader.AddFrame(frame, frame.Data, frame.Number);
+                    loader.AddFrame(frame,  frame.Number);
                     if (token?.IsCancellationRequested ?? false) break;
                 }
             }
@@ -70,12 +71,12 @@ namespace IcsMonitor
 
         public IEnumerable<(long Ticks, Packet Packet)> GetPackets(FasterConversationTable table)
         {
-            static FasterConversationTable.ProcessingResult<(long,Packet)> GetPacket(FrameMetadata meta, Memory<byte> bytes)
+            static FasterConversationTable.ProcessingResult<(long,Packet)> GetPacket(FrameMetadata meta, SpanByte bytes)
             {
                 return new FasterConversationTable.ProcessingResult<(long, Packet)>
                 {
                     State = FasterConversationTable.ProcessingState.Success,
-                    Result = (meta.Ticks, Packet.ParsePacket((LinkLayers)meta.LinkLayer, bytes.ToArray()))
+                    Result = (meta.Ticks, Packet.ParsePacket((LinkLayers)meta.LinkLayer, bytes.ToByteArray()))
                 };
             }
             return table.ProcessFrames<(long, Packet)>(GetPacket);
@@ -129,7 +130,7 @@ namespace IcsMonitor
             var flowTablePath = Path.Combine(conversationTablePath, flowTableNum.ToString("D4"));
             Console.WriteLine($">> {flowTablePath}");
 
-            var flowTable = FasterConversationTable.Create(flowTablePath);
+            var flowTable = FasterConversationTable.Create(flowTablePath, 100000);
             var loader = flowTable.GetStreamer();
             foreach (var frame in frames)
             {
@@ -141,12 +142,12 @@ namespace IcsMonitor
                     yield return flowTable;
                     flowTableNum++;
                     flowTablePath = Path.Combine(conversationTablePath, flowTableNum.ToString("D4"));
-                    flowTable = FasterConversationTable.Create(flowTablePath);
+                    flowTable = FasterConversationTable.Create(flowTablePath, 100000);
                     loader = flowTable.GetStreamer();
                     startWindowTicks += timeIntervalTicks;
                 }
 
-                loader.AddFrame(frame, frame.Data, frame.Number);
+                loader.AddFrame(frame,  frame.Number);
                 if (token?.IsCancellationRequested ?? false) break;
             }
             loader.Dispose();
@@ -191,7 +192,7 @@ namespace IcsMonitor
 
         public bool ContainsPacket(FasterConversationTable table, FlowKey conversationKey, Packet packet)
         {
-            var packetKey = table.GetPacketKey(packet);
+            var packetKey = table.GetFlowKey(packet);
             return conversationKey.EqualsOrReverse(packetKey);
         }
                 
@@ -226,18 +227,9 @@ namespace IcsMonitor
 
                 foreach (var folder in Directory.GetDirectories(dbTableDirectory))
                 {
-                    var table = FasterConversationTable.Create(folder);
+                    var table = FasterConversationTable.Create(folder, 100000);
                     tables.Add(table);
-                    int frameNumber = 0;
-                    FasterConversationTable.ProcessingResult<RawFrame> frameProcessor(FrameMetadata meta, Memory<byte> frame)
-                    {
-                        return new FasterConversationTable.ProcessingResult<RawFrame>
-                        {
-                            State = FasterConversationTable.ProcessingState.Success,
-                            Result = new RawFrame((PacketDotNet.LinkLayers)meta.LinkLayer, ++frameNumber, meta.Ticks, 0, meta.OriginalLength, frame.ToArray())
-                        };
-                    }
-                    frames.AddRange(table.ProcessFrames<RawFrame>(frameProcessor));
+                    frames.AddRange(table.GetRawFrames());
                 }
                 Console.WriteLine($"Frames count = {frames.Count}");
             }

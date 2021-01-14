@@ -7,11 +7,12 @@ namespace Traffix.Storage.Faster
     
     internal class FrameFunctions : KeyValueStore<FrameKey, FrameValue, FrameInput, FrameOutput, FrameFunctions>.StoreFunctions
     {
-        public override void ConcurrentReader(ref FrameKey key, ref FrameInput input, ref FrameValue value, ref FrameOutput dst)
+        public override void ConcurrentReader(ref FrameKey key, ref FrameInput input, ref FrameValue value, ref FrameOutput output)
         {
-            var len = value.GetLength();
-            dst.FrameBuffer = input.Pool.Rent(len);
-            value.CopyTo(dst.FrameBuffer.Memory);
+            var len = value.Length;
+            var buffer = input.Pool.Rent(len);
+            value.CopyTo(buffer.Memory.Span);
+            output.SetBuffer(buffer);
         }
 
         public override bool ConcurrentWriter(ref FrameKey key, ref FrameValue src, ref FrameValue dst)
@@ -19,11 +20,12 @@ namespace Traffix.Storage.Faster
             throw new System.InvalidOperationException("Each frame must have a unique key.");
         }
 
-        public override void SingleReader(ref FrameKey key, ref FrameInput input, ref FrameValue value, ref FrameOutput dst)
+        public override void SingleReader(ref FrameKey key, ref FrameInput input, ref FrameValue value, ref FrameOutput output)
         {
-            var len = value.GetLength();
-            dst.FrameBuffer = input.Pool.Rent(len);
-            value.CopyTo(dst.FrameBuffer.Memory);
+            var len = value.Length;
+            var buffer = input.Pool.Rent(len);
+            value.CopyTo(buffer.Memory.Span);
+            output.SetBuffer(buffer);
         }
 
         public override void SingleWriter(ref FrameKey key, ref FrameValue src, ref FrameValue dst)

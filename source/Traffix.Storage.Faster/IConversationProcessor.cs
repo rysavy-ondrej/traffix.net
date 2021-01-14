@@ -24,30 +24,23 @@ namespace Traffix.Storage.Faster
     public abstract class ConversationProcessor<T> : IConversationProcessor<T>
     {
         /// <summary>
-        /// Gets the frame from the provided <see cref="Memory{byte}"/> reference.
+        /// Gets packet bytes from the provided <paramref name="buffer"/> and copies the frame metadata to 
+        /// <paramref name="frame"/> structure.
+        /// <para/>
+        /// 
         /// </summary>
-        /// <param name="buffer">The input memory range with frame metadta and content.</param>
+        /// <param name="buffer">The input memory range with frame metadata and content.</param>
         /// <param name="frame">The reference to <see cref="FrameValue"/> to be populated with Frame metadata.</param>
-        /// <returns>The data bytes as <see cref="Span{T}"/> of the frame.</returns>
-       protected unsafe Span<byte> GetFrame(Memory<byte> buffer, ref FrameMetadata frame)
-       {
-            fixed (void* ptr = buffer.Span)
-            {
-                frame = Unsafe.AsRef<FrameMetadata>(ptr);
-            }
-            return  FrameValue.GetFrameData(buffer.Span, frame.IncludedLength);
-        }
-
-        protected unsafe Packet GetPacket(Memory<byte> buffer)
+        /// <returns>The method returns span to the provided  <paramref name="buffer"/> containing the frame bytes. 
+        /// Note that its lifetime is the same as the lifetime of the <paramref name="buffer"/>. </returns>
+        protected unsafe Span<byte> GetFrame(Memory<byte> buffer, ref FrameMetadata frame)
         {
             fixed (void* ptr = buffer.Span)
             {
-                ref var frame = ref Unsafe.AsRef<FrameValue>(ptr);
-                return frame.GetPacket();
+                frame = Unsafe.AsRef<FrameMetadata>(ptr);   // copy the struct from buffer to provided location
+                return FrameValue.GetFrameBytesSpan(buffer.Span);
             }
         }
-
-
         public abstract T Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames);
     }
 
@@ -57,7 +50,7 @@ namespace Traffix.Storage.Faster
         /// When applied to a flow and its frames, it creates the result of type <typeparamref name="T"/>.
         /// </summary>
         /// <param name="flowKey">The flow key.</param>
-        /// <param name="frames">The collection of raw frames of the flow.</param>
+        /// <param name="frames">The collection of byte arrays that constains metadata and bytes of frames of the flow.</param>
         /// <returns>The result of type <typeparamref name="T"/> or <see langword="null"/>.</returns>
         T Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames);
     }

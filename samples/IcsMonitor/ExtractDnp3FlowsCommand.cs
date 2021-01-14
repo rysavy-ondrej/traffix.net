@@ -17,7 +17,7 @@ namespace IcsMonitor.Commands
         FasterConversationTable _flowTable;
         protected override Task BeginProcessingAsync()
         {
-            _flowTable = FasterConversationTable.Create("tmp");
+            _flowTable = FasterConversationTable.Create("tmp", 1000000);
 
             var frameNumber = 0;
             using (var loader = _flowTable.GetStreamer())
@@ -25,7 +25,7 @@ namespace IcsMonitor.Commands
             {
                 while (pcapReader.GetNextFrame(out var rawFrame))
                 {
-                    loader.AddFrame(rawFrame, rawFrame.Data, ++frameNumber);
+                    loader.AddFrame(rawFrame, ++frameNumber);
                 }
                 loader.Close();
             }

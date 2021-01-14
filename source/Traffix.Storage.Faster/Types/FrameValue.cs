@@ -2,118 +2,114 @@ using FASTER.core;
 using PacketDotNet;
 using System;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Traffix.Storage.Faster
 {
 
+    /// <summary>
+    /// Represents the metadata of a frame.
+    /// </summary>
     [StructLayout(LayoutKind.Explicit)]
     public struct FrameMetadata
     {
         [FieldOffset(0)]
-        public long Ticks;
+        public  long Ticks;
 
         [FieldOffset(8)]
-        public ushort IncludedLength;
+        public  ushort OriginalLength;
 
         [FieldOffset(10)]
-        public ushort OriginalLength;
+        public  ushort LinkLayer;
 
         [FieldOffset(12)]
-        public ushort LinkLayer;
-
-        [FieldOffset(16)]
-        public long FlowKeyHash;
+        public  long FlowKeyHash;
     }
     /// <summary>
     /// Represents a variable length frame value. It has direct access to 
     /// its <see cref="IncludedLength"/> and <see cref="Ticks"/> fields.
     /// The payload starts at <see cref="Bytes"/> field. 
+    /// 
+    /// <para/>
+    /// This structure can be used for both stack-allocating and heap allocated 
+    /// frame objects. First, it is necessary to allocate a buffer for the strucutre (either on heap or stack).
+    /// Then the structure can be recreated using 
     /// </summary>
-    /// <remarks>
-    /// This structure is intentionally the same shape as 
-    /// the record header strucutre of PCAP file. It enables 
-    /// to use the input buffer when reading PCAP file without copying. 
-    /// </remarks>
     [StructLayout(LayoutKind.Explicit)]
-    public unsafe struct FrameValue
+    internal unsafe struct FrameValue
     {
+        const int metadataOffset = 4;
+        const int bytesOffset = 24;
+
         [FieldOffset(0)]
-        public FrameMetadata Meta;
-        [FieldOffset(24)]
-        public byte Bytes;
+        internal int Length;
+        [FieldOffset(metadataOffset)]
+        internal FrameMetadata Meta;
+        [FieldOffset(bytesOffset)]
+        internal byte Bytes;
 
-        /// <summary>
-        /// Copies the frame bytes to the provided byte span. 
-        /// If the provided span is less than <see cref="IncludedLength"/>
-        /// then only the portion of bytes is copied.
-        /// </summary>
-        /// <param name="dst">The array of bytes to copy.</param>
-        public int GetFrameBytes(Span<byte> dst)
+        public int BytesLength => Length - 24;
+
+        internal static Span<byte> GetFrameBytesSpan(Span<byte> span)
         {
-            var len = Math.Min(Meta.IncludedLength, dst.Length);
-            var src = (byte*)Unsafe.AsPointer(ref this.Bytes);
-            for (int i = 0; i < len; i++)
-            {
-                dst[i] = *src;
-                src++;
-            }
-            return len;
+            return span[bytesOffset..];
         }
-
-        public void CopyTo(ref FrameValue dst)
+        internal static Span<byte> GetMetadataSpan(Span<byte> span)
         {
-            var fulllength = ComputeLength(Meta.IncludedLength);
+            return span[metadataOffset..Unsafe.SizeOf<FrameMetadata>()];
+        }
+        internal void CopyTo(ref FrameValue dst)
+        {
+            var fullLength = Length * sizeof(int);
             Buffer.MemoryCopy(Unsafe.AsPointer(ref this),
-                Unsafe.AsPointer(ref dst), fulllength, fulllength);
+                Unsafe.AsPointer(ref dst), fullLength, fullLength);
         }
+
         /// <summary>
-        /// Copy the current value to the specified destination. 
-        ///  
+        /// Copies the current value to the specified memory buffer. 
+        /// <para/>This operation is safe as it check the size of the target memory buffer.
         /// </summary>
         /// <param name="dst">The memory location to which the structure content will be copied.</param>
-        /// <param name="maxlen">The maximum number of bytes to copy.</param>
         /// <returns>Returns the number of bytes copied.</returns>
-        public unsafe void CopyTo(Memory<byte> dst)
+        internal unsafe void CopyTo(Span<byte> dst)
         {
-            fixed (void* bp = dst.Span)
+            fixed (void* bp = dst)
             {
-                Buffer.MemoryCopy(Unsafe.AsPointer(ref this), bp, dst.Length, ComputeLength(Meta.IncludedLength));
+                var fullLength = Length * sizeof(int);
+                Buffer.MemoryCopy(Unsafe.AsPointer(ref this),
+                bp, fullLength, fullLength);
             }
         }
 
-        internal static int ComputeLength(int length)
+        /// <summary>
+        /// Gets the size of buffer to accomodate the frame of the given length.
+        /// </summary>
+        /// <param name="frameBytesLength">The length of the frame.</param>
+        /// <returns></returns>
+        internal static int GetRequiredSize(int frameBytesLength)
         {
-            return (Unsafe.SizeOf<FrameMetadata>() + length);
+            return 24 + frameBytesLength;
         }
-
-        internal int GetLength()
-        {
-            return (Unsafe.SizeOf<FrameMetadata>() + Meta.IncludedLength);
-        }
-
-
-        public Packet GetPacket()
-        {
-            var bytes = new byte[Meta.IncludedLength];
-            GetFrameBytes(new Span<byte>(bytes));
-            return Packet.ParsePacket((LinkLayers)Meta.LinkLayer, bytes);
-        }
-
 
         /// <summary>
-        /// Gets the span of bytes of the frame if allocated within the array.
+        /// Creates a new <seealso cref="FrameValue"/> for the given metadata and frame bytes.
         /// </summary>
-        /// <param name="src"></param>
-        /// <returns></returns>
-        public static Span<byte> GetFrameData(Span<byte> src, int includedLength)
+        /// <param name="frameValue">The allocated space for <see cref="FrameValue"/> structure.</param>
+        /// <param name="frameMetadata"The metadata.></param>
+        /// <param name="frameBytes">The frame bytes.</param>
+        /// <returns>Reference to newly initialzied <see cref="FrameValue"/> object.</returns>
+        internal static ref FrameValue Create(ref FrameValue frameValue, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
         {
-            return src.Slice(Unsafe.SizeOf<FrameMetadata>(), includedLength);
+            frameValue.Length = GetRequiredSize(frameBytes.Length);
+            frameValue.Meta = frameMetadata;
+            frameBytes.CopyTo(new Span<byte>(Unsafe.AsPointer(ref frameValue.Bytes),frameBytes.Length));
+            return ref frameValue;
         }
     }
 
-    public struct FrameValueLength : IVariableLengthStruct<FrameValue>
+    internal struct FrameValueLength : IVariableLengthStruct<FrameValue>
     {
         public int GetInitialLength()
         {
@@ -122,7 +118,7 @@ namespace Traffix.Storage.Faster
 
         public int GetLength(ref FrameValue t)
         {
-            return t.GetLength();
+            return Unsafe.SizeOf<FrameValue>() + t.Length;
         }
     }
 }
