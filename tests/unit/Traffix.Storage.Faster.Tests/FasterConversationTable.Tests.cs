@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Traffix.Core.Flows;
 using Traffix.Providers.PcapFile;
 
 namespace Traffix.Storage.Faster.Tests
@@ -83,6 +84,49 @@ namespace Traffix.Storage.Faster.Tests
 
 
             return table;
+        }
+
+        [TestMethod]
+        public void ReadAllFrames()
+        {
+            var sw = new Stopwatch();
+            sw.Start();
+            var table = OpenTable();
+            Console.WriteLine($"--- LOADED --- [{sw.Elapsed}]");
+            sw.Restart();
+            int frames = 0;
+            long octets = 0;
+            foreach (var f in table.GetRawFrames())
+            {
+                frames++;
+                octets += f.OriginalLength;
+            }
+            Console.WriteLine($"Frames={frames}, Octets={octets}  [{sw.Elapsed}]");
+        }
+        [TestMethod]
+        public void ReadAllFramesOfConversations()
+        {
+            var sw = new Stopwatch();
+            sw.Start();
+            var table = OpenTable();
+            Console.WriteLine($"--- LOADED --- [{sw.Elapsed}]");
+            sw.Restart();
+            foreach (var c in table.ProcessConversations(table.ConversationKeys, new CustomConversationProcessor<(string Key, int Frames, long Octets)>(CountFrames)))
+            {
+                Console.WriteLine($"Conversatiom={c.Key}, Frames={c.Frames}, Octets={c.Octets}  [{sw.Elapsed}]");
+            }
+        }
+
+        private (string, int, long) CountFrames(FlowKey arg1, System.Collections.Generic.ICollection<Memory<byte>> arg2)
+        {
+            int GetFrameSize(Memory<byte> bytes)
+            {
+                var meta = default(FrameMetadata);
+                CustomConversationProcessor<int>.GetFrame(bytes, ref meta);
+                return meta.OriginalLength;
+            }
+            
+            return (arg1.ToString(), arg2.Count, arg2.Sum(GetFrameSize));
         }
     }
 }

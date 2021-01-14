@@ -159,37 +159,8 @@ namespace Traffix.Storage.Faster
                 ((IDisposable)_session).Dispose();
             }
 
-
-            /// <summary>
-            /// Retrieves value mapped to the specified key from store.
-            /// </summary>
-            /// <param name="key">The key of the record.</param>
-            /// <returns>The value associated with the key.</returns>
-            public TOutput Get(ref TKey key)
+            public bool TryGet(ref TKey key, ref TInput input, ref TOutput output)
             {
-                var output = new TOutput();
-                if (TryGet(ref key, ref output))
-                {
-                    return output;
-                }
-                else
-                    return default;
-            }
-
-            /// <summary>
-            /// Retrieves values mapped to the specified keys from store.
-            /// </summary>
-            /// <param name="keys">Collection of keys.</param>
-            /// <returns>Collection of key-value pairs.</returns>
-            public IEnumerable<KeyValuePair<TKey, TOutput>> GetAll(IEnumerable<TKey> keys)
-            {
-                return keys.Select(x =>  KeyValuePair.Create(x, Get(ref x)));
-            }
-
-            public bool TryGet(ref TKey key, ref TOutput value)
-            {
-                var input = new TInput();
-                var output = new TOutput();
                 var context = new StoreContext<TOutput>();
                 var status = _session.Read(ref key, ref input, ref output, context, 0);
                 if (status == Status.PENDING)

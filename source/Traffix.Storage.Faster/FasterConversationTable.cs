@@ -1,3 +1,4 @@
+using FASTER.core;
 using Microsoft.Extensions.Configuration.Json;
 using PacketDotNet;
 using System;
@@ -8,7 +9,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Traffix.Core.Flows;
 using Traffix.Providers.PcapFile;
-using FASTER.core;
 
 namespace Traffix.Storage.Faster
 {
@@ -56,9 +56,11 @@ namespace Traffix.Storage.Faster
             {
                 Directory.CreateDirectory(folder);
             }
-            var config = new Configuration(Path.Combine(folder,"settings.json"));
-            config.FramesCapacity = framesCapacity;
-            config.ConversationsCapacity = (long)(framesCapacity * flowFrameRatio);
+            var config = new Configuration(Path.Combine(folder, "settings.json"))
+            {
+                FramesCapacity = framesCapacity,
+                ConversationsCapacity = (long)(framesCapacity * flowFrameRatio)
+            };
             config.Save();  // need to save as we create a new configuration
             var table = new FasterConversationTable(folder, config);
             table._conversationsStore.InitAndRecover();
@@ -142,8 +144,7 @@ namespace Traffix.Storage.Faster
         public FlowKey GetFlowKey(LinkLayers linkLayer, Span<byte> frame)
         {
             var packet = Packet.ParsePacket(linkLayer, frame.ToArray());
-            var frameKey = _packetKeyProvider.GetKey(packet);
-            return frameKey;
+            return _packetKeyProvider.GetKey(packet);
         }
         /// <summary>
         /// Gets the flow key for the given <paramref name="packet"/>.
@@ -178,16 +179,23 @@ namespace Traffix.Storage.Faster
         /// <param name="address"></param>
         /// <param name="frameFlowKey"></param>
         /// <returns></returns>
-        private unsafe FrameKey InsertFrame(FramesStore.KeyValueStoreClient client, ref FlowKey frameFlowKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes, long address)
+        private unsafe void InsertFrame(FramesStore.KeyValueStoreClient client, ref FrameKey frameKey, ref FlowKey frameFlowKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
         {
             var size = FrameValue.GetRequiredSize(frameBytes.Length);
-            using var buffer = _memoryPool.Rent(size);
-            fixed (void* bufferPtr = buffer.Memory.Span)
+            if (size < 128)
             {
-                var frameValue = FrameValue.Create(ref Unsafe.AsRef<FrameValue>(bufferPtr), ref frameMetadata, frameBytes); 
-                var frameKey = new FrameKey { Address = address };
+                var bufferPtr = stackalloc byte[size];
+                var frameValue = FrameValue.Create(ref Unsafe.AsRef<FrameValue>(bufferPtr), ref frameMetadata, frameBytes);
                 client.Put(ref frameKey, ref frameValue);
-                return frameKey;
+            }
+            else
+            {
+                using var buffer = _memoryPool.Rent(size);
+                fixed (void* bufferPtr = buffer.Memory.Span)
+                {
+                    var frameValue = FrameValue.Create(ref Unsafe.AsRef<FrameValue>(bufferPtr), ref frameMetadata, frameBytes);
+                    client.Put(ref frameKey, ref frameValue);
+                }
             }
         }
 
@@ -242,24 +250,31 @@ namespace Traffix.Storage.Faster
 
             TResult ProcessConversation(ref ConversationKey key)
             {
+                ConversationInput input = new ConversationInput();
                 ConversationOutput output = new ConversationOutput();
-                conversationsClient.TryGet(ref key, ref output);
-                var frameKey = new FrameKey();
-                var frameInput = new FrameInput() { Pool = MemoryPool<byte>.Shared };
-                var frameList = new List<FrameOutput>();
-                for(int i = 0; i < output.Value.FrameCount; i++)
+                if (conversationsClient.TryGet(ref key, ref input, ref output))
                 {
-                    frameKey.Address = output.Value.FrameAddresses[i];
-                    var frameOutput = default(FrameOutput);
-                    if (framesClient.TryGet(ref frameKey, ref frameOutput))
+                    var frameKey = new FrameKey();
+                    var frameInput = new FrameInput() { Pool = MemoryPool<byte>.Shared };
+                    var frameList = new List<FrameOutput>();
+                    for (int i = 0; i < output.Value.FrameCount; i++)
                     {
-                        frameList.Add(frameOutput);
+                        frameKey.Address = output.Value.FrameAddresses[i];
+                        var frameOutput = default(FrameOutput);
+                        if (framesClient.TryGet(ref frameKey, ref frameInput, ref frameOutput))
+                        {
+                            frameList.Add(frameOutput);
+                        }
                     }
+                    var result = processor.Invoke(key.FlowKey, frameList.Select(x => x.GetBuffer()).ToList());
+                    // we have to dispose buffers rented from memory pool before we can return a result
+                    foreach (var m in frameList) m.ReleaseBuffer();
+                    return result;
                 }
-                var result = processor.Invoke(key.FlowKey, frameList.Select(x=>x.GetBuffer()));
-                // dispose memory allocated bytes
-                foreach (var m in frameList) m.ReleaseBuffer();
-                return result;
+                else
+                {
+                    return default;
+                }
             }
             return keys.Select(key => ProcessConversation(ref key));
         }
@@ -417,7 +432,6 @@ namespace Traffix.Storage.Faster
             /// </para>
             /// </summary>
             /// <param name="frame">The raw frame object.</param>
-            /// <param name="frameBytes">Data bytes of the raw frame.</param>
             /// <param name="address">Offset/key of the frame. Can be used to refer to the frame to the external data source.</param>
             /// <exception cref="InvalidOperationException">Raises when the stremer is closed.</exception>
             public void AddFrame(RawFrame frame, long address)
@@ -433,7 +447,8 @@ namespace Traffix.Storage.Faster
                     FlowKeyHash = frameFlowKey.GetHashCode64()
                 };
 
-                var frameKey = _table.InsertFrame(_framesStoreClient, ref frameFlowKey, ref frameMeta, frame.Data, address);
+                var frameKey = new FrameKey { Address = address };
+                 _table.InsertFrame(_framesStoreClient, ref frameKey, ref frameFlowKey, ref frameMeta, frame.Data);
 
                 var conversationUpdate = new ConversationInput  // stack allocated struct
                 {
@@ -545,7 +560,7 @@ namespace Traffix.Storage.Faster
         }
         private class RawFrameProcessor : ConversationProcessor<IEnumerable<RawFrame>>
         {
-            public override IEnumerable<RawFrame> Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
+            public override IEnumerable<RawFrame> Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
             {
                 FrameMetadata meta = new FrameMetadata();
                 int frameNumber = 0;

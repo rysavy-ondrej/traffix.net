@@ -8,7 +8,7 @@ namespace IcsMonitor
 {
     public abstract class CustomConversationProcessor<TData> : ConversationProcessor<ConversationRecord<TData>>
     {
-        public override ConversationRecord<TData> Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
+        public override ConversationRecord<TData> Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
         {
             var fwdPackets = new List<(FrameMetadata, Packet)>();
             var revPackets = new List<(FrameMetadata, Packet)>();

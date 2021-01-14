@@ -8,24 +8,35 @@ using System.Runtime.InteropServices;
 
 namespace Traffix.Storage.Faster
 {
-
     /// <summary>
     /// Represents the metadata of a frame.
     /// </summary>
     [StructLayout(LayoutKind.Explicit)]
     public struct FrameMetadata
     {
+        /// <summary>
+        /// The number of ticks that represent the date and time of this frame. 
+        /// </summary>
         [FieldOffset(0)]
-        public  long Ticks;
+        public long Ticks;
 
+        /// <summary>
+        /// The original length of the frame. 
+        /// </summary>
         [FieldOffset(8)]
-        public  ushort OriginalLength;
+        public ushort OriginalLength;
 
+        /// <summary>
+        /// The link layer of the frame.
+        /// </summary>
         [FieldOffset(10)]
-        public  ushort LinkLayer;
+        public ushort LinkLayer;
 
+        /// <summary>
+        /// The flow key hash computed for the frame.
+        /// </summary>
         [FieldOffset(12)]
-        public  long FlowKeyHash;
+        public long FlowKeyHash;
     }
     /// <summary>
     /// Represents a variable length frame value. It has direct access to 
@@ -43,43 +54,78 @@ namespace Traffix.Storage.Faster
         const int metadataOffset = 4;
         const int bytesOffset = 24;
 
+        /// <summary>
+        /// Represents the total length of this structure. 
+        /// <para/> 
+        /// This value is important for allocating the copies of the instance and
+        /// delimiting the end of the data part of the object.
+        /// </summary>
         [FieldOffset(0)]
         internal int Length;
+        /// <summary>
+        /// The frame metadata.
+        /// </summary>
         [FieldOffset(metadataOffset)]
         internal FrameMetadata Meta;
+        /// <summary>
+        /// The first byte of frame content.
+        /// </summary>
         [FieldOffset(bytesOffset)]
         internal byte Bytes;
 
-        public int BytesLength => Length - 24;
+        /// <summary>
+        /// Gets the length of frame bytes.
+        /// </summary>
+        internal int BytesLength => Length - 24;
 
+        /// <summary>
+        /// Gets the span that contains to the frame bytes.
+        /// </summary>
+        /// <param name="span">The source span that contains the entire <seealso cref="FrameValue"/> object.</param>
+        /// <returns>The span that contains to the frame bytes.</returns>
         internal static Span<byte> GetFrameBytesSpan(Span<byte> span)
         {
             return span[bytesOffset..];
         }
+        /// <summary>
+        /// Gets the span that contains <see cref="FrameMetadata"/> structure.
+        /// <para/>
+        /// This method enables to access the internal byte representation of <see cref="FrameMetadata"/> structure
+        /// of the <seealso cref="FrameValue"/>. 
+        /// </summary>
+        /// <param name="span">The source span that contains the entire <seealso cref="FrameValue"/> object.</param>
+        /// <returns>The span that contains <see cref="FrameMetadata"/> structure.</returns>
         internal static Span<byte> GetMetadataSpan(Span<byte> span)
         {
-            return span[metadataOffset..Unsafe.SizeOf<FrameMetadata>()];
+            return span.Slice(metadataOffset, Unsafe.SizeOf<FrameMetadata>());
         }
-        internal void CopyTo(ref FrameValue dst)
+
+        /// <summary>
+        /// Copies the current object to the specified <see cref="FrameValue"/> object.
+        /// <para/>
+        /// The caller is responsible that the destination <see cref="FrameValue"/> is backed with 
+        /// a byte array (on stack or heap) of the sufficient size. The size of the destination needs to be at least <see cref="FrameValue.Length"/> bytes.
+        /// </summary>
+        /// <param name="dst">The destionation <see cref="FrameValue"/> object to be filled with bytes of the current object.</param>
+        unsafe internal void CopyTo(ref FrameValue dst)
         {
-            var fullLength = Length * sizeof(int);
-            Buffer.MemoryCopy(Unsafe.AsPointer(ref this),
-                Unsafe.AsPointer(ref dst), fullLength, fullLength);
+            Buffer.MemoryCopy(Unsafe.AsPointer(ref this),Unsafe.AsPointer(ref dst), Length, Length);
         }
 
         /// <summary>
         /// Copies the current value to the specified memory buffer. 
-        /// <para/>This operation is safe as it check the size of the target memory buffer.
+        /// <para/>This operation is safe as it checks the size of the target memory buffer.
         /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if the provided Span does not contain enough space 
+        /// to accomodate the copy of the current object.</exception>
         /// <param name="dst">The memory location to which the structure content will be copied.</param>
         /// <returns>Returns the number of bytes copied.</returns>
         internal unsafe void CopyTo(Span<byte> dst)
         {
-            fixed (void* bp = dst)
+            if (dst.Length < Length) throw new ArgumentOutOfRangeException("The provide Span is too small.");
+            fixed (void* dstPtr = dst)
             {
-                var fullLength = Length * sizeof(int);
-                Buffer.MemoryCopy(Unsafe.AsPointer(ref this),
-                bp, fullLength, fullLength);
+                Buffer.MemoryCopy(Unsafe.AsPointer(ref this), dstPtr, Length, Length);
             }
         }
 
@@ -94,10 +140,17 @@ namespace Traffix.Storage.Faster
         }
 
         /// <summary>
-        /// Creates a new <seealso cref="FrameValue"/> for the given metadata and frame bytes.
+        /// Creates a new <see cref="FrameValue"/> for the given metadata and frame bytes.
+        /// <para/>
+        /// As <see cref="FrameValue"/> can only be created in the allocated byte buffer (on stack or heap)
+        /// it is required to provide the uninitialized object as a parameter. 
+        /// The underlying byte array must be pinned or stack allocated.
+        /// This object will then  
+        /// be intialized using the provided <paramref name="frameMetadata"/> and <paramref name="frameBytes"/>. 
         /// </summary>
-        /// <param name="frameValue">The allocated space for <see cref="FrameValue"/> structure.</param>
-        /// <param name="frameMetadata"The metadata.></param>
+        /// <param name="frameValue">The allocated space for <see cref="FrameValue"/> structure. 
+        /// The underlying byte array must be pinned or stack allocated.</param>
+        /// <param name="frameMetadata">The metadata.</param>
         /// <param name="frameBytes">The frame bytes.</param>
         /// <returns>Reference to newly initialzied <see cref="FrameValue"/> object.</returns>
         internal static ref FrameValue Create(ref FrameValue frameValue, ref FrameMetadata frameMetadata, Span<byte> frameBytes)

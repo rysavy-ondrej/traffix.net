@@ -30,18 +30,18 @@ namespace Traffix.Storage.Faster
         /// 
         /// </summary>
         /// <param name="buffer">The input memory range with frame metadata and content.</param>
-        /// <param name="frame">The reference to <see cref="FrameValue"/> to be populated with Frame metadata.</param>
+        /// <param name="frame">The reference to <see cref="FrameMetadata"/> to be populated with Frame metadata.</param>
         /// <returns>The method returns span to the provided  <paramref name="buffer"/> containing the frame bytes. 
         /// Note that its lifetime is the same as the lifetime of the <paramref name="buffer"/>. </returns>
-        protected unsafe Span<byte> GetFrame(Memory<byte> buffer, ref FrameMetadata frame)
+        public static unsafe Span<byte> GetFrame(Memory<byte> buffer, ref FrameMetadata frame)
         {
-            fixed (void* ptr = buffer.Span)
+            fixed (void* ptr = FrameValue.GetMetadataSpan(buffer.Span))
             {
                 frame = Unsafe.AsRef<FrameMetadata>(ptr);   // copy the struct from buffer to provided location
                 return FrameValue.GetFrameBytesSpan(buffer.Span);
             }
         }
-        public abstract T Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames);
+        public abstract T Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames);
     }
 
     public interface IConversationProcessor<T>
@@ -52,6 +52,21 @@ namespace Traffix.Storage.Faster
         /// <param name="flowKey">The flow key.</param>
         /// <param name="frames">The collection of byte arrays that constains metadata and bytes of frames of the flow.</param>
         /// <returns>The result of type <typeparamref name="T"/> or <see langword="null"/>.</returns>
-        T Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames);
+        T Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames);
+    }
+
+    public class CustomConversationProcessor<T> : ConversationProcessor<T>
+    {
+        private readonly Func<FlowKey, ICollection<Memory<byte>>, T> _processor;
+
+        public CustomConversationProcessor(Func<FlowKey, ICollection<Memory<byte>>,T> processor)
+        {
+            _processor = processor;
+        }
+
+        public override T Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
+        {
+            return _processor(flowKey, frames);
+        }
     }
 }
