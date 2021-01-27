@@ -81,7 +81,6 @@ namespace Traffix.Storage.Faster
 
             if (Directory.Exists($"{this._dataFolder}/data/checkpoints"))
             {
-                Console.WriteLine("call recover db");
                 _fasterKvh.Recover();
                 return true;
             }
@@ -252,40 +251,33 @@ namespace Traffix.Storage.Faster
         {
             public virtual void CheckpointCompletionCallback(string sessionId, CommitPoint commitPoint)
             {
-                Console.WriteLine("CheckpointCompletionCallback");
             }
 
             public virtual void ConcurrentReader(ref TKey key, ref TInput input, ref TValue value, ref TOutput dst)
             {
-                Console.WriteLine("ConcurrentReader");
             }
 
             public virtual bool ConcurrentWriter(ref TKey key, ref TValue src, ref TValue dst)
             {
-                Console.WriteLine("ConcurrentWriter");
                 return false;
             }
 
             public virtual void CopyUpdater(ref TKey key, ref TInput input, ref TValue oldValue, ref TValue newValue)
             {
-                Console.WriteLine("CheckpointCompletionCallback");
             }
 
             public virtual void DeleteCompletionCallback(ref TKey key, StoreContext<TOutput> ctx)
             {
                 var status = Status.OK;
                 ctx.Populate(ref status);
-                Console.WriteLine("DeleteCompletionCallback");
             }
 
             public virtual void InitialUpdater(ref TKey key, ref TInput input, ref TValue value)
             {
-                Console.WriteLine("InitialUpdater");
             }
 
             public virtual bool InPlaceUpdater(ref TKey key, ref TInput input, ref TValue value)
             {
-                Console.WriteLine("InPlaceUpdater");
                 return false;
             }
 
@@ -293,30 +285,25 @@ namespace Traffix.Storage.Faster
             {
                 
                 ctx.Populate(ref status, ref output);
-                Console.WriteLine("ReadCompletionCallback");
             }
 
             public virtual void RMWCompletionCallback(ref TKey key, ref TInput input, StoreContext<TOutput> ctx, Status status)
             {
                 ctx.Populate(ref status);
-                Console.WriteLine("RMWCompletionCallback");
             }
 
             public virtual void SingleReader(ref TKey key, ref TInput input, ref TValue value, ref TOutput dst)
             {
-                Console.WriteLine("SingleReader");
             }
 
             public virtual void SingleWriter(ref TKey key, ref TValue src, ref TValue dst)
             {
-                Console.WriteLine("SingleWriter");
             }
 
             public virtual void UpsertCompletionCallback(ref TKey key, ref TValue value, StoreContext<TOutput> ctx)
             {
                 var status = Status.OK;
                 ctx.Populate(ref status);
-                Console.WriteLine("UpsertCompletionCallback");
             }
         }
     }
