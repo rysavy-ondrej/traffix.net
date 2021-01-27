@@ -21,22 +21,10 @@ namespace IcsMonitor
     {
         public Interactive(DirectoryInfo rootDirectory = null)
         {
-            #if LogSupport
+#if LogSupport
             ConfigureLogger();
-            #endif
+#endif
             ConfigureDirectories(rootDirectory ?? new DirectoryInfo(Directory.GetCurrentDirectory()));
-        }
-
-        public FasterConversationTable ReadToConversationTable(string pcapFile, string conversationTablePath, CancellationToken? token = null)
-        {
-            using var stream = new FileInfo(pcapFile).OpenRead();
-            return ReadToConversationTable(stream, conversationTablePath, token);
-        }
-        public FasterConversationTable ReadToConversationTable(Stream stream, string conversationTablePath, CancellationToken? token = null)
-        {
-            var flowTable = FasterConversationTable.Create(conversationTablePath, 100000);
-            // flowTable.LoadFromStream(stream, token ?? CancellationToken.None, null);
-            return flowTable;
         }
 
         public FasterConversationTable CreateConversationTable(IEnumerable<RawFrame> frames, string conversationTablePath, CancellationToken? token = null)
@@ -46,7 +34,7 @@ namespace IcsMonitor
             {
                 foreach (var frame in frames)
                 {
-                    loader.AddFrame(frame,  frame.Number);
+                    loader.AddFrame(frame, frame.Number);
                     if (token?.IsCancellationRequested ?? false) break;
                 }
             }
@@ -70,7 +58,7 @@ namespace IcsMonitor
 
         public IEnumerable<(long Ticks, Packet Packet)> GetPackets(FasterConversationTable table)
         {
-            static FasterConversationTable.ProcessingResult<(long,Packet)> GetPacket(FrameMetadata meta, SpanByte bytes)
+            static FasterConversationTable.ProcessingResult<(long, Packet)> GetPacket(FrameMetadata meta, SpanByte bytes)
             {
                 return new FasterConversationTable.ProcessingResult<(long, Packet)>
                 {
@@ -99,6 +87,11 @@ namespace IcsMonitor
         }
 
 
+        /// <summary>
+        /// Writes a collection of raw <paramref name="frames"/> to PCAP file at the given <paramref name="path"/>.
+        /// </summary>
+        /// <param name="frames">The source frames.</param>
+        /// <param name="path">the path of the pcap file to create.</param>
         public void WriteToFile(IEnumerable<RawFrame> frames, string path)
         {
             var writer = new SharpPcapWriter(path);
@@ -146,7 +139,7 @@ namespace IcsMonitor
                     startWindowTicks += timeIntervalTicks;
                 }
 
-                loader.AddFrame(frame,  frame.Number);
+                loader.AddFrame(frame, frame.Number);
                 if (token?.IsCancellationRequested ?? false) break;
             }
             loader.Dispose();
@@ -154,7 +147,7 @@ namespace IcsMonitor
             yield return flowTable;
         }
 
-        
+
 
         /// <summary>
         /// Creates the capture file reader.
@@ -174,6 +167,12 @@ namespace IcsMonitor
             }
         }
 
+        /// <summary>
+        /// Reads up to the specified <paramref name="count"/> of frames using the given <paramref name="reader"/> 
+        /// </summary>
+        /// <param name="reader">The pcap reader.</param>
+        /// <param name="count">Number of frames to read.</param>
+        /// <returns>A collection of <see cref="RawFrame"/> objects.</returns>
         public IEnumerable<RawFrame> GetNextFrames(ICaptureFileReader reader, int count = Int32.MaxValue)
         {
             for (int i = 0; i < count; i++)
@@ -189,25 +188,30 @@ namespace IcsMonitor
             }
         }
 
+        /// <summary>
+        /// Tests if the <paramref name="packet"/> belongs to the given conversation specified by its <paramref name="conversationKey"/>.
+        /// </summary>
+        /// <param name="table">The conversation table providing the context for the operation.</param>
+        /// <param name="conversationKey">The conversation key.</param>
+        /// <param name="packet">The packet.</param>
+        /// <returns>true if the packet belongs to the conversation; false otherwise</returns>
         public bool ContainsPacket(FasterConversationTable table, FlowKey conversationKey, Packet packet)
         {
             var packetKey = table.GetFlowKey(packet);
             return conversationKey.EqualsOrReverse(packetKey);
         }
-                
+
         /// <summary>
-        /// Computes the ICS dataset from the source PCAP file. 
+        /// Creates the ICS dataset from the source PCAP file given by <paramref name="inputFile"/> name. 
         /// <para/>
-        /// This is all-in-one method that enables to read pcap file, compute flow tables and extract ICS 
+        /// This is all-in-one method that reads pcap file, computes conversation tables and extract ICS 
         /// conversations using provided processor. 
         /// </summary>
-        /// <typeparam name="TFlowData"></typeparam>
-        /// <typeparam name="TTargetData"></typeparam>
-        /// <param name="inputFile"></param>
-        /// <param name="timeInterval"></param>
-        /// <param name="processor"></param>
-        /// <param name="transformer"></param>
-        /// <returns></returns>
+        /// <typeparam name="TFlowData">The type of the dataset. </typeparam>
+        /// <param name="inputFile">The source pcap file.</param>
+        /// <param name="timeInterval">The time interval for conversation window.</param>
+        /// <param name="processor">The conversation processor to produce results in the dataset.</param>
+        /// <returns>The dataset computed for the input data using the given conversation processor.</returns>
         public IcsDataset<TFlowData> ComputeDataset<TFlowData>(string inputFile, TimeSpan timeInterval, Func<RawFrame, bool> frameFilter, IConversationProcessor<ConversationRecord<TFlowData>> processor)
         {
             // provide existing dataset or create a new one for the input file.
@@ -247,12 +251,12 @@ namespace IcsMonitor
         }
 
         /// <summary>
-        /// Computes Modbus Compact IPFIX dataset. 
+        /// Computes a Modbus Compact IPFIX dataset for the given source pcpa file. 
         /// </summary>
         /// <param name="inputFile">The name of the input PCAP file.</param>
         /// <param name="timeInterval">The time interval used to set window size for collecting flows.</param>
         /// <returns>The Modbus ICS Dataset object.</returns>
-        IcsDataset<ModbusFlowData.Compact> ComputeModbusDataset(string inputFile, TimeSpan timeInterval)
+        public IcsDataset<ModbusFlowData.Compact> ComputeModbusDataset(string inputFile, TimeSpan timeInterval)
         {
             var processor = new IcsMonitor.Modbus.ModbusBiflowProcessor();
             bool FrameFilter(Traffix.Providers.PcapFile.RawFrame frame)
@@ -311,7 +315,7 @@ namespace IcsMonitor
         {
             _rootDirectory = rootDirectory;
             _tempDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "icsmonitor.interactive"));
-            if (!_tempDirectory.Exists) _tempDirectory.Create(); 
+            if (!_tempDirectory.Exists) _tempDirectory.Create();
         }
 
         private void CleanUp()
@@ -320,7 +324,7 @@ namespace IcsMonitor
             {
                 this.TempDirectory.Delete(true);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Console.Error.WriteLine($"Cannot delete temp directory '{this.TempDirectory.FullName}' : {e.Message}");
             }
@@ -341,49 +345,6 @@ namespace IcsMonitor
         {
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
-        }
-
-        /// <summary>
-        /// A memory representation of the conversation table. 
-        /// </summary>
-        /// <typeparam name="TData">The data type of the conversation.</typeparam>
-        public class ConversationTable<TData> : List<ConversationRecord<TData>> 
-        {
-            /// <summary>
-            /// Start time of the conversation table.
-            /// </summary>
-            public DateTime StartTime;
-            /// <summary>
-            /// The interval defining the duration of the conversation table.
-            /// </summary>
-            public TimeSpan Interval;
-
-            /// <summary>
-            /// Creates a new conversation table from the given collection of conversations.
-            /// </summary>
-            /// <param name="collection"></param>
-            public ConversationTable(IEnumerable<ConversationRecord<TData>> collection) : base(collection)
-            {
-            }
-            /// <summary>
-            /// Aggregates conversations by grouping conversations using <paramref name="keySelector"/> and then by applying <paramref name="aggregator"/> function 
-            /// to all conversations in the group. The result is a collection of aggregated conversations.
-            /// </summary>
-            /// <typeparam name="Tout">The type of the output.</typeparam>
-            /// <typeparam name="TKey">The type of the keys.</typeparam>
-            /// <param name="conversations">The input collection of conversations.</param>
-            /// <param name="keySelector">The selector of key fields for the aggregated conversations.</param>
-            /// <param name="accumulator">The initial value of the aggregation.</param>
-            /// <param name="aggregator">The aggregattor function that implements a way to add a new conversation to the aggregation.</param>
-            /// <returns>A collection of conversations. Number of returned items equals to a number of groups created by <paramref name="keySelector"/>.</returns>
-            public IEnumerable<Tout> AggregateConversations<Tout, TKey>(Func<ConversationRecord<TData>, TKey> keySelector, Func<ConversationRecord<TData>, Tout>  getTarget, Func<Tout, Tout, Tout> aggregator)
-            {
-                var groups = this.GroupBy(keySelector);
-                foreach (var g in groups)
-                {
-                    yield return g.Select(getTarget).Aggregate(aggregator);
-                }
-            }
         }
     }
 }
