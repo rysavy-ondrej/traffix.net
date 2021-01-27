@@ -11,7 +11,6 @@ namespace Traffix.Storage.Faster.Tests
     [TestClass]
     public class FasterConversationTableTests
     {
-        string testdir = "..";
         /// <summary>
         /// Loads the table from the given pcap file.
         /// </summary>
@@ -19,8 +18,8 @@ namespace Traffix.Storage.Faster.Tests
         public void CreateTable()
         {
             var sw = new Stopwatch();
-            //var pcapPath = Path.GetFullPath(@"data\PCAP\modbus.pcap");
-            var pcapPath = Path.GetFullPath(@"C:\Users\user\Captures\sorting_station_ver2.pcap");
+            var pcapPath = Path.GetFullPath(@"data\PCAP\modbus.pcap");
+            //var pcapPath = Path.GetFullPath(@"C:\Users\user\Captures\sorting_station_ver2.pcap");
 
             var dbPath = Path.GetFullPath(@"c:\temp\0001\");
             if (Directory.Exists(dbPath)) Directory.Delete(dbPath, true);
@@ -36,7 +35,7 @@ namespace Traffix.Storage.Faster.Tests
                 }
                 loader.Close();
             }
-            
+                        
             Console.WriteLine($"--- LOADED --- [{sw.Elapsed}]");
             sw.Restart();
             Console.WriteLine($"Convs= {flowTable.Conversations.Count()} [{sw.Elapsed}]");
@@ -59,12 +58,10 @@ namespace Traffix.Storage.Faster.Tests
             }
         }
 
-
         /// <summary>
         /// Open existing table.
         /// </summary>
         [TestMethod]
-
         public void ReadExistingTable()
         {
             var sw = new Stopwatch();
@@ -77,12 +74,14 @@ namespace Traffix.Storage.Faster.Tests
             Console.WriteLine($"Frames= {flowTable.FramesCount}  [{sw.Elapsed}]");
         }
 
+        /// <summary>
+        /// Opens the existing table.
+        /// </summary>
+        /// <returns></returns>
         public FasterConversationTable OpenTable()
         {
             var dbPath = Path.GetFullPath(@"c:\temp\0001\");
             var table = FasterConversationTable.Open(dbPath);
-
-
             return table;
         }
 
@@ -103,6 +102,10 @@ namespace Traffix.Storage.Faster.Tests
             }
             Console.WriteLine($"Frames={frames}, Octets={octets}  [{sw.Elapsed}]");
         }
+
+        /// <summary>
+        /// Opens the existing table and counts all frames using frame processor of all conversations.
+        /// </summary>
         [TestMethod]
         public void ReadAllFramesOfConversations()
         {
@@ -117,6 +120,12 @@ namespace Traffix.Storage.Faster.Tests
             }
         }
 
+        /// <summary>
+        /// Implements a function to be used in the Count Frame conversation processor.
+        /// </summary>
+        /// <param name="arg1"></param>
+        /// <param name="arg2"></param>
+        /// <returns></returns>
         private (string, int, long) CountFrames(FlowKey arg1, System.Collections.Generic.ICollection<Memory<byte>> arg2)
         {
             int GetFrameSize(Memory<byte> bytes)
