@@ -1,7 +1,7 @@
-﻿using Markdig.Syntax.Inlines;
-using MessagePack;
+﻿using MessagePack;
 using Microsoft.Data.Analysis;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -13,8 +13,8 @@ using Traffix.Core.Flows;
 namespace IcsMonitor
 {
     /// <summary>
-    /// Implements various extension method for transformin conversation records 
-    /// to be usable as input for ML.NET.
+    /// Implements various extension methods for manipulation with <see cref="ConversationRecord{TData}"/>,
+    /// <see cref="DataFrame"/>, and other types to support an intergation with ML.NET.
     /// </summary>
     public static class ConversationRecordExtensions
     {
@@ -55,18 +55,16 @@ namespace IcsMonitor
             return df;
         }
 
-
-
-
-
         /// <summary>
         /// Gets a single column of <see cref="DataFrame"/> including all associated values.
+        /// <para/>
+        /// As the column can only be primitive type, the method performs necessary conversions.
         /// </summary>
         /// <param name="name">The column name.</param>
         /// <param name="columnType">The column type.</param>
         /// <param name="values">The collection of values that must be of the <paramref name="columnType"/>.</param>
         /// <returns>The new <see cref="DataFrameColumn"/>for the parameters specified.</returns>
-        private static DataFrameColumn GetColumn(string name, Type columnType, IEnumerable<object> values)
+        private static DataFrameColumn GetColumn(string name, Type columnType, IEnumerable values)
         {
             if (columnType == typeof(bool))
             {
@@ -106,11 +104,11 @@ namespace IcsMonitor
             }
             else if (columnType == typeof(IntPtr))
             {
-                return new PrimitiveDataFrameColumn<IntPtr>(name, values.Cast<IntPtr>());
+                return new PrimitiveDataFrameColumn<long>(name, values.Cast<IntPtr>().Select(p=>p.ToInt64()));
             }
             else if (columnType == typeof(UIntPtr))
             {
-                return new PrimitiveDataFrameColumn<UIntPtr>(name, values.Cast<UIntPtr>());
+                return new PrimitiveDataFrameColumn<ulong>(name, values.Cast<UIntPtr>().Select(p => p.ToUInt64()));
             }
             else if (columnType == typeof(char))
             {
@@ -126,7 +124,7 @@ namespace IcsMonitor
             }
             else if (columnType == typeof(DateTime))
             {
-                return new PrimitiveDataFrameColumn<DateTime>(name, values.Cast<DateTime>());
+                return new PrimitiveDataFrameColumn<long>(name, values.Cast<DateTime>().Select(d=>d.Ticks));
             }
             else if (columnType == typeof(string))
             {
@@ -134,7 +132,7 @@ namespace IcsMonitor
             }
             else
             {
-                return new StringDataFrameColumn(name, values.Select(x => x.ToString()));
+                return new StringDataFrameColumn(name, values.Cast<object>().Select(x => x.ToString()));
             }
         }
 
@@ -159,7 +157,7 @@ namespace IcsMonitor
         /// <summary>
         /// Contains cached member information objects.
         /// </summary>
-        private static Dictionary<Type, ICollection<(string Path, Type MemberType, Func<object, object>)>> _membersInfoCache = new Dictionary<Type, ICollection<(string Path, Type MemberType, Func<object, object>)>>();
+        private static readonly Dictionary<Type, ICollection<(string Path, Type MemberType, Func<object, object>)>> _membersInfoCache = new Dictionary<Type, ICollection<(string Path, Type MemberType, Func<object, object>)>>();
 
         /// <summary>
         /// Gets the collection of member information objects for the given <paramref name="type"/>.
@@ -248,10 +246,7 @@ namespace IcsMonitor
             AddMembers(Array.Empty<string>(), type, x => x);
             return members;
         }
-    }
 
-    public static class DataFrameIO
-    {
         /// <summary>
         /// Writes a DataFrame into a CSV.
         /// </summary>

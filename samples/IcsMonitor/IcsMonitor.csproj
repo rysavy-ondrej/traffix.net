@@ -6,6 +6,12 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>5.0</AnalysisLevel>
+    <Version>0.0.1</Version>
+    <Authors>Ondrej Rysavy</Authors>
+    <Company>Brno University of Technology</Company>
+    <Description>A collection of classes for extracting and preprocessing ICS network traffic.</Description>
+    <RepositoryUrl>https://github.com/rysavy-ondrej/traffix.net/tree/master/samples/IcsMonitor</RepositoryUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,5 +41,4 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-
 </Project>
