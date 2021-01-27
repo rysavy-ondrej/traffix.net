@@ -182,18 +182,22 @@ namespace Traffix.Storage.Faster
         private unsafe void InsertFrame(FramesStore.KeyValueStoreClient client, ref FrameKey frameKey, ref FlowKey frameFlowKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
         {
             var size = FrameValue.GetRequiredSize(frameBytes.Length);
+            
             if (size < 128)
             {
                 var bufferPtr = stackalloc byte[size];
-                var frameValue = FrameValue.Create(ref Unsafe.AsRef<FrameValue>(bufferPtr), ref frameMetadata, frameBytes);
+                ref var frameValue = ref Unsafe.AsRef<FrameValue>(bufferPtr);
+                FrameValue.Create(ref Unsafe.AsRef<FrameValue>(bufferPtr), ref frameMetadata, frameBytes);
                 client.Put(ref frameKey, ref frameValue);
             }
             else
+            
             {
                 using var buffer = _memoryPool.Rent(size);
                 fixed (void* bufferPtr = buffer.Memory.Span)
                 {
-                    var frameValue = FrameValue.Create(ref Unsafe.AsRef<FrameValue>(bufferPtr), ref frameMetadata, frameBytes);
+                    ref var frameValue = ref Unsafe.AsRef<FrameValue>(bufferPtr);
+                    FrameValue.Create(ref frameValue, ref frameMetadata, frameBytes);
                     client.Put(ref frameKey, ref frameValue);
                 }
             }

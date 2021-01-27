@@ -79,7 +79,7 @@ namespace Traffix.Storage.Faster
         internal int BytesLength => Length - 24;
 
         /// <summary>
-        /// Gets the span that contains to the frame bytes.
+        /// Gets the span that contains only the frame bytes.
         /// </summary>
         /// <param name="span">The source span that contains the entire <seealso cref="FrameValue"/> object.</param>
         /// <returns>The span that contains to the frame bytes.</returns>
@@ -109,7 +109,7 @@ namespace Traffix.Storage.Faster
         /// <param name="dst">The destionation <see cref="FrameValue"/> object to be filled with bytes of the current object.</param>
         unsafe internal void CopyTo(ref FrameValue dst)
         {
-            Buffer.MemoryCopy(Unsafe.AsPointer(ref this),Unsafe.AsPointer(ref dst), Length, Length);
+            Buffer.MemoryCopy(Unsafe.AsPointer(ref this.Length),Unsafe.AsPointer(ref dst.Length), Length, Length);
         }
 
         /// <summary>
@@ -125,7 +125,7 @@ namespace Traffix.Storage.Faster
             if (dst.Length < Length) throw new ArgumentOutOfRangeException("The provide Span is too small.");
             fixed (void* dstPtr = dst)
             {
-                Buffer.MemoryCopy(Unsafe.AsPointer(ref this), dstPtr, Length, Length);
+                Buffer.MemoryCopy(Unsafe.AsPointer(ref this.Length), dstPtr, Length, Length);
             }
         }
 
@@ -153,12 +153,17 @@ namespace Traffix.Storage.Faster
         /// <param name="frameMetadata">The metadata.</param>
         /// <param name="frameBytes">The frame bytes.</param>
         /// <returns>Reference to newly initialzied <see cref="FrameValue"/> object.</returns>
-        internal static ref FrameValue Create(ref FrameValue frameValue, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
+        internal static void Create(ref FrameValue frameValue, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
         {
             frameValue.Length = GetRequiredSize(frameBytes.Length);
             frameValue.Meta = frameMetadata;
             frameBytes.CopyTo(new Span<byte>(Unsafe.AsPointer(ref frameValue.Bytes),frameBytes.Length));
-            return ref frameValue;
+        }
+
+        internal byte[] DumpEthernetHeader()
+        {
+            var span = new Span<byte>(Unsafe.AsPointer(ref this.Bytes), 18);
+            return span.ToArray();
         }
     }
 

@@ -10,7 +10,7 @@ namespace IcsMonitor
         /// <summary>
         /// The class collects necessary information of the single ICS dataset.
         /// <para/>
-        /// The ICS dataset consists of time base, conversation tables and raw frames. 
+        /// To use data set with ML.NET it is possible to several extensions in <see cref="ConversationRecordExtensions"/> class. 
         /// </summary>
         public class IcsDataset<TData>
         {
@@ -45,19 +45,6 @@ namespace IcsMonitor
                 public double AvgConversations;
                 public int MaxConversation;
                 public int MinConversations;
-            }
-
-            /// <summary>
-            /// Gets the <see cref="IDataView"/> instance from the given conversation table.
-            /// <para/>
-            /// It uses <see cref="ConversationRecordExtensions.ToDataFrame{T}(IEnumerable{ConversationRecord{T}})"/> method to create <see cref="IDataView"/> from
-            /// strongly type collection of conversation records. 
-            /// </summary>
-            /// <param name="table">The conversation table.</param>
-            /// <returns>The <see cref="IDataView"/> instance with conversations from the <paramref name="table"/>.</returns>
-            public IDataView GetConversationDataView(ConversationTable<TData> table)
-            {
-                return table.AsEnumerable().ToDataFrame();
             }
         }
     }

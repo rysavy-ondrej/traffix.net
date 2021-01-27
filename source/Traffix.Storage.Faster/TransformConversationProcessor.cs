@@ -17,7 +17,8 @@ namespace Traffix.Storage.Faster
 
         public TTarget Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
         {
-            return transform.Invoke(processor.Invoke(flowKey, frames));
+            var intermediate = processor.Invoke(flowKey, frames);
+            return transform.Invoke(intermediate);
         }
     }
 }

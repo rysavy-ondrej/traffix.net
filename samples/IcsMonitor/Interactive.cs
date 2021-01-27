@@ -1,5 +1,6 @@
 ﻿using FASTER.core;
 using IcsMonitor.Modbus;
+using Microsoft.ML;
 using PacketDotNet;
 using System;
 using System.Collections.Generic;
@@ -267,6 +268,16 @@ namespace IcsMonitor
             var transform = ConversationRecord<ModbusFlowData>.TransformTo<ModbusFlowData.Compact>(x => new ModbusFlowData.Compact(x));
             var compactProcessor = processor.Transform(r => transform.Invoke(r));
             return ComputeDataset<ModbusFlowData.Compact>(inputFile, timeInterval, FrameFilter, compactProcessor);
+        }
+
+        public void SaveToTsv(MLContext context, IDataView dataview, string path)
+        {
+            using var stream = File.Create(path);
+            context.Data.SaveAsText(dataview, stream);
+        }
+        public IDataView LoadFromTsv<TFlowData>(MLContext context, string path)
+        {
+            return context.Data.LoadFromTextFile(path);
         }
 
 

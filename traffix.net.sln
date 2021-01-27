@@ -25,6 +25,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "unit", "unit", "{86850396-6
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Traffix.Storage.Faster.Tests", "tests\unit\Traffix.Storage.Faster.Tests\Traffix.Storage.Faster.Tests.csproj", "{9547AD97-DA65-4CB0-9F88-4898EF16ACD3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IcsMonitor.Tests", "tests\unit\IcsMonitor.Tests\IcsMonitor.Tests.csproj", "{88C01FC0-4D14-4AF5-94D9-EA161B76088B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,6 +61,10 @@ Global
 		{9547AD97-DA65-4CB0-9F88-4898EF16ACD3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9547AD97-DA65-4CB0-9F88-4898EF16ACD3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9547AD97-DA65-4CB0-9F88-4898EF16ACD3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{88C01FC0-4D14-4AF5-94D9-EA161B76088B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{88C01FC0-4D14-4AF5-94D9-EA161B76088B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{88C01FC0-4D14-4AF5-94D9-EA161B76088B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{88C01FC0-4D14-4AF5-94D9-EA161B76088B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -72,6 +78,7 @@ Global
 		{F39B7834-F2DB-4D80-9894-D28EF0041F21} = {98D8FEC4-E6DB-445B-90DE-D5BA4D6F6B74}
 		{86850396-62BF-4FE5-B0F3-7CC840BF0CAE} = {350D5502-6201-4C5E-B565-82BCC303586B}
 		{9547AD97-DA65-4CB0-9F88-4898EF16ACD3} = {86850396-62BF-4FE5-B0F3-7CC840BF0CAE}
+		{88C01FC0-4D14-4AF5-94D9-EA161B76088B} = {86850396-62BF-4FE5-B0F3-7CC840BF0CAE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7F60D44A-7A9B-4ADF-916D-C1CC93F10BC6}
