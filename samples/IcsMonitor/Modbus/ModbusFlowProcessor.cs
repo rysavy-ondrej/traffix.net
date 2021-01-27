@@ -7,6 +7,8 @@ using Traffix.Storage.Faster;
 
 namespace IcsMonitor.Modbus
 {
+
+
     public class ModbusBiflowProcessor : CustomConversationProcessor<ModbusFlowData>
     {
         public ModbusBiflowProcessor()
@@ -294,7 +296,5 @@ namespace IcsMonitor.Modbus
                     break;
             }
         }
-
-
     }
 }

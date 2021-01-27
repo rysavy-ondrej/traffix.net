@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -18,7 +17,7 @@ namespace IcsMonitor
     /// <summary>
     /// Interactive class exposes various API methods usable in C# interactive sessions. 
     /// </summary>
-    public class Interactive : IDisposable
+    public partial class Interactive : IDisposable
     {
         public Interactive(DirectoryInfo rootDirectory = null)
         {
@@ -244,11 +243,28 @@ namespace IcsMonitor
                 reader.Close();
             }
             var conversations = tables.Select(x => new ConversationTable<TFlowData>(GetConversations<ConversationRecord<TFlowData>>(x, processor))).ToList();
-            Console.WriteLine("Stats:");
-            Console.WriteLine($"  Frames count={frames.Count}, First={new DateTime(frames.First().Ticks)}, Last={new DateTime(frames.Last().Ticks)}");
-            Console.WriteLine($"  Tables count={tables.Count}, Avg.Conversations={conversations.Average(c=>c.Count)}, Max.Conversations={conversations.Max(c => c.Count)}, Min.Conversations={conversations.Min(c => c.Count)}");
-            return new IcsDataset<TFlowData> { ConversationTables = conversations, Frames = frames };
+            return new IcsDataset<TFlowData>(conversations, frames);
         }
+
+        /// <summary>
+        /// Computes Modbus Compact IPFIX dataset. 
+        /// </summary>
+        /// <param name="inputFile">The name of the input PCAP file.</param>
+        /// <param name="timeInterval">The time interval used to set window size for collecting flows.</param>
+        /// <returns>The Modbus ICS Dataset object.</returns>
+        IcsDataset<ModbusFlowData.Compact> ComputeModbusDataset(string inputFile, TimeSpan timeInterval)
+        {
+            var processor = new IcsMonitor.Modbus.ModbusBiflowProcessor();
+            bool FrameFilter(Traffix.Providers.PcapFile.RawFrame frame)
+            {
+                var tcp = frame.GetTcpPacket();
+                return tcp?.SourcePort == 502 || tcp?.DestinationPort == 502;
+            }
+            var transform = ConversationRecord<ModbusFlowData>.TransformTo<ModbusFlowData.Compact>(x => new ModbusFlowData.Compact(x));
+            var compactProcessor = processor.Transform(r => transform.Invoke(r));
+            return ComputeDataset<ModbusFlowData.Compact>(inputFile, timeInterval, FrameFilter, compactProcessor);
+        }
+
 
         private static string GetHash(string input)
         {
@@ -327,20 +343,32 @@ namespace IcsMonitor
             GC.SuppressFinalize(this);
         }
 
-
+        /// <summary>
+        /// A memory representation of the conversation table. 
+        /// </summary>
+        /// <typeparam name="TData">The data type of the conversation.</typeparam>
         public class ConversationTable<TData> : List<ConversationRecord<TData>> 
         {
+            /// <summary>
+            /// Start time of the conversation table.
+            /// </summary>
             public DateTime StartTime;
+            /// <summary>
+            /// The interval defining the duration of the conversation table.
+            /// </summary>
             public TimeSpan Interval;
 
+            /// <summary>
+            /// Creates a new conversation table from the given collection of conversations.
+            /// </summary>
+            /// <param name="collection"></param>
             public ConversationTable(IEnumerable<ConversationRecord<TData>> collection) : base(collection)
             {
             }
             /// <summary>
-            /// Aggregates conversations by grouping conversation susing <paramref name="keySelector"/> and then by applying <paramref name="aggregator"/> function 
+            /// Aggregates conversations by grouping conversations using <paramref name="keySelector"/> and then by applying <paramref name="aggregator"/> function 
             /// to all conversations in the group. The result is a collection of aggregated conversations.
             /// </summary>
-            /// <typeparam name="Tin">The type of the input.</typeparam>
             /// <typeparam name="Tout">The type of the output.</typeparam>
             /// <typeparam name="TKey">The type of the keys.</typeparam>
             /// <param name="conversations">The input collection of conversations.</param>
@@ -356,16 +384,6 @@ namespace IcsMonitor
                     yield return g.Select(getTarget).Aggregate(aggregator);
                 }
             }
-
-        }
-        /// <summary>
-        /// Contains related information for the ICS dataset.
-        /// </summary>
-        public class IcsDataset<TData>
-        {
-            public long TimebaseTicks => Frames.FirstOrDefault()?.Ticks ?? 0;
-            public List<ConversationTable<TData>> ConversationTables;
-            public List<RawFrame> Frames;
         }
     }
 }

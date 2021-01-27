@@ -1,0 +1,23 @@
+﻿using System;
+using System.Collections.Generic;
+using Traffix.Core.Flows;
+
+namespace Traffix.Storage.Faster
+{
+    class TransformConversationProcessor<TSource, TTarget> : IConversationProcessor<TTarget>
+    {
+        private readonly IConversationProcessor<TSource> processor;
+        private readonly Func<TSource, TTarget> transform;
+
+        public TransformConversationProcessor(IConversationProcessor<TSource> processor, Func<TSource, TTarget> transform)
+        {
+            this.processor = processor;
+            this.transform = transform;
+        }
+
+        public TTarget Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
+        {
+            return transform.Invoke(processor.Invoke(flowKey, frames));
+        }
+    }
+}
