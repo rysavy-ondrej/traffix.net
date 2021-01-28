@@ -40,3 +40,4 @@ var dataframe = records.ToDataFrame();
 var schema = (dataframe as IDataView).Schema;
 ```
 
+Variable ```dataframe``` can be used everywhere ```IDataView``` is expected. See https://github.com/dotnet/machinelearning/blob/master/docs/code/IDataViewDesignPrinciples.md for information on ```IDataView``` principles of date representation.
