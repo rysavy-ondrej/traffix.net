@@ -8,10 +8,9 @@ but can be easily extended with other protocols. The project is compiled to
 
 # Interactive
 
-All public classes are usable in C# Interactive. In order to support this use case, ```IcsMonitor.Interactive``` class is provided, which 
-implements some hihg-level workflow methods. 
+All public classes are usable in C# Interactive. To support this use case, ```IcsMonitor.Interactive``` class is provided, which 
+implements some high-level workflow methods. For example, the dataset for Modbus/TCP communication can be easily created using the following code:
 
-The datatset for Modbus/Tcp communication can be easily created using the followin code:
 ```csharp
 #r "nuget:IcsMonitor"
 using IcsMonitor;
@@ -21,3 +20,23 @@ var dataset = ctx.ComputeModbusDataset(@"C:\Temp\Captures\source.pcap", TimeSpan
 var stat = dataset.Statistics;
 stat
 ```
+
+The computed dataset is an instance of the ```IcsDataset``` class. It is a generic class with a type argument representing a conversation data type. The class exposes two properties for accessing conversations and frames, respectively.
+
+```csharp
+public class IcsDataset<TData>
+{
+  public List<ConversationTable<TData>> ConversationTables { get; }
+  public List<RawFrame> Frames { get; }
+  ...
+}
+```
+
+It is possible to use the created dataset as the data source for ML.NET, which accepts ```IDataView``` interface. The dataset provides methods for generating an instance of this interface. ```ConversationTable``` is a collection of ```ConversationRecord``` objects, which provides an extension method ```ToDataFrame```.
+
+```csharp
+var records = dataset.ConversationTables.SelectMany(x => x.AsEnumerable());
+var dataframe = records.ToDataFrame();
+var schema = (dataframe as IDataView).Schema;
+```
+
