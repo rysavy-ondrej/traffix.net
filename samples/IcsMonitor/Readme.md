@@ -6,6 +6,10 @@ but can be easily extended with other protocols. The project is compiled to
 * executable application that can be used as a standalone CLI tool
 * nuget package that can be used in other project or in C# interactive (Visual Studio Code Notebooks)
 
+One of the scenarios of using the IcsMonitor tool is for [anomaly detection](Docs/Classification.md). 
+
+The documentation of all public classes of the IcsMonitor library is available [here](Docs/IcsMonitor.md).
+
 # Interactive
 
 All public classes are usable in C# Interactive. To support this use case, ```IcsMonitor.Interactive``` class is provided, which 
