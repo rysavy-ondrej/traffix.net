@@ -19,7 +19,12 @@ namespace IcsMonitor
     /// Interactive class exposes various API methods usable in C# interactive sessions. 
     /// </summary>
     public partial class Interactive : IDisposable
-    {
+    {       
+
+        /// <summary>
+        /// Creates an interactive object.
+        /// </summary>
+        /// <param name="rootDirectory">Root directory. It can be used to access data.</param>
         public Interactive(DirectoryInfo rootDirectory = null)
         {
 #if LogSupport
@@ -28,9 +33,16 @@ namespace IcsMonitor
             ConfigureDirectories(rootDirectory ?? new DirectoryInfo(Directory.GetCurrentDirectory()));
         }
 
+        /// <summary>
+        /// Creates aconversaton table from the given <paramref name="frames"/>. 
+        /// </summary>
+        /// <param name="frames">Source frames used to populate conversation table.</param>
+        /// <param name="conversationTablePath">The path to folder where conversation table is to be saved.</param>
+        /// <param name="token">The cancellation token for interrupting the operation.</param>
+        /// <returns>Newly created conversation table.</returns>
         public FasterConversationTable CreateConversationTable(IEnumerable<RawFrame> frames, string conversationTablePath, CancellationToken? token = null)
         {
-            var flowTable = FasterConversationTable.Create(Path.Combine(conversationTablePath), 100000);
+            var flowTable = FasterConversationTable.Create(conversationTablePath, 100000);
             using (var loader = flowTable.GetStreamer())
             {
                 foreach (var frame in frames)
@@ -87,7 +99,7 @@ namespace IcsMonitor
         /// <returns>A collection of conversation tables.</returns>
         public IEnumerable<FasterConversationTable> ReadToConversationTables(ICaptureFileReader reader, string conversationTablePath, TimeSpan timeInterval, CancellationToken? token = null)
         {
-            return PopulateConversationTables(GetNextFrames(reader), conversationTablePath, timeInterval, token);
+            return CreateConversationTables(GetNextFrames(reader), conversationTablePath, timeInterval, token);
         }
 
 
@@ -110,7 +122,7 @@ namespace IcsMonitor
         /// Computes a collection of conversation tables by splitting the input frames to specified time intervals.
         /// <para/>
         /// Each table is computed for a single time interval given by <paramref name="timeInterval"/> time span. 
-        /// It is thus possible to consider a use case when IPFIX monitoring is used for fixed time intervals, e.g, 1 minute.
+        /// It is thus possible to consider a use case when IPFIX monitoring is used for fixed time intervals, e.g., 1 minute.
         /// In this interval the conversations are computed and can be further analyzed.
         /// </summary>
         /// <param name="frames">An input collection of frames.</param>
@@ -118,7 +130,7 @@ namespace IcsMonitor
         /// <param name="timeInterval">The time interval used for splitting the input frames in conversation tables.</param>
         /// <param name="token">Cancellation token used to cancel the operation.</param>
         /// <returns></returns>
-        public IEnumerable<FasterConversationTable> PopulateConversationTables(IEnumerable<RawFrame> frames, string conversationTablePath, TimeSpan timeInterval, CancellationToken? token = null)
+        public IEnumerable<FasterConversationTable> CreateConversationTables(IEnumerable<RawFrame> frames, string conversationTablePath, TimeSpan timeInterval, CancellationToken? token = null)
         {
             long? startWindowTicks = null;
             long timeIntervalTicks = timeInterval.Ticks;
@@ -247,7 +259,7 @@ namespace IcsMonitor
                 var reader = CreateCaptureFileReader(inputFile, false);
                 frames = GetNextFrames(reader).ToList();
                 var firstFrame = frames.First();
-                tables = PopulateConversationTables(frames.Where(frameFilter), dbTableDirectory, timeInterval, CancellationToken.None).ToList();
+                tables = CreateConversationTables(frames.Where(frameFilter), dbTableDirectory, timeInterval, CancellationToken.None).ToList();
                 reader.Close();
             }
             var conversations = tables.Select(x => new ConversationTable<TFlowData>(GetConversations<ConversationRecord<TFlowData>>(x, processor))).ToList();
@@ -273,12 +285,24 @@ namespace IcsMonitor
             return ComputeDataset<ModbusFlowData.Compact>(inputFile, timeInterval, FrameFilter, compactProcessor);
         }
 
+        /// <summary>
+        /// Saves the <paramref name="dataview"/> to TSV file.
+        /// </summary>
+        /// <param name="context">The ML.NET context.</param>
+        /// <param name="dataview">The dataview to save.</param>
+        /// <param name="path">the pth of the target file.</param>
         public void SaveToTsv(MLContext context, IDataView dataview, string path)
         {
             using var stream = File.Create(path);
             context.Data.SaveAsText(dataview, stream);
         }
-        public IDataView LoadFromTsv<TFlowData>(MLContext context, string path)
+        /// <summary>
+        /// Loads the data view from the TSV file.
+        /// </summary>
+        /// <param name="context">The ML.NET context.</param>
+        /// <param name="path">The path to source file.</param>
+        /// <returns>The data view loaded.</returns>
+        public IDataView LoadFromTsv(MLContext context, string path)
         {
             return context.Data.LoadFromTextFile(path);
         }
@@ -286,25 +310,23 @@ namespace IcsMonitor
 
         private static string GetHash(string input)
         {
-            using (SHA256 hashAlgorithm = SHA256.Create())
+            using SHA256 hashAlgorithm = SHA256.Create();
+            // Convert the input string to a byte array and compute the hash.
+            byte[] data = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes(input));
+
+            // Create a new Stringbuilder to collect the bytes
+            // and create a string.
+            var sBuilder = new StringBuilder();
+
+            // Loop through each byte of the hashed data
+            // and format each one as a hexadecimal string.
+            for (int i = 0; i < data.Length; i++)
             {
-                // Convert the input string to a byte array and compute the hash.
-                byte[] data = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes(input));
-
-                // Create a new Stringbuilder to collect the bytes
-                // and create a string.
-                var sBuilder = new StringBuilder();
-
-                // Loop through each byte of the hashed data
-                // and format each one as a hexadecimal string.
-                for (int i = 0; i < data.Length; i++)
-                {
-                    sBuilder.Append(data[i].ToString("x2"));
-                }
-
-                // Return the hexadecimal string.
-                return sBuilder.ToString();
+                sBuilder.Append(data[i].ToString("x2"));
             }
+
+            // Return the hexadecimal string.
+            return sBuilder.ToString();
         }
 
 #if LogSupport
@@ -332,7 +354,10 @@ namespace IcsMonitor
             if (!_tempDirectory.Exists) _tempDirectory.Create();
         }
 
-        private void CleanUp()
+        /// <summary>
+        /// Cleans  the environment by deleting objects created during <see cref="Interactive"/> lifetime.
+        /// </summary>
+        public void CleanUp()
         {
             try
             {
