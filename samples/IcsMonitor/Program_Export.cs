@@ -62,13 +62,13 @@ namespace IcsMonitor
             var ctx = new Interactive();
             sw.Start();
             Console.Write("Reading frames to conversation table...");
-            var reader = ctx.CreateCaptureFileReader(inputFile, false);
+            var reader = ctx.OpenCaptureFile(inputFile, false);
             var table = ctx.CreateConversationTable(ctx.GetNextFrames(reader), ctx.TempDirectory.FullName);
             Console.WriteLine($"done [{sw.Elapsed}].");
             sw.Restart();
             Console.Write($"Writing frames to '{outputFile}' file...");
-            var regularFrames = ctx.GetPackets(table);
-            ctx.WriteToFile(regularFrames.Select(p => p.Packet.GetRawFrame(p.Ticks)), outputFile);
+            var regularFrames = ctx.GetAllPackets(table);
+            ctx.WriteFramesToFile(regularFrames.Select(p => p.Packet.GetRawFrame(p.Ticks)), outputFile);
             Console.WriteLine($"done [{sw.Elapsed}].");
         }
 
@@ -102,12 +102,12 @@ namespace IcsMonitor
 
             // Load capture file:
             Console.Write($"Loading capture file '{inputFile}' to internal db '{ctx.TempDirectory}'...");
-            var reader = ctx.CreateCaptureFileReader(inputFile, false);
+            var reader = ctx.OpenCaptureFile(inputFile, false);
             var table = ctx.CreateConversationTable(ctx.GetNextFrames(reader), ctx.TempDirectory.FullName);
             Console.WriteLine("done.");
-            var firstFrame = ctx.GetPackets(table).First();
+            var firstFrame = ctx.GetAllPackets(table).First();
             var timeBaseTicks = firstFrame.Ticks;
-            var frameCount = ctx.GetPackets(table).Count();
+            var frameCount = ctx.GetAllPackets(table).Count();
             Console.WriteLine($"Frames count={frameCount}, first frame={new DateTime(timeBaseTicks)}");
 
             var processor = new FactoryMetaProcessor();
@@ -120,7 +120,7 @@ namespace IcsMonitor
                 Console.WriteLine($"Factory conversation not found.");
 
             // we need to find the first non-meta frame:
-            var regularFrames = ctx.GetPackets(table).Where(p => factoryConversation != null ? !ctx.ContainsPacket(table, factoryConversation?.Key, p.Packet) : true);
+            var regularFrames = ctx.GetAllPackets(table).Where(p => factoryConversation != null ? !ctx.ContainsPacket(table, factoryConversation?.Key, p.Packet) : true);
 
         
             var firstRegularFrameTicks = regularFrames.First().Ticks;
@@ -131,7 +131,7 @@ namespace IcsMonitor
             // write output frames:
             // remove factory conversation and shift the time if necessary
             Console.Write($"Writing frames to '{outputFile}', time shift {offset} ticks....");
-            ctx.WriteToFile(regularFrames.Select(p => p.Packet.GetRawFrame(p.Ticks - offset)), outputFile);
+            ctx.WriteFramesToFile(regularFrames.Select(p => p.Packet.GetRawFrame(p.Ticks - offset)), outputFile);
             Console.WriteLine("done.");
             table.Dispose();
             ctx.Dispose();

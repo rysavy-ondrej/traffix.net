@@ -34,7 +34,7 @@ namespace IcsMonitor
         }
 
         /// <summary>
-        /// Creates aconversaton table from the given <paramref name="frames"/>. 
+        /// Creates a conversation table from the given collection of <paramref name="frames"/>. 
         /// </summary>
         /// <param name="frames">Source frames used to populate conversation table.</param>
         /// <param name="conversationTablePath">The path to folder where conversation table is to be saved.</param>
@@ -55,68 +55,6 @@ namespace IcsMonitor
             return flowTable;
         }
 
-        /// <summary>
-        /// Gets the data using provided conversation <paramref name="processor"/> from the given <paramref name="table"/>.
-        /// </summary>
-        /// <typeparam name="Tdata">Type of data records provided.</typeparam>
-        /// <param name="table">The conversation table.</param>
-        /// <param name="processor">The conversation processor used to get conversation from the conversation table.</param>
-        /// <returns>A collection of <typeparamref name="TData"/> records.</returns>
-        public IEnumerable<TData> GetConversations<TData>(FasterConversationTable table, IConversationProcessor<TData> processor)
-        {
-            return table.ProcessConversations<TData>(table.ConversationKeys, processor);
-        }
-
-        /// <summary>
-        /// Get all packets from the conversation <paramref name="table"/>.
-        /// </summary>
-        /// <param name="table">The conversation table.</param>
-        /// <returns>A collection of packets.</returns>
-        public IEnumerable<(long Ticks, Packet Packet)> GetPackets(FasterConversationTable table)
-        {
-            static FasterConversationTable.ProcessingResult<(long, Packet)> GetPacket(FrameMetadata meta, SpanByte bytes)
-            {
-                return new FasterConversationTable.ProcessingResult<(long, Packet)>
-                {
-                    State = FasterConversationTable.ProcessingState.Success,
-                    Result = (meta.Ticks, Packet.ParsePacket((LinkLayers)meta.LinkLayer, bytes.ToByteArray()))
-                };
-            }
-            return table.ProcessFrames<(long, Packet)>(GetPacket);
-        }
-
-        /// <summary>
-        /// Reads the input file and creates a collection of conversation tables for the intervals of the specified duration.
-        /// <para>
-        /// This method enables to create mutliple conversation tables for given time interval. For instance if the time intevral is set to X minutes
-        /// thenn every X minutes a new conversation table is created. It means that long running conversations can be split to multiple tables. 
-        /// </para>
-        /// </summary>
-        /// <param name="reader">The packet capture reader.</param>
-        /// <param name="conversationTablePath">The root folder for storing data of the conversation tables.</param>
-        /// <param name="timeInterval">The time interval for capturing packets to a conversation table.</param>
-        /// <param name="token">the cancellation token.</param>
-        /// <returns>A collection of conversation tables.</returns>
-        public IEnumerable<FasterConversationTable> ReadToConversationTables(ICaptureFileReader reader, string conversationTablePath, TimeSpan timeInterval, CancellationToken? token = null)
-        {
-            return CreateConversationTables(GetNextFrames(reader), conversationTablePath, timeInterval, token);
-        }
-
-
-        /// <summary>
-        /// Writes a collection of raw <paramref name="frames"/> to PCAP file at the given <paramref name="path"/>.
-        /// </summary>
-        /// <param name="frames">The source frames.</param>
-        /// <param name="path">the path of the pcap file to create.</param>
-        public void WriteToFile(IEnumerable<RawFrame> frames, string path)
-        {
-            var writer = new SharpPcapWriter(path);
-            foreach (var frame in frames)
-            {
-                writer.WriteFrame(frame);
-            }
-            writer.Close();
-        }
 
         /// <summary>
         /// Computes a collection of conversation tables by splitting the input frames to specified time intervals.
@@ -132,27 +70,28 @@ namespace IcsMonitor
         /// <returns></returns>
         public IEnumerable<FasterConversationTable> CreateConversationTables(IEnumerable<RawFrame> frames, string conversationTablePath, TimeSpan timeInterval, CancellationToken? token = null)
         {
-            long? startWindowTicks = null;
-            long timeIntervalTicks = timeInterval.Ticks;
-            int flowTableNum = 0;
-            var flowTablePath = Path.Combine(conversationTablePath, flowTableNum.ToString("D4"));
-            Console.WriteLine($">> {flowTablePath}");
+            FasterConversationTable CreateConversationTable(int index, out FasterConversationTable.FrameStreamer streamer)
+            {
+                var flowTablePath = Path.Combine(conversationTablePath, index.ToString("D4"));
+                var flowTable = FasterConversationTable.Create(flowTablePath, 100000);
+                streamer = flowTable.GetStreamer();
+                return flowTable;
+            }
 
-            var flowTable = FasterConversationTable.Create(flowTablePath, 100000);
-            var loader = flowTable.GetStreamer();
+            long? startWindowTicks = null;
+            int flowTableCount = 0;
+            var flowTable = CreateConversationTable(++flowTableCount, out var loader);
             foreach (var frame in frames)
             {
                 if (startWindowTicks is null) startWindowTicks = frame.Ticks;
-                if (frame.Ticks > startWindowTicks + timeIntervalTicks)
+                if (frame.Ticks > startWindowTicks + timeInterval.Ticks)
                 {
                     loader.Dispose();
                     flowTable.SaveChanges();
                     yield return flowTable;
-                    flowTableNum++;
-                    flowTablePath = Path.Combine(conversationTablePath, flowTableNum.ToString("D4"));
-                    flowTable = FasterConversationTable.Create(flowTablePath, 100000);
-                    loader = flowTable.GetStreamer();
-                    startWindowTicks += timeIntervalTicks;
+
+                    flowTable = CreateConversationTable(++flowTableCount, out loader);
+                    startWindowTicks += timeInterval.Ticks;
                 }
 
                 loader.AddFrame(frame, frame.Number);
@@ -163,7 +102,39 @@ namespace IcsMonitor
             yield return flowTable;
         }
 
+        /// <summary>
+        /// Get all packets from the conversation <paramref name="table"/>.
+        /// </summary>
+        /// <param name="table">The conversation table.</param>
+        /// <returns>A collection of packets.</returns>
+        public IEnumerable<(long Ticks, Packet Packet)> GetAllPackets(FasterConversationTable table)
+        {
+            static FasterConversationTable.ProcessingResult<(long, Packet)> GetPacket(FrameMetadata meta, SpanByte bytes)
+            {
+                return new FasterConversationTable.ProcessingResult<(long, Packet)>
+                {
+                    State = FasterConversationTable.ProcessingState.Success,
+                    Result = (meta.Ticks, Packet.ParsePacket((LinkLayers)meta.LinkLayer, bytes.ToByteArray()))
+                };
+            }
 
+            return table.ProcessFrames<(long, Packet)>(GetPacket);
+        }
+
+        /// <summary>
+        /// Writes a collection of raw <paramref name="frames"/> to PCAP file at the given <paramref name="path"/>.
+        /// </summary>
+        /// <param name="frames">The source frames.</param>
+        /// <param name="path">the path of the pcap file to create.</param>
+        public void WriteFramesToFile(IEnumerable<RawFrame> frames, string path)
+        {
+            var writer = new SharpPcapWriter(path);
+            foreach (var frame in frames)
+            {
+                writer.WriteFrame(frame);
+            }
+            writer.Close();
+        }
 
         /// <summary>
         /// Creates the capture file reader.
@@ -171,7 +142,7 @@ namespace IcsMonitor
         /// <param name="path">The source pcap file to read.</param>
         /// <param name="useManaged">Use the managed reader implementation. If false it uses SharpPcap and external library.</param>
         /// <returns>The capture reader.</returns>
-        public ICaptureFileReader CreateCaptureFileReader(string path, bool useManaged = true)
+        public ICaptureFileReader OpenCaptureFile(string path, bool useManaged = true)
         {
             if (useManaged)
             {
@@ -185,6 +156,8 @@ namespace IcsMonitor
 
         /// <summary>
         /// Reads up to the specified <paramref name="count"/> of frames using the given <paramref name="reader"/> 
+        /// <para/>
+        /// Read all frames if <paramref name="count"/> is not specified.
         /// </summary>
         /// <param name="reader">The pcap reader.</param>
         /// <param name="count">Number of frames to read.</param>
@@ -205,9 +178,9 @@ namespace IcsMonitor
         }
 
         /// <summary>
-        /// Tests if the <paramref name="packet"/> belongs to the given conversation specified by its <paramref name="conversationKey"/>.
+        /// Tests if <paramref name="packet"/> belongs to the given conversation specified by its <paramref name="conversationKey"/>.
         /// </summary>
-        /// <param name="table">The conversation table providing the context for the operation.</param>
+        /// <param name="table">The conversation table providing <see cref="FasterConversationTable.GetFlowKey(Packet)"/> operation.</param>
         /// <param name="conversationKey">The conversation key.</param>
         /// <param name="packet">The packet.</param>
         /// <returns>true if the packet belongs to the conversation; false otherwise</returns>
@@ -226,6 +199,7 @@ namespace IcsMonitor
         /// <typeparam name="TFlowData">The type of the dataset. </typeparam>
         /// <param name="inputFile">The source pcap file.</param>
         /// <param name="timeInterval">The time interval for conversation window.</param>
+        /// <param name="frameFilter">Teh filter expression used to select frames to be inserted in conversation tables.</param>
         /// <param name="processor">The conversation processor to produce results in the dataset.</param>
         /// <returns>The dataset computed for the input data using the given conversation processor.</returns>
         public IcsDataset<TFlowData> ComputeDataset<TFlowData>(string inputFile, TimeSpan timeInterval, Func<RawFrame, bool> frameFilter, IConversationProcessor<ConversationRecord<TFlowData>> processor)
@@ -256,13 +230,13 @@ namespace IcsMonitor
             {
                 Directory.CreateDirectory(dbTableDirectory);
                 Console.WriteLine($"Creating conversation table '{inputFile}[{timeInterval}]' at '{dbTableDirectory}'.");
-                var reader = CreateCaptureFileReader(inputFile, false);
+                var reader = OpenCaptureFile(inputFile, false);
                 frames = GetNextFrames(reader).ToList();
                 var firstFrame = frames.First();
                 tables = CreateConversationTables(frames.Where(frameFilter), dbTableDirectory, timeInterval, CancellationToken.None).ToList();
                 reader.Close();
             }
-            var conversations = tables.Select(x => new ConversationTable<TFlowData>(GetConversations<ConversationRecord<TFlowData>>(x, processor))).ToList();
+            var conversations = tables.Select(table => new ConversationTable<TFlowData>(table.ProcessConversations(table.ConversationKeys, processor))).ToList();
             return new IcsDataset<TFlowData>(conversations, frames);
         }
 
@@ -274,15 +248,16 @@ namespace IcsMonitor
         /// <returns>The Modbus ICS Dataset object.</returns>
         public IcsDataset<ModbusFlowData.Compact> ComputeModbusDataset(string inputFile, TimeSpan timeInterval)
         {
-            var processor = new IcsMonitor.Modbus.ModbusBiflowProcessor();
-            bool FrameFilter(Traffix.Providers.PcapFile.RawFrame frame)
+            static bool FrameFilter(RawFrame frame)
             {
                 var tcp = frame.GetTcpPacket();
                 return tcp?.SourcePort == 502 || tcp?.DestinationPort == 502;
             }
-            var transform = ConversationRecord<ModbusFlowData>.TransformTo<ModbusFlowData.Compact>(x => new ModbusFlowData.Compact(x));
+
+            var processor = new ModbusBiflowProcessor();
+            var transform = ConversationRecord<ModbusFlowData>.TransformTo(x => new ModbusFlowData.Compact(x));
             var compactProcessor = processor.Transform(r => transform.Invoke(r));
-            return ComputeDataset<ModbusFlowData.Compact>(inputFile, timeInterval, FrameFilter, compactProcessor);
+            return ComputeDataset(inputFile, timeInterval, FrameFilter, compactProcessor);
         }
 
         /// <summary>

@@ -56,7 +56,6 @@
   - [GetNextFrames(reader,count)](#M-IcsMonitor-Interactive-GetNextFrames-Traffix-Providers-PcapFile-ICaptureFileReader,System-Int32- 'IcsMonitor.Interactive.GetNextFrames(Traffix.Providers.PcapFile.ICaptureFileReader,System.Int32)')
   - [GetPackets(table)](#M-IcsMonitor-Interactive-GetPackets-Traffix-Storage-Faster-FasterConversationTable- 'IcsMonitor.Interactive.GetPackets(Traffix.Storage.Faster.FasterConversationTable)')
   - [LoadFromTsv(context,path)](#M-IcsMonitor-Interactive-LoadFromTsv-Microsoft-ML-MLContext,System-String- 'IcsMonitor.Interactive.LoadFromTsv(Microsoft.ML.MLContext,System.String)')
-  - [ReadToConversationTables(reader,conversationTablePath,timeInterval,token)](#M-IcsMonitor-Interactive-ReadToConversationTables-Traffix-Providers-PcapFile-ICaptureFileReader,System-String,System-TimeSpan,System-Nullable{System-Threading-CancellationToken}- 'IcsMonitor.Interactive.ReadToConversationTables(Traffix.Providers.PcapFile.ICaptureFileReader,System.String,System.TimeSpan,System.Nullable{System.Threading.CancellationToken})')
   - [SaveToTsv(context,dataview,path)](#M-IcsMonitor-Interactive-SaveToTsv-Microsoft-ML-MLContext,Microsoft-ML-IDataView,System-String- 'IcsMonitor.Interactive.SaveToTsv(Microsoft.ML.MLContext,Microsoft.ML.IDataView,System.String)')
   - [WriteToFile(frames,path)](#M-IcsMonitor-Interactive-WriteToFile-System-Collections-Generic-IEnumerable{Traffix-Providers-PcapFile-RawFrame},System-String- 'IcsMonitor.Interactive.WriteToFile(System.Collections.Generic.IEnumerable{Traffix.Providers.PcapFile.RawFrame},System.String)')
 - [MapAllPublicProperties\`1](#T-IcsMonitor-OutputWriter-MapAllPublicProperties`1 'IcsMonitor.OutputWriter.MapAllPublicProperties`1')
@@ -839,29 +838,6 @@ The data view loaded.
 | ---- | ---- | ----------- |
 | context | [Microsoft.ML.MLContext](#T-Microsoft-ML-MLContext 'Microsoft.ML.MLContext') | The ML.NET context. |
 | path | [System.String](http://msdn.microsoft.com/query/dev14.query?appId=Dev14IDEF1&l=EN-US&k=k:System.String 'System.String') | The path to source file. |
-
-<a name='M-IcsMonitor-Interactive-ReadToConversationTables-Traffix-Providers-PcapFile-ICaptureFileReader,System-String,System-TimeSpan,System-Nullable{System-Threading-CancellationToken}-'></a>
-### ReadToConversationTables(reader,conversationTablePath,timeInterval,token) `method`
-
-##### Summary
-
-Reads the input file and creates a collection of conversation tables for the intervals of the specified duration.
-
-This method enables to create mutliple conversation tables for given time interval. For instance if the time intevral is set to X minutes
-thenn every X minutes a new conversation table is created. It means that long running conversations can be split to multiple tables.
-
-##### Returns
-
-A collection of conversation tables.
-
-##### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| reader | [Traffix.Providers.PcapFile.ICaptureFileReader](#T-Traffix-Providers-PcapFile-ICaptureFileReader 'Traffix.Providers.PcapFile.ICaptureFileReader') | The packet capture reader. |
-| conversationTablePath | [System.String](http://msdn.microsoft.com/query/dev14.query?appId=Dev14IDEF1&l=EN-US&k=k:System.String 'System.String') | The root folder for storing data of the conversation tables. |
-| timeInterval | [System.TimeSpan](http://msdn.microsoft.com/query/dev14.query?appId=Dev14IDEF1&l=EN-US&k=k:System.TimeSpan 'System.TimeSpan') | The time interval for capturing packets to a conversation table. |
-| token | [System.Nullable{System.Threading.CancellationToken}](http://msdn.microsoft.com/query/dev14.query?appId=Dev14IDEF1&l=EN-US&k=k:System.Nullable 'System.Nullable{System.Threading.CancellationToken}') | the cancellation token. |
 
 <a name='M-IcsMonitor-Interactive-SaveToTsv-Microsoft-ML-MLContext,Microsoft-ML-IDataView,System-String-'></a>
 ### SaveToTsv(context,dataview,path) `method`
