@@ -44,19 +44,22 @@ namespace IcsMonitor
         }
 
         /// <summary>
-        /// Gets the data using cnversation processor and the result function transformer.
+        /// Gets the data using provided conversation <paramref name="processor"/> from the given <paramref name="table"/>.
         /// </summary>
-        /// <typeparam name="Tdata"></typeparam>
-        /// <typeparam name="Tout"></typeparam>
+        /// <typeparam name="Tdata">Type of data records provided.</typeparam>
         /// <param name="table">The conversation table.</param>
         /// <param name="processor">The conversation processor used to get conversation from the conversation table.</param>
-        /// <param name="resultFuncTransformer">Transform data produced by the conversation processor to the result objects.</param>
-        /// <returns></returns>
+        /// <returns>A collection of <typeparamref name="TData"/> records.</returns>
         public IEnumerable<TData> GetConversations<TData>(FasterConversationTable table, IConversationProcessor<TData> processor)
         {
             return table.ProcessConversations<TData>(table.ConversationKeys, processor);
         }
 
+        /// <summary>
+        /// Get all packets from the conversation <paramref name="table"/>.
+        /// </summary>
+        /// <param name="table">The conversation table.</param>
+        /// <returns>A collection of packets.</returns>
         public IEnumerable<(long Ticks, Packet Packet)> GetPackets(FasterConversationTable table)
         {
             static FasterConversationTable.ProcessingResult<(long, Packet)> GetPacket(FrameMetadata meta, SpanByte bytes)
