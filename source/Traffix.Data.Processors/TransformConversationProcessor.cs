@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using Traffix.Core.Flows;
+using Traffix.Data;
 
-namespace Traffix.Storage.Faster
+namespace Traffix.Processors
 {
     class TransformConversationProcessor<TSource, TTarget> : IConversationProcessor<TTarget>
     {

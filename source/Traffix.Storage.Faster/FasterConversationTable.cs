@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Traffix.Core.Flows;
+using Traffix.Data;
 using Traffix.Providers.PcapFile;
 
 namespace Traffix.Storage.Faster
@@ -21,7 +22,7 @@ namespace Traffix.Storage.Faster
         private readonly string _rootFolder;
         private readonly Configuration _config;
         private readonly ConversationsStore _conversationsStore;
-        private readonly FramesStore _framesStore;
+        private readonly FramesStoreSimple _framesStore;
 
         /// <summary>
         /// Memory pool used for buffer allocations in this class.
@@ -98,7 +99,7 @@ namespace Traffix.Storage.Faster
             _rootFolder = folder;
             _config = config;
             _conversationsStore = new ConversationsStore(Path.Combine(folder, "conversations"), config.ConversationsCapacity);
-            _framesStore = new FramesStore(Path.Combine(folder, "frames"), config.FramesCapacity);
+            _framesStore = new FramesStoreSimple(Path.Combine(folder, "frames"), (int)config.FramesCapacity);
         }
         #region Dispose Implementation
         protected virtual void Dispose(bool disposing)
@@ -179,26 +180,30 @@ namespace Traffix.Storage.Faster
         /// <param name="address"></param>
         /// <param name="frameFlowKey"></param>
         /// <returns></returns>
-        private unsafe void InsertFrame(FramesStore.KeyValueStoreClient client, ref FrameKey frameKey, ref FlowKey frameFlowKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
+        private unsafe void InsertFrame(FramesStoreSimple.ClientSession client, ref FrameKey frameKey, ref FlowKey frameFlowKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
         {
-            var size = FrameValue.GetRequiredSize(frameBytes.Length);
+            var bufferSize = Unsafe.SizeOf<FrameMetadata>() + frameBytes.Length;
             
-            if (size < 128)
+ 
+            if (bufferSize < 128)
             {
-                var bufferPtr = stackalloc byte[size];
-                ref var frameValue = ref Unsafe.AsRef<FrameValue>(bufferPtr);
-                FrameValue.Create(ref Unsafe.AsRef<FrameValue>(bufferPtr), ref frameMetadata, frameBytes);
-                client.Put(ref frameKey, ref frameValue);
+                var bufferPtr = stackalloc byte[bufferSize];
+
+                var frameValue = new Span<byte>(bufferPtr, bufferSize);
+                Unsafe.Copy(bufferPtr, ref frameMetadata);
+                frameBytes.CopyTo(frameValue.Slice(Unsafe.SizeOf<FrameMetadata>()));
+                client.Put(frameKey.Address, ref frameValue);
             }
             else
             
             {
-                using var buffer = _memoryPool.Rent(size);
-                fixed (void* bufferPtr = buffer.Memory.Span)
+                using var buffer = _memoryPool.Rent(bufferSize);
+                fixed (byte* bufferPtr = buffer.Memory.Span)
                 {
-                    ref var frameValue = ref Unsafe.AsRef<FrameValue>(bufferPtr);
-                    FrameValue.Create(ref frameValue, ref frameMetadata, frameBytes);
-                    client.Put(ref frameKey, ref frameValue);
+                    var frameValue = new Span<byte>(bufferPtr, bufferSize);
+                    Unsafe.Copy(bufferPtr, ref frameMetadata);
+                    frameBytes.CopyTo(frameValue.Slice(Unsafe.SizeOf<FrameMetadata>()));
+                    client.Put(frameKey.Address, ref frameValue);
                 }
             }
         }
@@ -258,21 +263,17 @@ namespace Traffix.Storage.Faster
                 ConversationOutput output = new ConversationOutput();
                 if (conversationsClient.TryGet(ref key, ref input, ref output))
                 {
-                    var frameKey = new FrameKey();
-                    var frameInput = new FrameInput() { Pool = MemoryPool<byte>.Shared };
-                    var frameList = new List<FrameOutput>();
+                    var frameList = new List<byte[]>();
                     for (int i = 0; i < output.Value.FrameCount; i++)
                     {
-                        frameKey.Address = output.Value.FrameAddresses[i];
-                        var frameOutput = default(FrameOutput);
-                        if (framesClient.TryGet(ref frameKey, ref frameInput, ref frameOutput))
+                        long frameAddress = output.Value.FrameAddresses[i];
+                        if (framesClient.TryGet(frameAddress, out var frameOutput))
                         {
                             frameList.Add(frameOutput);
                         }
                     }
-                    var result = processor.Invoke(key.FlowKey, frameList.Select(x => x.GetBuffer()).ToList());
+                    var result = processor.Invoke(key.FlowKey, frameList.Select(x => new Memory<byte>(x)).ToList());
                     // we have to dispose buffers rented from memory pool before we can return a result
-                    foreach (var m in frameList) m.ReleaseBuffer();
                     return result;
                 }
                 else
@@ -311,19 +312,20 @@ namespace Traffix.Storage.Faster
             public TResult Result;
         }
 
-        class FrameProcessor<TResult> : IEntryProcessor<FrameKey, FrameValue, TResult>
+        class FrameProcessor<TResult> : IEntryProcessor<long, Memory<byte>, TResult>
         {
-            private readonly Func<FrameMetadata, SpanByte, ProcessingResult<TResult>> _processor;
+            private readonly Func<FrameMetadata, Memory<byte>, ProcessingResult<TResult>> _processor;
 
-            public FrameProcessor(Func<FrameMetadata, SpanByte,ProcessingResult<TResult>> processor)
+            public FrameProcessor(Func<FrameMetadata, Memory<byte>, ProcessingResult<TResult>> processor)
             {
                 _processor = processor;
             }
 
-            unsafe public ProcessingState Invoke(ref FrameKey key, ref FrameValue value, out TResult result)
+            unsafe public ProcessingState Invoke(ref long key, ref Memory<byte> memory, out TResult result)
             {
-                var buffer = SpanByte.FromPointer((byte*)Unsafe.AsPointer(ref value.Bytes), value.BytesLength);
-                var x = _processor.Invoke(value.Meta, buffer);
+                FrameMetadata frameMetadata = default;
+                var frameBytes = FramesStoreSimple.GetFrameFromMemory(ref memory, ref frameMetadata);
+                var x = _processor.Invoke(frameMetadata, frameBytes);
                 result = x.Result;
                 return x.State;
             }
@@ -335,7 +337,7 @@ namespace Traffix.Storage.Faster
         /// <typeparam name="TResult">The type of resulting objects.</typeparam>
         /// <param name="processor">The processor function to apply.</param>
         /// <returns>A collection of results produced by the processor.</returns>
-        public IEnumerable<TResult> ProcessFrames<TResult>(Func<FrameMetadata, SpanByte, ProcessingResult<TResult>> processor)
+        public IEnumerable<TResult> ProcessFrames<TResult>(Func<FrameMetadata, Memory<byte>, ProcessingResult<TResult>> processor)
         {
             foreach (var item in _framesStore.ProcessEntries<TResult>(new FrameProcessor<TResult>(processor)))
             {
@@ -385,12 +387,12 @@ namespace Traffix.Storage.Faster
         public IEnumerable<RawFrame> GetRawFrames()
         {
             int frameNumber = 0;
-            ProcessingResult<RawFrame> GetRawFrame(FrameMetadata meta, SpanByte frame)
+            ProcessingResult<RawFrame> GetRawFrame(FrameMetadata meta, Memory<byte> frame)
             {
                 return new ProcessingResult<RawFrame>
                 {
                     State = ProcessingState.Success,
-                    Result = new RawFrame((PacketDotNet.LinkLayers)meta.LinkLayer, ++frameNumber, meta.Ticks, 0, meta.OriginalLength, frame.ToByteArray())
+                    Result = new RawFrame((LinkLayers)meta.LinkLayer, ++frameNumber, meta.Ticks, 0, meta.OriginalLength, frame.ToArray())
                 };
             }
             return ProcessFrames(GetRawFrame);
@@ -412,13 +414,13 @@ namespace Traffix.Storage.Faster
         {
             private readonly FasterConversationTable _table;
             private ConversationsStore.KeyValueStoreClient _conversationsStoreClient;
-            private FramesStore.KeyValueStoreClient _framesStoreClient;
+            private FramesStoreSimple.ClientSession _framesStoreClient;
             private readonly int _autoFlushRequests;
             private bool _closed;
             private int _outstandingRequests;
             internal FrameStreamer(FasterConversationTable table, 
                 ConversationsStore.KeyValueStoreClient conversationsStoreClient,
-                FramesStore.KeyValueStoreClient framesStoreClient,
+                FramesStoreSimple.ClientSession framesStoreClient,
                 int autoFlush)
             {
                 _table = table;
@@ -562,15 +564,15 @@ namespace Traffix.Storage.Faster
                 return ProcessingState.Success;
             }
         }
-        private class RawFrameProcessor : ConversationProcessor<IEnumerable<RawFrame>>
+        private class RawFrameProcessor : IConversationProcessor<IEnumerable<RawFrame>>
         {
-            public override IEnumerable<RawFrame> Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
+            public IEnumerable<RawFrame> Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
             {
                 FrameMetadata meta = new FrameMetadata();
                 int frameNumber = 0;
                 foreach (var frame in frames)
                 {
-                    var data = GetFrame(frame, ref meta);
+                    var data = ConversationProcessor.GetFrameFromMemory(frame, ref meta);
                     yield return new RawFrame((PacketDotNet.LinkLayers)meta.LinkLayer, ++frameNumber, meta.Ticks, 0, meta.OriginalLength, data.ToArray());
                 }
             }

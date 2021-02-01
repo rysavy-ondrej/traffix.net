@@ -1,19 +1,15 @@
 ﻿using AutoMapper;
 using CsvHelper;
-using CsvHelper.Configuration.Attributes;
-using IcsMonitor.Commands;
 using IcsMonitor.Modbus;
 using Microsoft.ML;
 using Microsoft.ML.Data;
 using Microsoft.ML.Trainers;
-using System;
 using System.Collections.Generic;
-using System.Dynamic;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using Traffix.Core.Flows;
+using Traffix.Processors;
 
 namespace IcsMonitor
 {

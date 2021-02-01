@@ -1,43 +1,11 @@
 using FASTER.core;
-using PacketDotNet;
 using System;
-using System.Buffers;
-using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Traffix.Data;
 
 namespace Traffix.Storage.Faster
 {
-    /// <summary>
-    /// Represents the metadata of a frame.
-    /// </summary>
-    [StructLayout(LayoutKind.Explicit)]
-    public struct FrameMetadata
-    {
-        /// <summary>
-        /// The number of ticks that represent the date and time of this frame. 
-        /// </summary>
-        [FieldOffset(0)]
-        public long Ticks;
-
-        /// <summary>
-        /// The original length of the frame. 
-        /// </summary>
-        [FieldOffset(8)]
-        public ushort OriginalLength;
-
-        /// <summary>
-        /// The link layer of the frame.
-        /// </summary>
-        [FieldOffset(10)]
-        public ushort LinkLayer;
-
-        /// <summary>
-        /// The flow key hash computed for the frame.
-        /// </summary>
-        [FieldOffset(12)]
-        public long FlowKeyHash;
-    }
     /// <summary>
     /// Represents a variable length frame value. It has direct access to 
     /// its <see cref="IncludedLength"/> and <see cref="Ticks"/> fields.
@@ -76,7 +44,7 @@ namespace Traffix.Storage.Faster
         /// <summary>
         /// Gets the length of frame bytes.
         /// </summary>
-        internal int BytesLength => Length - 24;
+        internal int BytesLength => Length - bytesOffset;
 
         /// <summary>
         /// Gets the span that contains only the frame bytes.
@@ -85,7 +53,19 @@ namespace Traffix.Storage.Faster
         /// <returns>The span that contains to the frame bytes.</returns>
         internal static Span<byte> GetFrameBytesSpan(Span<byte> span)
         {
-            return span[bytesOffset..];
+            var length = BitConverter.ToInt32(span);
+            return span.Slice(bytesOffset, length-bytesOffset);
+        }
+
+        /// <summary>
+        /// Gets the metadata followed by entire frame content.
+        /// </summary>
+        /// <param name="memory">The input memory with byte representation of <see cref="FrameValue"/> structure.</param>
+        /// <returns>A memory slice of metadata followed by entire frame content.</returns>
+        internal static Memory<byte> GetFrameMetadataAndBytes(Memory<byte> memory)
+        {
+            var length = BitConverter.ToInt32(memory.Span);
+            return memory.Slice(metadataOffset, length-metadataOffset);
         }
         /// <summary>
         /// Gets the span that contains <see cref="FrameMetadata"/> structure.
@@ -120,12 +100,20 @@ namespace Traffix.Storage.Faster
         /// to accomodate the copy of the current object.</exception>
         /// <param name="dst">The memory location to which the structure content will be copied.</param>
         /// <returns>Returns the number of bytes copied.</returns>
-        internal unsafe void CopyTo(Span<byte> dst)
+        internal unsafe void CopyTo(Span<byte> span)
         {
-            if (dst.Length < Length) throw new ArgumentOutOfRangeException("The provide Span is too small.");
-            fixed (void* dstPtr = dst)
+            if (span.Length < Length) throw new ArgumentOutOfRangeException("The provided Span is too small.");
+            fixed (void* dstPtr = span)
             {
                 Buffer.MemoryCopy(Unsafe.AsPointer(ref this.Length), dstPtr, Length, Length);
+            }
+        }
+        internal void CopyFrameBytesTo(Span<byte> span)
+        {
+            if (span.Length < this.BytesLength) throw new ArgumentOutOfRangeException("The provided Span is too small.");
+            fixed (void* dstPtr = span)
+            {
+                Buffer.MemoryCopy(Unsafe.AsPointer(ref this.Bytes), dstPtr, this.BytesLength, this.BytesLength);
             }
         }
 
@@ -165,6 +153,19 @@ namespace Traffix.Storage.Faster
             var span = new Span<byte>(Unsafe.AsPointer(ref this.Bytes), 18);
             return span.ToArray();
         }
+        internal PacketDotNet.Packet DumpPacket()
+        {
+            var span = new Span<byte>(Unsafe.AsPointer(ref this.Bytes), this.BytesLength);
+            return PacketDotNet.Packet.ParsePacket((PacketDotNet.LinkLayers)this.Meta.LinkLayer, span.ToArray());
+        }
+        internal static PacketDotNet.Packet DumpPacket(Span<byte> bytes)
+        {
+            fixed (void* ptr = bytes)
+            {
+                return Unsafe.AsRef<FrameValue>(ptr).DumpPacket();
+            }
+        }
+
     }
 
     internal struct FrameValueLength : IVariableLengthStruct<FrameValue>

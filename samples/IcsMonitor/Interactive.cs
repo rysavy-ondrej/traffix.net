@@ -10,6 +10,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using Traffix.Core.Flows;
+using Traffix.Data;
+using Traffix.Processors;
 using Traffix.Providers.PcapFile;
 using Traffix.Storage.Faster;
 
@@ -109,12 +111,12 @@ namespace IcsMonitor
         /// <returns>A collection of packets.</returns>
         public IEnumerable<(long Ticks, Packet Packet)> GetAllPackets(FasterConversationTable table)
         {
-            static FasterConversationTable.ProcessingResult<(long, Packet)> GetPacket(FrameMetadata meta, SpanByte bytes)
+            static FasterConversationTable.ProcessingResult<(long, Packet)> GetPacket(FrameMetadata meta, Memory<byte> bytes)
             {
                 return new FasterConversationTable.ProcessingResult<(long, Packet)>
                 {
                     State = FasterConversationTable.ProcessingState.Success,
-                    Result = (meta.Ticks, Packet.ParsePacket((LinkLayers)meta.LinkLayer, bytes.ToByteArray()))
+                    Result = (meta.Ticks, Packet.ParsePacket((LinkLayers)meta.LinkLayer, bytes.ToArray()))
                 };
             }
 

@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Traffix.Hosting.Console;
+using Traffix.Processors;
 
 namespace IcsMonitor
 {

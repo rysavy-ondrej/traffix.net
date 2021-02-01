@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Traffix.Core.Flows;
+using Traffix.Data;
+using Traffix.Processors;
 using Traffix.Providers.PcapFile;
 
 namespace Traffix.Storage.Faster.Tests
@@ -74,6 +76,42 @@ namespace Traffix.Storage.Faster.Tests
             Console.WriteLine($"Frames= {flowTable.FramesCount}  [{sw.Elapsed}]");
         }
 
+        [TestMethod]
+        public void ReadRawFrames()
+        {
+            var sw = new Stopwatch();
+            sw.Start();
+            var flowTable = OpenTable();
+            Console.WriteLine($"--- LOADED --- [{sw.Elapsed}]");
+            var frames = flowTable.GetRawFrames();
+            var allFrames = 0;
+            var otherPackets = 0;
+            var ethernetPackets = 0;
+            var ipPackets = 0;
+            var tcpPackets = 0;
+            var udpPackets = 0;
+
+            foreach(var frame in frames)
+            {
+                allFrames++;
+                if (frame.LinkLayer != PacketDotNet.LinkLayers.Ethernet) otherPackets++;
+                else
+                {
+                    ethernetPackets++;
+                    var packet = PacketDotNet.Packet.ParsePacket(frame.LinkLayer, frame.Data);
+                    if (packet.Extract<PacketDotNet.InternetPacket>() != null) ipPackets++;
+                    if (packet.Extract<PacketDotNet.UdpPacket>() != null) udpPackets++;
+                    if (packet.Extract<PacketDotNet.TcpPacket>() != null) tcpPackets++;
+                }
+            }
+            Console.WriteLine($"--- CHECKED --- [{sw.Elapsed}]");
+            Console.WriteLine($"Frames={allFrames}]");
+            Console.WriteLine($"Ethernet={ethernetPackets}]");
+            Console.WriteLine($"Packets={ipPackets}]");
+            Console.WriteLine($"TCP={tcpPackets}]");
+            Console.WriteLine($"UDP={udpPackets}]");
+        }
+
         /// <summary>
         /// Opens the existing table.
         /// </summary>
@@ -114,28 +152,39 @@ namespace Traffix.Storage.Faster.Tests
             var table = OpenTable();
             Console.WriteLine($"--- LOADED --- [{sw.Elapsed}]");
             sw.Restart();
-            foreach (var c in table.ProcessConversations(table.ConversationKeys, new CustomConversationProcessor<(string Key, int Frames, long Octets)>(CountFrames)))
+            foreach (var c in table.ProcessConversations(table.ConversationKeys, new FuncConversationProcessor<(string key, int frames, int octets, int ip, int tcp, int udp)>(CountFrames)))
             {
-                Console.WriteLine($"Conversatiom={c.Key}, Frames={c.Frames}, Octets={c.Octets}  [{sw.Elapsed}]");
+                Console.WriteLine($"Conversatiom={c.key}, Frames={c.frames}, IP={c.ip}, TCP={c.tcp}, UDP={c.udp}, Octets={c.octets}  [{sw.Elapsed}]");
             }
         }
 
         /// <summary>
         /// Implements a function to be used in the Count Frame conversation processor.
         /// </summary>
-        /// <param name="arg1"></param>
-        /// <param name="arg2"></param>
+        /// <param name="flowKey"></param>
+        /// <param name="frames"></param>
         /// <returns></returns>
-        private (string, int, long) CountFrames(FlowKey arg1, System.Collections.Generic.ICollection<Memory<byte>> arg2)
+        private (string key, int frames, int octets, int ip, int tcp, int udp) CountFrames(FlowKey flowKey, System.Collections.Generic.ICollection<Memory<byte>> frames)
         {
-            int GetFrameSize(Memory<byte> bytes)
+            (int octets, int ip,int tcp,int udp) GetFrameSize(Memory<byte> memory)
             {
                 var meta = default(FrameMetadata);
-                CustomConversationProcessor<int>.GetFrame(bytes, ref meta);
-                return meta.OriginalLength;
+                var bytes = ConversationProcessor.GetFrameFromMemory(memory, ref meta);
+                var packet = PacketDotNet.Packet.ParsePacket((PacketDotNet.LinkLayers)meta.LinkLayer, bytes.ToArray());
+                return (meta.OriginalLength, 
+                    packet.Extract<PacketDotNet.InternetPacket>() != null ? 1 : 0,
+                    packet.Extract<PacketDotNet.TcpPacket>() != null ? 1 : 0,
+                    packet.Extract<PacketDotNet.UdpPacket>() != null ? 1 : 0
+                    );
             }
-            
-            return (arg1.ToString(), arg2.Count, arg2.Sum(GetFrameSize));
+            // intentionally it is computed in this inefficient way to test 
+            // the implementated iteration over the input collection
+            return (flowKey.ToString(), frames.Count, 
+                 frames.Sum(x=> GetFrameSize(x).octets),
+                 frames.Sum(x => GetFrameSize(x).ip),
+                 frames.Sum(x => GetFrameSize(x).tcp),
+                 frames.Sum(x => GetFrameSize(x).udp)
+                );
         }
     }
 }

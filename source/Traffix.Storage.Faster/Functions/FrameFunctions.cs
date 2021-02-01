@@ -1,10 +1,9 @@
-using FASTER.core;
 using System;
 
 namespace Traffix.Storage.Faster
 {
 
-    
+
     internal class FrameFunctions : KeyValueStore<FrameKey, FrameValue, FrameInput, FrameOutput, FrameFunctions>.StoreFunctions
     {
         public override void ConcurrentReader(ref FrameKey key, ref FrameInput input, ref FrameValue value, ref FrameOutput output)
@@ -42,5 +41,4 @@ namespace Traffix.Storage.Faster
         {
         }
     }
-
 }

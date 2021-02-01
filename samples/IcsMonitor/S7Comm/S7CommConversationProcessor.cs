@@ -4,7 +4,10 @@ using PacketDotNet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Traffix.Core.Flows;
+using Traffix.Data;
 using Traffix.Extensions.Decoders.Industrial;
+using Traffix.Processors;
 using Traffix.Storage.Faster;
 
 namespace IcsMonitor.S7Comm
@@ -19,11 +22,11 @@ namespace IcsMonitor.S7Comm
                 _logger = new Logger<S7CommConversationProcessor>(loggerFactory);
         }
 
-        protected override S7CommConversationData Invoke(IReadOnlyCollection<(FrameMetadata Meta, Packet Packet)> fwdPackets, IReadOnlyCollection<(FrameMetadata Meta, Packet Packet)> revPackets)
+        protected override S7CommConversationData Invoke(IReadOnlyCollection<MetaPacket> fwdPackets, IReadOnlyCollection<MetaPacket> revPackets)
         {
             var conversation = new S7CommConversationData();
-            foreach (var packet in fwdPackets) UpdateConversation(conversation, packet.Meta, packet.Packet, FlowDirection.Forward);
-            foreach (var packet in revPackets) UpdateConversation(conversation, packet.Meta, packet.Packet, FlowDirection.Reverse);
+            foreach (var packet in fwdPackets) UpdateConversation(conversation, packet.Metadata, packet.Packet, FlowDirection.Forward);
+            foreach (var packet in revPackets) UpdateConversation(conversation, packet.Metadata, packet.Packet, FlowDirection.Reverse);
             return conversation;
         }
 

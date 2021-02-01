@@ -1,7 +1,7 @@
 ﻿using MessagePack;
 using System;
 
-namespace IcsMonitor
+namespace Traffix.Processors
 {
     [MessagePackObject]
     public class FlowMetrics

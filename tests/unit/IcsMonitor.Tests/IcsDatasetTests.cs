@@ -1,9 +1,9 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using IcsMonitor;
-using System;
-using Microsoft.ML;
-using System.Linq;
 using Microsoft.Data.Analysis;
+using Microsoft.ML;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using System.Linq;
+using Traffix.Processors;
 
 namespace IcsMonitor.Tests
 {
@@ -27,7 +27,7 @@ namespace IcsMonitor.Tests
             var ctx = new Interactive();
             var dataset = ctx.ComputeModbusDataset(@"C:\Users\user\Captures\sorting_station_ver2.pcap", TimeSpan.FromSeconds(180));
             var records = dataset.ConversationTables.SelectMany(x => x.AsEnumerable());
-            var dataframe =records.ToDataFrame();
+            var dataframe = records.ToDataFrame();
             var schema = (dataframe as IDataView).Schema;
             Console.WriteLine($"Schema={schema}");
             Console.WriteLine($"DataView rows = {dataframe.Rows.Count()}");

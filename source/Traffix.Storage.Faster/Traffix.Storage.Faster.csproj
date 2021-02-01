@@ -20,8 +20,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Traffix.Core.Flows\Traffix.Core.Flows.csproj" />
-    <ProjectReference Include="..\Traffix.Providers.PcapFile\Traffix.Providers.PcapFile.csproj" />
+    <ProjectReference Include="..\Traffix.Core.Flows\Traffix.Core.csproj" />
+    <ProjectReference Include="..\Traffix.Providers.PcapFile\Traffix.Providers.csproj" />
   </ItemGroup>
 
 </Project>

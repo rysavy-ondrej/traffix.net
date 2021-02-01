@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\samples\IcsMonitor\IcsMonitor.csproj" />
+    <ProjectReference Include="..\..\..\source\Traffix.Data.Processors\Traffix.Processors.csproj" />
   </ItemGroup>
 
 </Project>

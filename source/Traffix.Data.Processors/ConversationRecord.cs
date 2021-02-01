@@ -1,20 +1,9 @@
 ﻿using MessagePack;
-using Microsoft.CodeAnalysis.CSharp.Scripting;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Scripting;
-using Microsoft.ML;
-using Namotion.Reflection;
 using System;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
 using Traffix.Core.Flows;
-using Traffix.Storage.Faster;
 
-namespace IcsMonitor
+namespace Traffix.Processors
 {
-
-
     [MessagePackObject]
     public struct RecordLabel
     {
@@ -78,17 +67,17 @@ namespace IcsMonitor
         {
             return new ConversationRecord<TTarget>
             {
-                Label = this.Label,
-                Key = this.Key,
-                ForwardMetrics = this.ForwardMetrics,
-                ReverseMetrics = this.ReverseMetrics,
-                Data = transform(this.Data)
+                Label = Label,
+                Key = Key,
+                ForwardMetrics = ForwardMetrics,
+                ReverseMetrics = ReverseMetrics,
+                Data = transform(Data)
             };
         }
 
         public static Func<ConversationRecord<TData>, ConversationRecord<TTarget>> TransformTo<TTarget>(Func<TData, TTarget> transform)
         {
-            return x => x.Transform<TTarget>(transform);
+            return x => x.Transform(transform);
         }
 
         public static ConversationRecord<TData> Combine(Func<TData, TData, TData> combineData, ConversationRecord<TData> left, ConversationRecord<TData> right)

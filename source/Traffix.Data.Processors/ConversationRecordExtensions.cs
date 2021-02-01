@@ -10,7 +10,7 @@ using System.Reflection;
 using System.Text;
 using Traffix.Core.Flows;
 
-namespace IcsMonitor
+namespace Traffix.Processors
 {
     /// <summary>
     /// Implements various extension methods for manipulation with <see cref="ConversationRecord{TData}"/>,
@@ -296,7 +296,7 @@ namespace IcsMonitor
                 encoding = Encoding.ASCII;
             }
 
-            using (StreamWriter csvFile = new StreamWriter(csvStream, encoding, leaveOpen: true))
+            using (StreamWriter csvFile = new StreamWriter(csvStream, encoding, 4096, leaveOpen: true))
             {
                 if (dataFrame != null)
                 {

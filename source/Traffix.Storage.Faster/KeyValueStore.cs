@@ -115,7 +115,7 @@ namespace Traffix.Storage.Faster
             return new KeyValueStoreClient(this, session);
         }
 
-        public ClientSession<TKey, TValue, TInput, TOutput, StoreContext<TOutput>, TFunctions> NewSession(string sessionId = null, bool threadAffinitized = false)
+        ClientSession<TKey, TValue, TInput, TOutput, StoreContext<TOutput>, TFunctions> NewSession(string sessionId = null, bool threadAffinitized = false)
         {
             if (_fasterKvh == null) throw new InvalidOperationException("The store is closed.");
             return _fasterKvh.NewSession(sessionId, threadAffinitized);
@@ -127,9 +127,7 @@ namespace Traffix.Storage.Faster
             var iterator = _fasterKvh.Iterate() ?? throw new InvalidOperationException("Cannot create conversations database iterator.");
             while (iterator.GetNext(out _))
             {
-                var key = iterator.GetKey();
-                var value = iterator.GetValue();
-                var state = processor.Invoke(ref key, ref value, out var result);
+                var state = processor.Invoke(ref iterator.GetKey(), ref iterator.GetValue(), out var result);
                 yield return (state, result);
             }
             iterator.Dispose();
@@ -269,7 +267,7 @@ namespace Traffix.Storage.Faster
             public virtual void DeleteCompletionCallback(ref TKey key, StoreContext<TOutput> ctx)
             {
                 var status = Status.OK;
-                ctx.Populate(ref status);
+                ctx.Populate(status);
             }
 
             public virtual void InitialUpdater(ref TKey key, ref TInput input, ref TValue value)
@@ -284,12 +282,12 @@ namespace Traffix.Storage.Faster
             public virtual void ReadCompletionCallback(ref TKey key, ref TInput input, ref TOutput output, StoreContext<TOutput> ctx, Status status)
             {
                 
-                ctx.Populate(ref status, ref output);
+                ctx.Populate(status, ref output);
             }
 
             public virtual void RMWCompletionCallback(ref TKey key, ref TInput input, StoreContext<TOutput> ctx, Status status)
             {
-                ctx.Populate(ref status);
+                ctx.Populate(status);
             }
 
             public virtual void SingleReader(ref TKey key, ref TInput input, ref TValue value, ref TOutput dst)
@@ -303,7 +301,7 @@ namespace Traffix.Storage.Faster
             public virtual void UpsertCompletionCallback(ref TKey key, ref TValue value, StoreContext<TOutput> ctx)
             {
                 var status = Status.OK;
-                ctx.Populate(ref status);
+                ctx.Populate(status);
             }
         }
     }
@@ -312,10 +310,14 @@ namespace Traffix.Storage.Faster
         private Status _status;
         private TOuput _output;
 
-        public void Populate(ref Status status, ref TOuput output)
+        public void Populate(Status status, ref TOuput output)
         {
             this._status = status;
             this._output = output;
+        }
+        public void Populate(Status status)
+        {
+            this._status = status;
         }
 
         public void FinalizeRead(ref Status status, ref TOuput output)
@@ -329,9 +331,6 @@ namespace Traffix.Storage.Faster
             status = this._status;
         }
 
-        public void Populate(ref Status status)
-        {
-            this._status = status;
-        }
+
     }
 }

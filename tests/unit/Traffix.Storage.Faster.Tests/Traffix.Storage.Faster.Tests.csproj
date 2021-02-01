@@ -14,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\source\Traffix.Data.Processors\Traffix.Processors.csproj" />
     <ProjectReference Include="..\..\..\source\Traffix.Storage.Faster\Traffix.Storage.Faster.csproj" />
   </ItemGroup>
 

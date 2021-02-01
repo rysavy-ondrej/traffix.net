@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Runtime.CompilerServices;
+using Traffix.Data;
 
 namespace Traffix.Storage.Faster
 {
@@ -17,33 +18,26 @@ namespace Traffix.Storage.Faster
             _memoryOwner?.Dispose();
             _memoryOwner = default;
         }
-
-        public unsafe ref FrameMetadata ReadMetadata(ref FrameMetadata metadata)
-        {
-            var src = GetMetadata();
-            metadata = Unsafe.AsRef<FrameMetadata>((void*)src.GetPinnableReference());
-            return ref metadata;
-        }
-        public void ReadFrameBytes(Span<byte> targetBuffer)
-        {
-            var src = GetFrameBytes();
-            src.CopyTo(targetBuffer);
-        }
-        internal Span<byte> GetMetadata()
-        {
-            if (_memoryOwner == null) throw new InvalidOperationException("Buffer not assigned.");
-            return FrameValue.GetMetadataSpan(_memoryOwner.Memory.Span);
-        }
-        internal Span<byte> GetFrameBytes()
-        {
-            if (_memoryOwner == null) throw new InvalidOperationException("Buffer not assigned.");
-            return FrameValue.GetFrameBytesSpan(_memoryOwner.Memory.Span);
-        }
-
+        /// <summary>
+        /// Gets the entire memory buffer associated with this object.
+        /// <para/>
+        /// Becasue memory can be drawn from the memory pool the memory object 
+        /// can be larger then <see cref="FrameValue"/> object instantiated.
+        /// </summary>
+        /// <returns></returns>
         internal Memory<byte> GetBuffer()
         {         
-             if (_memoryOwner == null) throw new InvalidOperationException("Buffer not assigned.");
+            if (_memoryOwner == null) throw new InvalidOperationException("Buffer not assigned.");
             return this._memoryOwner.Memory;
+        }
+        /// <summary>
+        /// Gets the frame. It consists of <see cref="FrameMetadata"/> header immediately followed by frame bytes.
+        /// </summary>
+        /// <returns>The memory containing frame data.</returns>
+        internal Memory<byte> GetRawFrameWithMetadata()
+        {
+            if (_memoryOwner == null) throw new InvalidOperationException("Buffer not assigned.");
+            return FrameValue.GetFrameMetadataAndBytes(this._memoryOwner.Memory);
         }
     }
 }

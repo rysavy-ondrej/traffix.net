@@ -3,6 +3,7 @@ using PacketDotNet;
 using System;
 using System.Collections.Generic;
 using Traffix.Extensions.Decoders.Industrial;
+using Traffix.Processors;
 using Traffix.Storage.Faster;
 
 namespace IcsMonitor.Modbus
@@ -15,7 +16,7 @@ namespace IcsMonitor.Modbus
         {
         }
 
-        protected override ModbusFlowData Invoke(IReadOnlyCollection<(FrameMetadata Meta, Packet Packet)> fwdPackets, IReadOnlyCollection<(FrameMetadata Meta, Packet Packet)> revPackets)
+        protected override ModbusFlowData Invoke(IReadOnlyCollection<MetaPacket> fwdPackets, IReadOnlyCollection<MetaPacket> revPackets)
         {
             var modbusFlowData = new ModbusFlowData();
             foreach (var packet in fwdPackets)

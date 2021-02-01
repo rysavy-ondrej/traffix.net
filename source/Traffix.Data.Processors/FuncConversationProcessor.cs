@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using Traffix.Core.Flows;
 
-namespace Traffix.Storage.Faster
+namespace Traffix.Processors
 {
-    public class CustomConversationProcessor<T> : ConversationProcessor<T>
+    public class FuncConversationProcessor<T> : ConversationProcessorBase<T>
     {
         private readonly Func<FlowKey, ICollection<Memory<byte>>, T> _processor;
 
-        public CustomConversationProcessor(Func<FlowKey, ICollection<Memory<byte>>,T> processor)
+        public FuncConversationProcessor(Func<FlowKey, ICollection<Memory<byte>>,T> processor)
         {
             _processor = processor;
         }

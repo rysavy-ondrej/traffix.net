@@ -8,6 +8,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using Traffix.Hosting.Console;
+using Traffix.Processors;
 using Traffix.Providers.PcapFile;
 using Traffix.Storage.Faster;
 
@@ -84,7 +85,7 @@ namespace IcsMonitor
                     && segmentPayload[11] == 01;
 
             }
-            protected override bool Invoke(IReadOnlyCollection<(FrameMetadata Meta, Packet Packet)> forward, IReadOnlyCollection<(FrameMetadata Meta, Packet Packet)> reverse)
+            protected override bool Invoke(IReadOnlyCollection<MetaPacket> forward, IReadOnlyCollection<MetaPacket> reverse)
             {
                 return forward.Select(x => x.Packet).Segments().Take(5).All(p => MatchPattern(p.PayloadData));
             }
@@ -111,7 +112,7 @@ namespace IcsMonitor
             Console.WriteLine($"Frames count={frameCount}, first frame={new DateTime(timeBaseTicks)}");
 
             var processor = new FactoryMetaProcessor();
-            var conversations = ctx.GetConversations(table, new FactoryMetaProcessor()).ToList();
+            var conversations = table.ProcessConversations(table.ConversationKeys, new FactoryMetaProcessor()).ToList();
             var factoryConversation = conversations.FirstOrDefault(c => c.Data == true);
 
             if (factoryConversation != null)        
