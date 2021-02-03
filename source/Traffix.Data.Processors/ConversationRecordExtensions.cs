@@ -1,6 +1,9 @@
 ﻿using Microsoft.Data.Analysis;
 using Microsoft.ML;
+using Microsoft.ML.Data;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 
@@ -63,6 +66,19 @@ namespace Traffix.Processors
         public static IDataView AsDataView<T>(this IEnumerable<ConversationRecord<T>> records)
         {
             return new ConversationRecordDataView<T>(records);
+        }
+    }
+
+    public static class DataOperationsCatalogExtensions
+    {
+        public static void SaveAsMd(this DataOperationsCatalog _, DataDebuggerPreview preview, TextWriter writer)
+        {
+            writer.WriteLine($"| {String.Join(" | ", preview.Schema.Select(s => s.Name))} |");
+            writer.WriteLine($"| {String.Join(" | ", preview.Schema.Select(s => "------"))} |");
+            foreach (var row in preview.RowView)
+            {
+                writer.WriteLine($" | {String.Join(" | ", row.Values.Select(x => x.Value.ToString()))} | ");
+            }
         }
     }
 }

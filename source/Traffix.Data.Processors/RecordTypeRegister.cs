@@ -13,12 +13,11 @@ namespace Traffix.Processors
     /// as they are flatten view on the existing possibly complex and nested classes and structures.
     /// </summary>
     internal static class RecordTypeRegister
-    {         
+    {
         /// <summary>
         /// Contains cached member information objects.
         /// </summary>
         private static readonly Dictionary<Type, ICollection<RecordMemberInfo>> _registeredRecordTypes = new Dictionary<Type, ICollection<RecordMemberInfo>>();
-
         /// <summary>                                                   
         /// Gets the member information collection for the given type.
         /// The information is cached by this class thus subsequent calling does not analyze the type again but 
@@ -40,16 +39,40 @@ namespace Traffix.Processors
         }
 
         /// <summary>
-        /// Gets the collection of member information objects for the given <paramref name="type"/>.
-        /// <para/> 
-        /// This method enumerates the member in nested classed and structures. It provives a collection of all members found.
-        /// The full names of member are given as paths in the root class hierarchy.
+        /// Registers the new record type.
         /// </summary>
-        /// <param name="type">The type for which to get columns.</param>
-        /// <param name="prefix">The path prefix to use for constructing full names of members.</param>
-        /// <param name="pathDelimiter">The path delimiter used in member path names.</param>
-        /// <returns>A collection of member information objects that each consists of  member path,  member type and  accessor function.</returns>
-        public static ICollection<RecordMemberInfo> ExtractRecordMembers(Type type, string prefix = null, string pathDelimiter = "_")
+        /// <param name="type"></param>
+        /// <param name="recordMemberInfos"></param>
+        public static void RegisterRecordType(Type type, IEnumerable<RecordMemberInfo> recordMemberInfos)
+        {
+            _registeredRecordTypes[type] = recordMemberInfos.ToArray();
+        }
+
+        static RecordTypeRegister()
+        {
+            var members = new RecordMemberInfo[]
+            {
+                new RecordMemberInfo(nameof(FlowKey.ProtocolType), typeof(int), obj => (obj as FlowKey).ProtocolType),
+                new RecordMemberInfo(nameof(FlowKey.SourceIpAddress), typeof(string), obj => (obj as FlowKey).SourceIpAddress.ToString()),
+                new RecordMemberInfo(nameof(FlowKey.SourcePort), typeof(ushort), obj => (obj as FlowKey).SourcePort),
+                new RecordMemberInfo(nameof(FlowKey.DestinationIpAddress), typeof(string), obj => (obj as FlowKey).DestinationIpAddress.ToString()),
+                new RecordMemberInfo(nameof(FlowKey.DestinationPort), typeof(ushort), obj => (obj as FlowKey).DestinationPort)
+            };
+            RegisterRecordType(typeof(FlowKey), members);
+    }
+
+
+    /// <summary>
+    /// Gets the collection of member information objects for the given <paramref name="type"/>.
+    /// <para/> 
+    /// This method enumerates the member in nested classed and structures. It provives a collection of all members found.
+    /// The full names of member are given as paths in the root class hierarchy.
+    /// </summary>
+    /// <param name="type">The type for which to get columns.</param>
+    /// <param name="prefix">The path prefix to use for constructing full names of members.</param>
+    /// <param name="pathDelimiter">The path delimiter used in member path names.</param>
+    /// <returns>A collection of member information objects that each consists of  member path,  member type and  accessor function.</returns>
+    public static ICollection<RecordMemberInfo> ExtractRecordMembers(Type type, string prefix = null, string pathDelimiter = "_")
         {
             var members = new List<RecordMemberInfo>();
 
@@ -63,10 +86,10 @@ namespace Traffix.Processors
             /// Boolean, Byte, SByte, Int16, UInt16, Int32, UInt32, Int64, UInt64, IntPtr, UIntPtr, Char, Double, and Single
             /// String type
             /// or DateTime, DatTimeOffset and TimeSpan.
-            static bool IsBasicValueType(Type type)
+            static bool IsSupportedBasicType(Type type)
             {
                 return type.IsEnum
-                    || type.IsPrimitive  // 
+                    || type.IsPrimitive  
                     || type == typeof(String)
                     || type == typeof(DateTime)
                     || type == typeof(DateTimeOffset)
@@ -74,64 +97,54 @@ namespace Traffix.Processors
             }
 
             /// Gets all members (public properties and fields) that has MessagePack.KeyAttribute.
-            static IEnumerable<MemberInfo> GetMembers(Type type)
+            static IEnumerable<MemberInfo> GetTypeMembers(Type type)
             {
                 var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance).Where(x => x.GetCustomAttribute<KeyAttribute>() != null).Cast<MemberInfo>();
                 var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(x => x.GetCustomAttribute<KeyAttribute>() != null).Cast<MemberInfo>();
                 return fields.Concat(props);
             }
 
-            /// Adds properties and fields to the members collection.
-            void AddMembers(IEnumerable<string> path, Type typ, Func<object, object> funcAccessor)
+            /// Adds properties and fields to the members collection, recursively.
+            void CollectRecordMemberInfos(IEnumerable<string> objectPrefix, Type objectType, Func<object, object> objectGetterFunc)
             {
-                if (typ == typeof(FlowKey))
+                // do we have registered RecordMemberInfo for the given type?
+                // if so, we use it instead of analyzing the type via reflection...
+                if (_registeredRecordTypes.TryGetValue(objectType, out var recordMembers))
                 {
-                    members.Add(new RecordMemberInfo(MemberPathCombine(path, nameof(FlowKey.ProtocolType)), typeof(System.Net.Sockets.ProtocolType), obj => (funcAccessor(obj) as FlowKey).ProtocolType));
-
-                    members.Add(new RecordMemberInfo(MemberPathCombine(path, nameof(FlowKey.SourceIpAddress)), typeof(string), obj => (funcAccessor(obj) as FlowKey).SourceIpAddress.ToString()));
-
-                    members.Add(new RecordMemberInfo(MemberPathCombine(path, nameof(FlowKey.SourcePort)), typeof(ushort), obj => (funcAccessor(obj) as FlowKey).SourcePort));
-
-                    members.Add(new RecordMemberInfo(MemberPathCombine(path, nameof(FlowKey.DestinationIpAddress)), typeof(string), obj => (funcAccessor(obj) as FlowKey).DestinationIpAddress.ToString()));
-
-                    members.Add(new RecordMemberInfo(MemberPathCombine(path, nameof(FlowKey.DestinationPort)), typeof(ushort), obj => (funcAccessor(obj) as FlowKey).DestinationPort));
+                    members.AddRange(recordMembers.Select(m => m.Instantiate(x=>MemberPathCombine(objectPrefix,x), objectGetterFunc)));    
                 }
                 else
                 {
-                    foreach (var info in GetMembers(typ))
+                    foreach (var info in GetTypeMembers(objectType))
                     {
-                        var fullName = path.Append(info.Name);
-                        var memberName = string.Join(pathDelimiter, fullName);
-
+                        var memberPath = objectPrefix.Append(info.Name);
+                        var memberName = string.Join(pathDelimiter, memberPath);
+                        Func<object, object> memberValueGetter = null;
+                        Type memberType = null;
                         switch (info)
                         {
                             case FieldInfo fieldInfo:
-                                Func<object, object> fieldAccessor = x => fieldInfo.GetValue(funcAccessor(x));
-                                if (IsBasicValueType(fieldInfo.FieldType))
-                                {
-                                    members.Add(new RecordMemberInfo(memberName, fieldInfo.FieldType, fieldAccessor));
-                                }
-                                else
-                                {
-                                    AddMembers(fullName, fieldInfo.FieldType, fieldAccessor);
-                                }
+                                memberValueGetter = x => fieldInfo.GetValue(objectGetterFunc(x));
+                                memberType = fieldInfo.FieldType;
                                 break;
                             case PropertyInfo propInfo:
-                                Func<object, object> propAccessor = x => propInfo.GetValue(funcAccessor(x));
-                                if (IsBasicValueType(propInfo.PropertyType))
-                                {
-                                    members.Add(new RecordMemberInfo(memberName, propInfo.PropertyType, propAccessor));
-                                }
-                                else
-                                {
-                                    AddMembers(fullName, propInfo.PropertyType, propAccessor);
-                                }
+                                memberValueGetter = x => propInfo.GetValue(objectGetterFunc(x));
+                                memberType = propInfo.PropertyType;
                                 break;
+                        }
+                        if (IsSupportedBasicType(memberType))
+                        {
+                            members.Add(new RecordMemberInfo(memberName, memberType, memberValueGetter));
+                        }
+                        else
+                        {
+                            CollectRecordMemberInfos(memberPath, memberType, memberValueGetter);
                         }
                     }
                 }
             }
-            AddMembers(prefix != null ? new[] { prefix } : Array.Empty<string>(), type, x => x);
+
+            CollectRecordMemberInfos(prefix != null ? new[] { prefix } : Array.Empty<string>(), type, x => x);
             return members;
         }
 
@@ -207,7 +220,7 @@ namespace Traffix.Processors
             {
                 return NumberDataViewType.Int32;
             }
-            else // anything else is converted to string...
+            else // anything else is error
             {
                 throw new NotSupportedException($"The type {rawType} does not have corresponding DataViewType.");
             }
@@ -248,6 +261,11 @@ namespace Traffix.Processors
                 Name = name;
                 Type = type;
                 ValueGetter = getter;
+            }
+
+            internal RecordMemberInfo Instantiate(Func<string, string> memberNameFunc, Func<object, object> objectGetterFunc)
+            {
+                return new RecordMemberInfo(memberNameFunc(this.Name), this.Type, x => this.ValueGetter(objectGetterFunc(x)));
             }
         }
     }

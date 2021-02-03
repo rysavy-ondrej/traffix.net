@@ -65,10 +65,17 @@ namespace IcsMonitor.Tests
             {
                 Console.WriteLine($"{col.Index} {col.Name} : {col.Type}");
             }
+            // Use preview during debugging...
             var preview = dataview.Preview(10);
-            Console.WriteLine(preview.ToString());
+            // and we can also print it to console
+            ml.Data.SaveAsMd(preview, Console.Out);
+            // or write to md file
+            using var writer = File.CreateText(@"data\PCAP\modbus.md");
+            ml.Data.SaveAsMd(preview, writer);
+            // save to TSV file
+            using var stream = File.Create(@"data\PCAP\modbus.csv");
+            ml.Data.SaveAsText(dataview, stream);
         }
-        
 
     }
 }
