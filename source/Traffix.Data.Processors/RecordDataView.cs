@@ -7,26 +7,18 @@ using System.Linq;
 namespace Traffix.Processors
 {
     /// <summary>
-    /// This is an implementation of <see cref="IDataView"/> that wraps an
-    /// <see cref="IEnumerable{T}"/> of <see cref="ConversationRecord{TData}"/>.
-    /// <para/>
-    /// Instances of this class cannot be created directly. Instead, 
-    /// use the extension method <see cref="ConversationRecordExtensions.AsDataView{T}(IEnumerable{ConversationRecord{T}})"/>.
-    /// <para/>
-    /// We need this implementation as <see cref="ConversationRecord{TData}"/>
-    /// is not a flat structure with public fields suitable for direct use as <see cref="IDataView"/>.
-    /// Using nested object as a flat record compatible with IDataView is 
-    /// done through using reflection for this moment. 
+    /// A common implementation of Record DataViews.
     /// </summary>
-    internal sealed class ConversationRecordDataView<TData> : IDataView
+    /// <typeparam name="TData">The type of data in underlying collection.</typeparam>
+    abstract class RecordDataView<TData> : IDataView
     {
-        private readonly IEnumerable<ConversationRecord<TData>> _data;
+        private readonly IEnumerable<TData> _data;
         private readonly DataViewSchema _schema;
         private readonly DataViewGetters _getters;
         /// <summary>
         /// Gets an enumerable behind this data view.
         /// </summary>
-        internal IEnumerable<ConversationRecord<TData>> Data => _data;
+        internal IEnumerable<TData> Data => _data;
 
         /// <inheritdoc/>
         public DataViewSchema Schema => _schema;
@@ -34,11 +26,11 @@ namespace Traffix.Processors
         /// <inheritdoc/>
         public bool CanShuffle => false;
 
-        public ConversationRecordDataView(IEnumerable<ConversationRecord<TData>> data)
+        protected RecordDataView(IEnumerable<TData> data)
         {
             _data = data;
-            _getters = GetOrCreateGetters(typeof(ConversationRecord<TData>));
-            _schema = GetOrCreateSchema(typeof(ConversationRecord<TData>));
+            _getters = GetOrCreateGetters(typeof(TData));
+            _schema = GetOrCreateSchema(typeof(TData));
         }
 
         /// <inheritdoc/>
@@ -63,10 +55,10 @@ namespace Traffix.Processors
         {
             private bool _disposed;
             private long _position;
-            private readonly IEnumerator<ConversationRecord<TData>> _enumerator;
+            private readonly IEnumerator<TData> _enumerator;
             private readonly Delegate[] _getters;
             private readonly DataViewSchema _schema;
-            private readonly ConversationRecordDataView<TData> _parent;
+            private readonly RecordDataView<TData> _parent;
 
             /// <inheritdoc/>
             public override long Position => _position;
@@ -77,7 +69,7 @@ namespace Traffix.Processors
             /// <inheritdoc/>
             public override DataViewSchema Schema => _schema;
 
-            public Cursor(ConversationRecordDataView<TData> parent, params DataViewSchema.Column[] columns)
+            public Cursor(RecordDataView<TData> parent, params DataViewSchema.Column[] columns)
 
             {
                 var schemaBuilder = new DataViewSchema.Builder();
@@ -88,8 +80,6 @@ namespace Traffix.Processors
                 _enumerator = parent.Data.GetEnumerator();
                 _getters = columns.Select(col => parent._getters[col.Index].CreateDelegate(_enumerator)).ToArray();
             }
-
-            
 
             protected override void Dispose(bool disposing)
             {
@@ -138,6 +128,40 @@ namespace Traffix.Processors
                 return false;
             }
         }
+
+        static readonly Dictionary<Type, DataViewGetters> _gettersDictionary = new Dictionary<Type, DataViewGetters>();
+        static readonly Dictionary<Type, DataViewSchema> _schemaDictionary = new Dictionary<Type, DataViewSchema>();
+        private static DataViewSchema GetOrCreateSchema(Type type)
+        {
+            if (!_schemaDictionary.TryGetValue(type, out var schema))
+            {
+                schema = CreateSchema(type);
+                _schemaDictionary[type] = schema;
+            }
+            return schema;
+        }
+
+        private static DataViewSchema CreateSchema(Type type)
+        {
+            var builder = new DataViewSchema.Builder();
+            var members = RecordTypeRegister.GetRecordInfo(type);
+            foreach (var member in members)
+            {
+                builder.AddColumn(member.Name, member.DataViewType);
+            }
+            return builder.ToSchema();
+        }
+
+        private static DataViewGetters GetOrCreateGetters(Type type)
+        {
+            if (!_gettersDictionary.TryGetValue(type, out var getters))
+            {
+                getters = DataViewGetters.CreateForType(type);
+                _gettersDictionary[type] = getters;
+            }
+            return getters;
+        }
+
 
         /// <summary>
         /// Implements the logic supporting <see cref="ValueGetter{TValue}"/> 
@@ -189,7 +213,7 @@ namespace Traffix.Processors
                 /// </summary>
                 /// <param name="enumerator">An enumerator used to access the current object value from the generated value getter.</param>
                 /// <returns>Delegate of type <see cref="ValueGetter{TValue}"/>.</returns>
-                public Delegate CreateDelegate(IEnumerator<ConversationRecord<TData>> enumerator)
+                public Delegate CreateDelegate<T>(IEnumerator<T> enumerator)
                 {
                     var type = Type;
                     var accessValueFunction = AccessValueFunction;
@@ -241,50 +265,16 @@ namespace Traffix.Processors
                     return new DataViewGetters(_getters);
                 }
             }
-        }
-
-        static readonly Dictionary<Type, DataViewGetters> _gettersDictionary = new Dictionary<Type, DataViewGetters>();
-        static readonly Dictionary<Type, DataViewSchema> _schemaDictionary = new Dictionary<Type, DataViewSchema>();
-        private static DataViewSchema GetOrCreateSchema(Type type)
-        {
-            if (!_schemaDictionary.TryGetValue(type, out var schema))
+            public static DataViewGetters CreateForType(Type type)
             {
-                schema = CreateSchema(type);
-                _schemaDictionary[type] = schema;
+                var builder = new DataViewGetters.Builder();
+                var members = RecordTypeRegister.GetRecordInfo(type);
+                foreach (var member in members)
+                {
+                    builder.AddColumn(member.Name, member.DataViewType, member.ValueGetter);
+                }
+                return builder.ToGetters();
             }
-            return schema;
-        }
-
-        private static DataViewSchema CreateSchema(Type type)
-        {
-            var builder = new DataViewSchema.Builder();
-            var members = RecordTypeRegister.GetRecordInfo(type);
-            foreach (var member in members)
-            {
-                builder.AddColumn(member.Name, member.DataViewType);
-            }
-            return builder.ToSchema();
-        }
-
-        private static DataViewGetters GetOrCreateGetters(Type type)
-        {
-            if (!_gettersDictionary.TryGetValue(type, out var getters))
-            {
-                getters = CreateGetters(type);
-                _gettersDictionary[type] = getters;
-            }
-            return getters;
-        }
-
-        private static DataViewGetters CreateGetters(Type type)
-        {
-            var builder = new DataViewGetters.Builder();
-            var members = RecordTypeRegister.GetRecordInfo(type);
-            foreach (var member in members)
-            {
-                builder.AddColumn(member.Name, member.DataViewType, member.ValueGetter);
-            }
-            return builder.ToGetters();
         }
     }
 }

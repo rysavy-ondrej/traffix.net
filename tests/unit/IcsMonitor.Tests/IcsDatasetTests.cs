@@ -1,6 +1,7 @@
 using Microsoft.Data.Analysis;
 using Microsoft.ML;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using PacketDotNet;
 using System;
 using System.IO;
 using System.Linq;
@@ -53,7 +54,7 @@ namespace IcsMonitor.Tests
         }
 
         [TestMethod]
-        public void GetDataViewTest()
+        public void GetConversationDataViewTest()
         {
             var pcapPath = Path.GetFullPath(@"data\PCAP\modbus.pcap");
             var ml = new MLContext();
@@ -75,6 +76,18 @@ namespace IcsMonitor.Tests
             // save to TSV file
             using var stream = File.Create(@"data\PCAP\modbus.csv");
             ml.Data.SaveAsText(dataview, stream);
+        }
+        [TestMethod]
+        public void GetFrameDataViewTest()
+        {
+            var pcapPath = Path.GetFullPath(@"data\PCAP\modbus.pcap");
+            var ml = new MLContext();
+            var ctx = new Interactive();
+            var dataset = ctx.ComputeModbusDataset(pcapPath, TimeSpan.FromDays(1000));
+            var records = dataset.Frames.Select(x => new FrameRecord<IPPacket> { Timestamp = new DateTime(x.Ticks), FrameLength = x.OriginalLength, Data = Packet.ParsePacket(x.LinkLayer, x.Data).Extract<IPPacket>() });
+            var dataview = records.AsDataView();
+            var preview = dataview.Preview(10);
+            ml.Data.SaveAsMd(preview, Console.Out);
         }
 
     }

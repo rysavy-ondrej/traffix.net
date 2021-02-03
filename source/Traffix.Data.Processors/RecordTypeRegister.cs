@@ -1,5 +1,6 @@
 ﻿using MessagePack;
 using Microsoft.ML.Data;
+using PacketDotNet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,16 +51,36 @@ namespace Traffix.Processors
 
         static RecordTypeRegister()
         {
-            var members = new RecordMemberInfo[]
+            // FlowKey
+            var flowKey = new RecordMemberInfo[]
             {
-                new RecordMemberInfo(nameof(FlowKey.ProtocolType), typeof(int), obj => (obj as FlowKey).ProtocolType),
+                new RecordMemberInfo(nameof(FlowKey.ProtocolType), typeof(int), obj => (int)((obj as FlowKey).ProtocolType)),
                 new RecordMemberInfo(nameof(FlowKey.SourceIpAddress), typeof(string), obj => (obj as FlowKey).SourceIpAddress.ToString()),
                 new RecordMemberInfo(nameof(FlowKey.SourcePort), typeof(ushort), obj => (obj as FlowKey).SourcePort),
                 new RecordMemberInfo(nameof(FlowKey.DestinationIpAddress), typeof(string), obj => (obj as FlowKey).DestinationIpAddress.ToString()),
                 new RecordMemberInfo(nameof(FlowKey.DestinationPort), typeof(ushort), obj => (obj as FlowKey).DestinationPort)
             };
-            RegisterRecordType(typeof(FlowKey), members);
-    }
+            RegisterRecordType(typeof(FlowKey), flowKey);
+            var ethPacket = new RecordMemberInfo[]
+            {
+                new RecordMemberInfo(nameof(EthernetPacket.SourceHardwareAddress), typeof(string), obj => (obj as EthernetPacket).SourceHardwareAddress.ToString()),
+                new RecordMemberInfo(nameof(EthernetPacket.DestinationHardwareAddress), typeof(string), obj => (obj as EthernetPacket).DestinationHardwareAddress.ToString()),
+                new RecordMemberInfo(nameof(EthernetPacket.Type), typeof(int), obj => (int)((obj as EthernetPacket).Type)),
+                new RecordMemberInfo(nameof(EthernetPacket.TotalPacketLength), typeof(int), obj => (obj as EthernetPacket).TotalPacketLength),
+            };
+            RegisterRecordType(typeof(FlowKey), ethPacket);
+            // IPPacket
+            var ipPacket = new RecordMemberInfo[]
+            {
+                new RecordMemberInfo(nameof(IPPacket.Version), typeof(int), obj => (obj as IPPacket).Version),
+                new RecordMemberInfo(nameof(IPPacket.SourceAddress), typeof(string), obj => (obj as IPPacket).SourceAddress.ToString()),
+                new RecordMemberInfo(nameof(IPPacket.DestinationAddress), typeof(string), obj => (obj as IPPacket).DestinationAddress.ToString()),
+                new RecordMemberInfo(nameof(IPPacket.TotalPacketLength), typeof(int), obj => (obj as IPPacket).TotalPacketLength),
+                new RecordMemberInfo(nameof(IPPacket.Protocol), typeof(int), obj => (int)((obj as IPPacket).Protocol)),
+                new RecordMemberInfo(nameof(IPPacket.TimeToLive), typeof(int), obj => (obj as IPPacket).TimeToLive),
+            };
+            RegisterRecordType(typeof(IPPacket), ipPacket);
+        }
 
 
     /// <summary>

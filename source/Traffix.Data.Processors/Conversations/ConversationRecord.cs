@@ -4,15 +4,6 @@ using Traffix.Core.Flows;
 
 namespace Traffix.Processors
 {
-    [MessagePackObject]
-    public struct RecordLabel
-    {
-        [Key("CLASS")]
-        public string Class;
-
-        [Key("SCORE")]
-        public float Score;
-    }
 
     /// <summary>
     /// The record produced by conversation processor. It contains a fixed part and 
