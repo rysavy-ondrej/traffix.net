@@ -18,4 +18,10 @@
     <ProjectReference Include="..\..\..\source\Traffix.Data.Processors\Traffix.Processors.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="data\PCAP\modbus.pcap">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

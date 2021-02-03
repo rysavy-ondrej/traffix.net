@@ -121,14 +121,23 @@ namespace Traffix.Storage.Faster
             return _fasterKvh.NewSession(sessionId, threadAffinitized);
         }
 
-        public IEnumerable<(ProcessingState State, TResult Result)> ProcessEntries<TResult>(IEntryProcessor<TKey, TValue,TResult> processor)
+        public IEnumerable<TResult> ProcessEntries<TResult>(IEntryProcessor<TKey, TValue,TResult> processor)
         {
             if (_fasterKvh == null) throw new InvalidOperationException("The store is closed.");
             var iterator = _fasterKvh.Iterate() ?? throw new InvalidOperationException("Cannot create conversations database iterator.");
             while (iterator.GetNext(out _))
             {
                 var state = processor.Invoke(ref iterator.GetKey(), ref iterator.GetValue(), out var result);
-                yield return (state, result);
+                switch (state)
+                {
+                    case ProcessingState.Success:
+                        yield return result;
+                        break;
+                    case ProcessingState.Skip:
+                        continue;
+                    case ProcessingState.Terminate:
+                        yield break;
+                }
             }
             iterator.Dispose();
         }

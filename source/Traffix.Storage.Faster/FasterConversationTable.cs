@@ -22,7 +22,7 @@ namespace Traffix.Storage.Faster
         private readonly string _rootFolder;
         private readonly Configuration _config;
         private readonly ConversationsStore _conversationsStore;
-        private readonly FramesStoreSimple _framesStore;
+        private readonly RawFramesStore _framesStore;
 
         /// <summary>
         /// Memory pool used for buffer allocations in this class.
@@ -99,7 +99,7 @@ namespace Traffix.Storage.Faster
             _rootFolder = folder;
             _config = config;
             _conversationsStore = new ConversationsStore(Path.Combine(folder, "conversations"), config.ConversationsCapacity);
-            _framesStore = new FramesStoreSimple(Path.Combine(folder, "frames"), (int)config.FramesCapacity);
+            _framesStore = new RawFramesStore(Path.Combine(folder, "frames"), (int)config.FramesCapacity);
         }
         #region Dispose Implementation
         protected virtual void Dispose(bool disposing)
@@ -180,7 +180,7 @@ namespace Traffix.Storage.Faster
         /// <param name="address"></param>
         /// <param name="frameFlowKey"></param>
         /// <returns></returns>
-        private unsafe void InsertFrame(FramesStoreSimple.ClientSession client, ref FrameKey frameKey, ref FlowKey frameFlowKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
+        private unsafe void InsertFrame(RawFramesStore.ClientSession client, ref FrameKey frameKey, ref FlowKey frameFlowKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
         {
             var bufferSize = Unsafe.SizeOf<FrameMetadata>() + frameBytes.Length;
             
@@ -324,7 +324,7 @@ namespace Traffix.Storage.Faster
             unsafe public ProcessingState Invoke(ref long key, ref Memory<byte> memory, out TResult result)
             {
                 FrameMetadata frameMetadata = default;
-                var frameBytes = FramesStoreSimple.GetFrameFromMemory(ref memory, ref frameMetadata);
+                var frameBytes = RawFramesStore.GetFrameFromMemory(ref memory, ref frameMetadata);
                 var x = _processor.Invoke(frameMetadata, frameBytes);
                 result = x.Result;
                 return x.State;
@@ -339,19 +339,7 @@ namespace Traffix.Storage.Faster
         /// <returns>A collection of results produced by the processor.</returns>
         public IEnumerable<TResult> ProcessFrames<TResult>(Func<FrameMetadata, Memory<byte>, ProcessingResult<TResult>> processor)
         {
-            foreach (var item in _framesStore.ProcessEntries<TResult>(new FrameProcessor<TResult>(processor)))
-            {
-                switch (item.State)
-                {
-                    case ProcessingState.Success:
-                        yield return item.Result;
-                        break;
-                    case ProcessingState.Skip:
-                        continue;
-                    case ProcessingState.Terminate:
-                        yield break;
-                }
-            }
+            return _framesStore.ProcessEntries<TResult>(new FrameProcessor<TResult>(processor));
         }
 
 
@@ -363,7 +351,7 @@ namespace Traffix.Storage.Faster
         {
             get
             {
-                return _conversationsStore.ProcessEntries<KeyValuePair<ConversationKey, ConversationValue>>(new KeyValueConversationProcessor()).Select(x => x.Result);
+                return _conversationsStore.ProcessEntries<KeyValuePair<ConversationKey, ConversationValue>>(new KeyValueConversationProcessor());
             }
         }
 
@@ -375,7 +363,7 @@ namespace Traffix.Storage.Faster
         {
             get
             {
-                return _conversationsStore.ProcessEntries<KeyValuePair<ConversationKey, ConversationValue>>(new KeyValueConversationProcessor()).Select(x => x.Result.Key);
+                return _conversationsStore.ProcessEntries<KeyValuePair<ConversationKey, ConversationValue>>(new KeyValueConversationProcessor()).Select(x => x.Key);
             }
         }
 
@@ -414,13 +402,13 @@ namespace Traffix.Storage.Faster
         {
             private readonly FasterConversationTable _table;
             private ConversationsStore.KeyValueStoreClient _conversationsStoreClient;
-            private FramesStoreSimple.ClientSession _framesStoreClient;
+            private RawFramesStore.ClientSession _framesStoreClient;
             private readonly int _autoFlushRequests;
             private bool _closed;
             private int _outstandingRequests;
             internal FrameStreamer(FasterConversationTable table, 
                 ConversationsStore.KeyValueStoreClient conversationsStoreClient,
-                FramesStoreSimple.ClientSession framesStoreClient,
+                RawFramesStore.ClientSession framesStoreClient,
                 int autoFlush)
             {
                 _table = table;

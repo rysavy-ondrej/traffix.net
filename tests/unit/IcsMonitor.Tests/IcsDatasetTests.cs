@@ -2,6 +2,7 @@ using Microsoft.Data.Analysis;
 using Microsoft.ML;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.IO;
 using System.Linq;
 using Traffix.Processors;
 
@@ -50,5 +51,24 @@ namespace IcsMonitor.Tests
             Console.WriteLine($"DataView rows = {dataframe.Rows.Count()}");
             Console.WriteLine($"{dataframe.ToString()}");
         }
+
+        [TestMethod]
+        public void GetDataViewTest()
+        {
+            var pcapPath = Path.GetFullPath(@"data\PCAP\modbus.pcap");
+            var ml = new MLContext();
+            var ctx = new Interactive();
+            var dataset = ctx.ComputeModbusDataset(pcapPath, TimeSpan.FromDays(1000));
+            var records = dataset.ConversationTables.SelectMany(x => x.AsEnumerable());
+            var dataview = records.AsDataView(); 
+            foreach (var col in dataview.Schema)
+            {
+                Console.WriteLine($"{col.Index} {col.Name} : {col.Type}");
+            }
+            var preview = dataview.Preview(10);
+            Console.WriteLine(preview.ToString());
+        }
+        
+
     }
 }

@@ -1,4 +1,6 @@
 ﻿using MessagePack;
+using Microsoft.ML;
+using Microsoft.ML.Data;
 using System;
 
 namespace Traffix.Processors
@@ -31,6 +33,14 @@ namespace Traffix.Processors
                 Packets = x.Packets + y.Packets,
                 Octets = x.Octets + y.Octets
             };
+        }
+        internal static void AddToSchema(DataViewSchema.Builder builder, string prefix)
+        {
+            builder.AddColumn($"{prefix}_Start", DateTimeDataViewType.Instance);
+            builder.AddColumn($"{prefix}_End", DateTimeDataViewType.Instance);
+            builder.AddColumn($"{prefix}_Duration", NumberDataViewType.Single);
+            builder.AddColumn($"{prefix}_Packets", NumberDataViewType.UInt32);
+            builder.AddColumn($"{prefix}_Octets", NumberDataViewType.UInt64);
         }
     }
 }

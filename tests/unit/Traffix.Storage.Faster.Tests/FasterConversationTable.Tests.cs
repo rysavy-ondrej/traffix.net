@@ -116,7 +116,7 @@ namespace Traffix.Storage.Faster.Tests
         /// Opens the existing table.
         /// </summary>
         /// <returns></returns>
-        public FasterConversationTable OpenTable()
+        public static FasterConversationTable OpenTable()
         {
             var dbPath = Path.GetFullPath(@"c:\temp\0001\");
             var table = FasterConversationTable.Open(dbPath);
@@ -164,7 +164,7 @@ namespace Traffix.Storage.Faster.Tests
         /// <param name="flowKey"></param>
         /// <param name="frames"></param>
         /// <returns></returns>
-        private (string key, int frames, int octets, int ip, int tcp, int udp) CountFrames(FlowKey flowKey, System.Collections.Generic.ICollection<Memory<byte>> frames)
+        public static (string key, int frames, int octets, int ip, int tcp, int udp) CountFrames(FlowKey flowKey, System.Collections.Generic.ICollection<Memory<byte>> frames)
         {
             (int octets, int ip,int tcp,int udp) GetFrameSize(Memory<byte> memory)
             {
