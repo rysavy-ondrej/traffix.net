@@ -153,7 +153,7 @@ namespace Traffix.Storage.Faster.Tests
             var table = OpenTable();
             Console.WriteLine($"--- LOADED --- [{sw.Elapsed}]");
             sw.Restart();
-            foreach (var c in table.ProcessConversations(table.ConversationKeys, new FuncConversationProcessor<(string key, int frames, int octets, int ip, int tcp, int udp)>(CountFrames)))
+            foreach (var c in table.ProcessConversations(table.ConversationKeys, ConversationProcessor.FromFunction<(string key, int frames, int octets, int ip, int tcp, int udp)>(CountFrames)))
             {
                 Console.WriteLine($"Conversatiom={c.key}, Frames={c.frames}, IP={c.ip}, TCP={c.tcp}, UDP={c.udp}, Octets={c.octets}  [{sw.Elapsed}]");
             }
@@ -170,7 +170,7 @@ namespace Traffix.Storage.Faster.Tests
             (int octets, int ip,int tcp,int udp) GetFrameSize(Memory<byte> memory)
             {
                 var meta = default(FrameMetadata);
-                var bytes = ConversationProcessor.GetFrameFromMemory(memory, ref meta);
+                var bytes = FrameMetadata.GetFrameFromMemory(memory, ref meta);
                 var packet = PacketDotNet.Packet.ParsePacket((PacketDotNet.LinkLayers)meta.LinkLayer, bytes.ToArray());
                 return (meta.OriginalLength, 
                     packet.Extract<PacketDotNet.InternetPacket>() != null ? 1 : 0,

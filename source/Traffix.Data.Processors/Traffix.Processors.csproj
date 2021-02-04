@@ -3,6 +3,10 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="MessagePack" Version="2.2.85" />
     <PackageReference Include="MessagePackAnalyzer" Version="2.2.85" />

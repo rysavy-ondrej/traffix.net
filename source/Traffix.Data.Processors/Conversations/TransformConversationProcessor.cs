@@ -5,7 +5,7 @@ using Traffix.Data;
 
 namespace Traffix.Processors
 {
-    class TransformConversationProcessor<TSource, TTarget> : IConversationProcessor<TTarget>
+    internal class TransformConversationProcessor<TSource, TTarget> : IConversationProcessor<TTarget>
     {
         private readonly IConversationProcessor<TSource> processor;
         private readonly Func<TSource, TTarget> transform;
@@ -20,6 +20,19 @@ namespace Traffix.Processors
         {
             var intermediate = processor.Invoke(flowKey, frames);
             return transform.Invoke(intermediate);
+        }
+    }
+    public static class TransformConversationProcessor
+    {
+        /// <summary>
+        /// Creates a new conversation processor that produces values of <typeparamref name="Target"/> objects 
+        /// by applying the given transofrmation function.
+        /// </summary>
+        /// <typeparam name="Target"></typeparam>
+        /// <returns></returns>
+        public static IConversationProcessor<Target> Transform<TSource, Target>(this IConversationProcessor<TSource> source, Func<TSource, Target> transform)
+        {
+            return new TransformConversationProcessor<TSource, Target>(source, transform);
         }
     }
 }

@@ -1,21 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
 using Traffix.Core.Flows;
+using Traffix.Data;
 
 namespace Traffix.Processors
 {
-    public class FuncConversationProcessor<T> : ConversationProcessorBase<T>
+    internal class FuncConversationProcessor<TData> : IConversationProcessor<TData>
     {
-        private readonly Func<FlowKey, ICollection<Memory<byte>>, T> _processor;
+        private Func<FlowKey, ICollection<Memory<byte>>, TData> _function;
 
-        public FuncConversationProcessor(Func<FlowKey, ICollection<Memory<byte>>,T> processor)
+        public FuncConversationProcessor(Func<FlowKey, ICollection<Memory<byte>>, TData> function)
         {
-            _processor = processor;
+            this._function = function;
         }
 
-        public override T Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
+        public TData Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
         {
-            return _processor(flowKey, frames);
+            return _function.Invoke(flowKey, frames);
         }
     }
 }

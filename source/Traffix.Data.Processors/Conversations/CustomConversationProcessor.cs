@@ -24,9 +24,9 @@ namespace Traffix.Processors
     /// the base implementation also computes flow metrics. The data type of this processor is   <see cref="ConversationRecord{TData}"/>.
     /// </summary>
     /// <typeparam name="TData">The user data type. Used to parametrize <see cref="ConversationRecord{TData}"/> to define the target processor data type.</typeparam>
-    public abstract class CustomConversationProcessor<TData> : ConversationProcessorBase<ConversationRecord<TData>>
+    public abstract class CustomConversationProcessor<TData> : IConversationProcessor<ConversationRecord<TData>>
     {
-        public override ConversationRecord<TData> Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
+        public ConversationRecord<TData> Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
         {
             var fwdPackets = new List<MetaPacket>();
             var revPackets = new List<MetaPacket>();
@@ -37,7 +37,7 @@ namespace Traffix.Processors
             DateTime? firstTimestamp = null; 
             foreach (var frame in frames)
             {
-                var buffer = ConversationProcessor.GetFrameFromMemory(frame, ref meta);
+                var buffer = FrameMetadata.GetFrameFromMemory(frame, ref meta);
 
                 if (firstTimestamp == null) firstTimestamp = new DateTime(meta.Ticks);
 

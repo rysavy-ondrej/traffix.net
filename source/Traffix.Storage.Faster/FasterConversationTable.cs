@@ -292,7 +292,7 @@ namespace Traffix.Storage.Faster
                 if (framesClient.TryGet(key.Address, out var bytes))
                 {
                     FrameMetadata meta = default;
-                    var data = ConversationProcessor.GetFrameFromMemory(bytes, ref meta);
+                    var data = FrameMetadata.GetFrameFromMemory(bytes, ref meta);
                     var result = processor.Invoke(key, ref meta, data);
                     yield return result;
                 }
@@ -500,7 +500,7 @@ namespace Traffix.Storage.Faster
                 FrameKey frameKey = default;
                 foreach (var frame in frames)
                 {
-                    var data = ConversationProcessor.GetFrameFromMemory(frame, ref meta);
+                    var data = FrameMetadata.GetFrameFromMemory(frame, ref meta);
                     yield return _frameProcessor.Invoke(frameKey, ref meta, data.ToArray());
                 }
             }
@@ -513,28 +513,5 @@ namespace Traffix.Storage.Faster
                 return new RawFrame((LinkLayers)frameMetadata.LinkLayer, ++_frameNumber, frameMetadata.Ticks, 0, frameMetadata.OriginalLength, frameBytes.ToArray());
             }
         }
-    }
-    /// <summary>
-    /// Indicates the result of processing the object.
-    /// </summary>
-    public enum ProcessingState
-    {
-        /// <summary>
-        /// The object has been successfully processed.
-        /// </summary>
-        Success,
-        /// <summary>
-        /// The object was skipped and should not be a part of the output.
-        /// </summary>
-        Skip,
-        /// <summary>
-        /// The object was not processed and the entire processing should be terminated.
-        /// </summary>
-        Terminate
-    }
-    public struct ProcessingResult<TResult>
-    {
-        public ProcessingState State;
-        public TResult Result;
     }
 }
