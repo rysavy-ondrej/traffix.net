@@ -16,7 +16,7 @@ namespace IcsMonitor
 {
     public partial class Program : TraffixConsoleApp
     {
-
+         /*
         /// <summary>
         /// Export the payload of tcp segments. Each payload is put in a single binary file created in the target zip archive.  
         /// </summary>
@@ -30,7 +30,7 @@ namespace IcsMonitor
             string outputFile = null)
         {
             using var stream = new FileInfo(inputFile).OpenRead();
-            using var captureReader = new CaptureFileReader(stream);
+            using var captureReader = new ManagedPcapReader(stream);
             using var payloadArchive = ZipFile.Open(outputFile, ZipArchiveMode.Update);
             int packetNumber = 0;
             while (captureReader.GetNextFrame(out var frame))
@@ -137,5 +137,6 @@ namespace IcsMonitor
             table.Dispose();
             ctx.Dispose();
         }
+         */
     }
 }

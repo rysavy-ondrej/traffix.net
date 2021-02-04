@@ -1,4 +1,5 @@
 using FASTER.core;
+using Traffix.Core;
 
 namespace Traffix.Storage.Faster
 {

@@ -4,6 +4,11 @@ using System;
 namespace Traffix.Providers.PcapFile
 {
 
+    /// <summary>
+    /// Represents a raw frame capture. 
+    /// <para/>
+    /// It consist of metadata and frame bytes.
+    /// </summary>
     public class RawFrame
     {
         public RawFrame(LinkLayers linkLayer, int number, long ticks, long offset, int includedLength, int originalLength)
@@ -35,7 +40,7 @@ namespace Traffix.Providers.PcapFile
 
         public long Offset { get;  }
 
-        public PacketDotNet.LinkLayers LinkLayer { get;  }
+        public LinkLayers LinkLayer { get;  }
 
         public byte[] Data { get; internal set; }
     }

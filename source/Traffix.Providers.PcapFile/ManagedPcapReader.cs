@@ -1,162 +1,106 @@
 using PacketDotNet;
-using SharpPcap;
-using SharpPcap.LibPcap;
 using System;
+using System.Collections;
 using System.IO;
 
 namespace Traffix.Providers.PcapFile
 {
-
-    public class SharpPcapWriter
-    {
-        private string _path;
-        CaptureFileWriterDevice _device;
-
-        public SharpPcapWriter(string path)
-        {
-            _path = path;
-            _device = new CaptureFileWriterDevice(path);
-            
-        }
-
-        public void Close()
-        {
-            _device.Close();
-        }
-
-        public void WriteFrame(RawFrame frame)
-        {
-            var cap = new RawCapture(frame.LinkLayer, TicksToUnix(frame.Ticks), frame.Data);
-            _device.Write(cap);
-        }
-
-        private PosixTimeval TicksToUnix(long ticks)
-        {  
-            return new PosixTimeval(new DateTime(ticks));
-        }
-    }
-
-
-    public class SharpPcapReader : ICaptureFileReader
-    {
-        ICaptureDevice _device;
-        int _frameNumber;
-        long _frameOffset;
-        public SharpPcapReader(string captureFile)
-        {
-            // Get an offline device
-            _device = new CaptureFileReaderDevice(captureFile);
-
-            // Open the device
-            _device.Open();
-            
-        }
-
-        public LinkLayers LinkLayer => _device.LinkType;
-
-        public long Position => throw new NotImplementedException();
-
-        public void Close()
-        {
-            _device.Close();
-        }
-
-        public bool GetNextFrame(out RawFrame frame, bool readData = true)
-        {
-            var capture = _device.GetNextPacket();
-           
-            if (capture != null)
-            {
-                frame = new RawFrame(LinkLayer, _frameNumber, GetTicksFromPosixTimeval(capture.Timeval), _frameOffset, capture.Data.Length, capture.Data.Length)
-                {
-                    Data = capture.Data
-                };
-                _frameNumber++;
-                _frameOffset += capture.Data.Length;
-                return true;
-            }
-            else
-            {
-                frame = default;
-                return false;
-            }
-        }
-
-        #region IDisposable Support
-        private bool _disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposedValue)
-            {
-                if (disposing)
-                {
-                    _device.Close();
-                    _device = null;
-                }
-                _disposedValue = true;
-            }
-        }
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-        }
-        #endregion
-
-        internal static long GetTicksFromPosixTimeval(PosixTimeval timeval)
-        {
-            return timeval.Date.Ticks;
-        }
-    }
-
-    public class CaptureFileReader : ICaptureFileReader
+    /// <summary>
+    /// Implements fully managed PCAP file reader for TCPDUMP file format.
+    /// </summary>
+    public class ManagedPcapReader : ICaptureFileReader
     {
         private Stream _stream;
         private readonly long _length;
         private int _frameNumber;
+        ReadingState _state;
+        RawFrame _current;
         /// <summary>
         /// Creates a new reader device for the given data stream.
         /// </summary>
         /// <param name="stream">A stream containing pcap data.</param>
         /// <param name="length">A real length of the stream. If none is specified the length is taken from the stream.</param>
-        public CaptureFileReader(Stream stream, long? length = null)
+        public ManagedPcapReader(Stream stream, long? length = null)
         {
             _stream = stream ?? throw new ArgumentNullException(nameof(stream));
             _length = length ?? stream.Length;
             Open();
+            _state = ReadingState.NotStarted;
         }
 
         public LinkLayers LinkLayer { get; private set; } = LinkLayers.Null;
 
-        public long Position => _stream.Position;
+        /// <inheritdoc/>
+        public RawFrame Current
+        {
+            get
+            {
+                switch (_state)
+                {
+                    case ReadingState.NotStarted: throw new InvalidOperationException("Call MoveNext first.");
+                    case ReadingState.Finished: throw new InvalidOperationException("Already finished.");
+                    case ReadingState.Success: return _current;
+                    default: throw new InvalidOperationException("Reader is not open.");
+                }
+            }
+        }
+
+        /// <inheritdoc/>
+        object IEnumerator.Current => Current;
+
+        /// <inheritdoc/>
+        public ReadingState State => _state;
+
+        public Stream Stream => _stream;
+
+        public bool CanAccessStream => true;
+
+        public bool MoveNext()
+        {
+            return GetNextFrameInternal(true);
+        }
+
+        public void Reset()
+        {
+            _stream.Position = 0;
+            _state = ReadingState.NotStarted;
+            Open();
+        }
 
         const int PACKET_HEADER_LENGTH = 16;
-
-        /// <summary>
-        /// Reads the next available frame from the stream. 
-        /// </summary>
-        /// <param name="rawFrame">Fills the structure with an information about the frame.</param>
-        /// <param name="frameData">If not null, it will be used as a buffer to read data. If null a new byte array will be created and populated with frame data.</param>
-        /// <param name="readData">If set to true, the data bytes of the frame will be read. Otherwise, the bytes are skipped.</param>
-        /// <returns>True if the frame was sucessfully read or false, if there is not any frame available.</returns>
+                      
+        /// <inheritdoc/>
         public bool GetNextFrame(out RawFrame frame, bool readData = true)
         {
-            if (GetNextFrameHeader(out frame))
+            var result = GetNextFrameInternal(readData);
+            frame = _current;
+            return result;
+        }
+        private bool GetNextFrameInternal(bool readData)
+        {
+            if (_state == ReadingState.Closed) throw new InvalidOperationException("Reader is not open.");
+            if (_state == ReadingState.Finished) return false;
+            if (GetNextFrameHeader(out _current))
             {
                 if (readData)
                 {
-                    var buffer = new byte[frame.IncludedLength];
+                    var buffer = new byte[_current.IncludedLength];
                     ReadFrameBytes(new Span<byte>(buffer));
-                    frame.Data = buffer;
+                    _current.Data = buffer;
                 }
                 else
                 {
-                    SkipFrameBytes(frame.IncludedLength);
+                    SkipFrameBytes(_current.IncludedLength);
                 }
+                _state = ReadingState.Success;
                 return true;
             }
-            return false;
+            else
+            {
+                _current = default;
+                _state = ReadingState.Finished;
+                return false;
+            }
         }
         /// <summary>
         /// Reads the header of the next frame in the capture file.
@@ -165,7 +109,7 @@ namespace Traffix.Providers.PcapFile
         /// </summary>
         /// <param name="frame"></param>
         /// <returns></returns>
-        public bool GetNextFrameHeader(out RawFrame frame)
+        private bool GetNextFrameHeader(out RawFrame frame)
         {
             frame = null;
             _frameNumber++;
@@ -182,12 +126,12 @@ namespace Traffix.Providers.PcapFile
         /// </summary>
         /// <param name="buffer"></param>
         /// <returns></returns>
-        public int ReadFrameBytes(Span<byte> buffer)
+        private int ReadFrameBytes(Span<byte> buffer)
         {
             return _stream.Read(buffer);
         }
 
-        public int SkipFrameBytes(int byteCount)
+        private int SkipFrameBytes(int byteCount)
         {
             var skippedBytes = Math.Min(_length - _stream.Position, byteCount);
             _stream.Seek(skippedBytes, SeekOrigin.Current);
@@ -222,15 +166,6 @@ namespace Traffix.Providers.PcapFile
             _stream?.Close();
         }
 
-        /// <summary>
-        /// Open causes that a header of the capture files is read. It is up to the caller to 
-        /// position the stream to the proper location.
-        /// </summary>
-        private void Open()
-        {
-            ReadHeader();
-        }
-
         const int PCAP_FILE_HEADER_SIZE = 4 + 2 + 2 + 4 + 4 + 4 + 4;
         const int MAGIC_NUMBER_OFFSET = 0;
         const int VERSION_MAJOR_OFFSET = 4;
@@ -239,7 +174,7 @@ namespace Traffix.Providers.PcapFile
         const int SIG_FIGS_OFFSET = 12;
         const int SNAP_LEN_OFFSET = 16;
         const int NETWORK_TYPE_OFFSET = 20;
-        void ReadHeader()
+        void Open()
         {
             var buffer = new byte[PCAP_FILE_HEADER_SIZE];
             _stream.Read(buffer, 0, PCAP_FILE_HEADER_SIZE);

@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using Traffix.Core;
 using Traffix.Core.Flows;
 using Traffix.Data;
 using Traffix.Providers.PcapFile;
@@ -273,7 +274,6 @@ namespace Traffix.Storage.Faster
                         }
                     }
                     var result = processor.Invoke(key.FlowKey, frameList.Select(x => new Memory<byte>(x)).ToList());
-                    // we have to dispose buffers rented from memory pool before we can return a result
                     return result;
                 }
                 else
@@ -284,62 +284,19 @@ namespace Traffix.Storage.Faster
             return keys.Select(key => ProcessConversation(ref key));
         }
 
-
-
-
-
-        /// <summary>
-        /// Indicates the result of processing the object.
-        /// </summary>
-        public enum ProcessingState
+        public IEnumerable<TResult> ProcessFrames<TResult>(IEnumerable<FrameKey> keys, IFrameProcessor<TResult> processor)
         {
-            /// <summary>
-            /// The object has been successfully processed.
-            /// </summary>
-            Success,
-            /// <summary>
-            /// The object was skipped and should not be a part of the output.
-            /// </summary>
-            Skip, 
-            /// <summary>
-            /// The object was not processed and the entire processing should be terminated.
-            /// </summary>
-            Terminate
-        }
-        public struct ProcessingResult<TResult>
-        {
-            public ProcessingState State;
-            public TResult Result;
-        }
-
-        class FrameProcessor<TResult> : IEntryProcessor<long, Memory<byte>, TResult>
-        {
-            private readonly Func<FrameMetadata, Memory<byte>, ProcessingResult<TResult>> _processor;
-
-            public FrameProcessor(Func<FrameMetadata, Memory<byte>, ProcessingResult<TResult>> processor)
+            using var framesClient = _framesStore.GetClient() ?? throw new InvalidOperationException("Cannot create frames DB session.");
+            foreach (var key in keys)
             {
-                _processor = processor;
+                if (framesClient.TryGet(key.Address, out var bytes))
+                {
+                    FrameMetadata meta = default;
+                    var data = ConversationProcessor.GetFrameFromMemory(bytes, ref meta);
+                    var result = processor.Invoke(key, ref meta, data);
+                    yield return result;
+                }
             }
-
-            unsafe public ProcessingState Invoke(ref long key, ref Memory<byte> memory, out TResult result)
-            {
-                FrameMetadata frameMetadata = default;
-                var frameBytes = RawFramesStore.GetFrameFromMemory(ref memory, ref frameMetadata);
-                var x = _processor.Invoke(frameMetadata, frameBytes);
-                result = x.Result;
-                return x.State;
-            }
-        }
-
-        /// <summary>
-        /// Applies the provided <paramref name="processor"/> to all frames in the table yielding to a collection of results produced by the processor. 
-        /// </summary>
-        /// <typeparam name="TResult">The type of resulting objects.</typeparam>
-        /// <param name="processor">The processor function to apply.</param>
-        /// <returns>A collection of results produced by the processor.</returns>
-        public IEnumerable<TResult> ProcessFrames<TResult>(Func<FrameMetadata, Memory<byte>, ProcessingResult<TResult>> processor)
-        {
-            return _framesStore.ProcessEntries<TResult>(new FrameProcessor<TResult>(processor));
         }
 
 
@@ -371,27 +328,9 @@ namespace Traffix.Storage.Faster
 
         public int ConversationsCount => (int)_conversationsStore.EntryCount;
 
-
-        public IEnumerable<RawFrame> GetRawFrames()
-        {
-            int frameNumber = 0;
-            ProcessingResult<RawFrame> GetRawFrame(FrameMetadata meta, Memory<byte> frame)
-            {
-                return new ProcessingResult<RawFrame>
-                {
-                    State = ProcessingState.Success,
-                    Result = new RawFrame((LinkLayers)meta.LinkLayer, ++frameNumber, meta.Ticks, 0, meta.OriginalLength, frame.ToArray())
-                };
-            }
-            return ProcessFrames(GetRawFrame);
-        }
-
-        public IEnumerable<RawFrame> GetFrames(ConversationKey conversation)
-        {
-            var result = ProcessConversations(new[] { conversation }, new RawFrameProcessor());
-            return result.FirstOrDefault();
-
-        }
+        public IEnumerable<FrameKey> FrameKeys =>
+            _framesStore.EntryCount > 0 ?
+            Enumerable.Range(0, (int)_framesStore.EntryCount - 1).Select(x => new FrameKey { Address = x }) : Array.Empty<FrameKey>(); 
 
         /// <summary>
         /// Frame streamer is responsible for streaming external frame into table. 
@@ -536,7 +475,7 @@ namespace Traffix.Storage.Faster
             }
         }
 
-        private class KeyValueConversationProcessor : IEntryProcessor<ConversationKey, ConversationValue, KeyValuePair<ConversationKey, ConversationValue>>
+        public class KeyValueConversationProcessor : IEntryProcessor<ConversationKey, ConversationValue, KeyValuePair<ConversationKey, ConversationValue>>
         {
             public ProcessingState Invoke(ref ConversationKey key, ref ConversationValue value, out KeyValuePair<ConversationKey, ConversationValue> result)
             {
@@ -544,7 +483,7 @@ namespace Traffix.Storage.Faster
                 return ProcessingState.Success;
             }
         }
-        private class KeyConversationProcessor : IEntryProcessor<ConversationKey, ConversationValue, ConversationKey>
+        public class KeyConversationProcessor : IEntryProcessor<ConversationKey, ConversationValue, ConversationKey>
         {
             public ProcessingState Invoke(ref ConversationKey key, ref ConversationValue value, out ConversationKey result)
             {
@@ -552,18 +491,50 @@ namespace Traffix.Storage.Faster
                 return ProcessingState.Success;
             }
         }
-        private class RawFrameProcessor : IConversationProcessor<IEnumerable<RawFrame>>
+        public class RawFrameConversationProcessor : IConversationProcessor<IEnumerable<RawFrame>>
         {
             public IEnumerable<RawFrame> Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
             {
-                FrameMetadata meta = new FrameMetadata();
-                int frameNumber = 0;
+                var _frameProcessor = new RawFrameProcessor();
+                FrameMetadata meta = default;
+                FrameKey frameKey = default;
                 foreach (var frame in frames)
                 {
                     var data = ConversationProcessor.GetFrameFromMemory(frame, ref meta);
-                    yield return new RawFrame((PacketDotNet.LinkLayers)meta.LinkLayer, ++frameNumber, meta.Ticks, 0, meta.OriginalLength, data.ToArray());
+                    yield return _frameProcessor.Invoke(frameKey, ref meta, data.ToArray());
                 }
             }
         }
+        public class RawFrameProcessor : IFrameProcessor<RawFrame>
+        {
+            int _frameNumber = 0;
+            public RawFrame Invoke(FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
+            {
+                return new RawFrame((LinkLayers)frameMetadata.LinkLayer, ++_frameNumber, frameMetadata.Ticks, 0, frameMetadata.OriginalLength, frameBytes.ToArray());
+            }
+        }
+    }
+    /// <summary>
+    /// Indicates the result of processing the object.
+    /// </summary>
+    public enum ProcessingState
+    {
+        /// <summary>
+        /// The object has been successfully processed.
+        /// </summary>
+        Success,
+        /// <summary>
+        /// The object was skipped and should not be a part of the output.
+        /// </summary>
+        Skip,
+        /// <summary>
+        /// The object was not processed and the entire processing should be terminated.
+        /// </summary>
+        Terminate
+    }
+    public struct ProcessingResult<TResult>
+    {
+        public ProcessingState State;
+        public TResult Result;
     }
 }

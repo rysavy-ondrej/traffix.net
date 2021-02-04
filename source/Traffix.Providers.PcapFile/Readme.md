@@ -1,13 +1,13 @@
 # Traffix.CaptureProviders
 This library contains implementations of various PCAP file readers and other sources of packet capture data. 
 
-## CaptureFileReader
+## ManagedPcapReader
 
 A simple (and fast) PCAP file forward only reader. It enables to read frames from the traditional PCAP file (tcpdump format) only.
 The usage is very simple:
 
 ```csharp
-using(var reader = new CaptureFileReader(stream))
+using(var reader = new ManagedPcapReader(stream))
 {
     while(reader.GetNextFrame(out var frame))
     {
@@ -26,7 +26,7 @@ PCAP Header:
 | Field | Size | Description |
 | ----- | ---- | ------------|
 | Magic Number | U4 | Magic number, which is always `D4C3B2A1`. |
-| Version      | U4 | Version number, usually `02000400`. |
+| Version      | U4 | Version number, usually `02000400`. |
 | Zone         | U4 | Time zone information. |
 | SIG FIGS     | U4 | ??? |
 | Snap Len     | U4 | The snapshot length.If the snapshot length is set to snaplen, and snaplen is less than the size of a packet that is captured, only the first snaplen bytes of that packet will be captured and provided as packet data. |

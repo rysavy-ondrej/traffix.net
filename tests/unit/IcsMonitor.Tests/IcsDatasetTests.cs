@@ -5,6 +5,7 @@ using PacketDotNet;
 using System;
 using System.IO;
 using System.Linq;
+using Traffix.Interactive;
 using Traffix.Processors;
 
 namespace IcsMonitor.Tests
@@ -12,11 +13,14 @@ namespace IcsMonitor.Tests
     [TestClass]
     public class IcsDatasetTests
     {
+
+
+
         [TestMethod]
         public void CreateDatasetTest()
         {
             var ctx = new Interactive();
-            var dataset = ctx.ComputeModbusDataset(@"C:\Users\user\Captures\sorting_station_ver2.pcap", TimeSpan.FromSeconds(120));
+            var dataset = ctx.Datasets.Prepare(@"C:\Users\user\Captures\sorting_station_ver2.pcap", TimeSpan.FromSeconds(120));
             var stat = dataset.Statistics;
             Console.WriteLine("--STATS:");
             Console.WriteLine($"  Frames={stat.FramesCount}");
@@ -26,7 +30,7 @@ namespace IcsMonitor.Tests
         public void GetDataFrameTest()
         {
             var ml = new MLContext();
-            var ctx = new Interactive();
+            var ctx = new Monitor();
             var dataset = ctx.ComputeModbusDataset(@"C:\Users\user\Captures\sorting_station_ver2.pcap", TimeSpan.FromSeconds(180));
             var records = dataset.ConversationTables.SelectMany(x => x.AsEnumerable());
             var dataframe = records.ToDataFrame();
@@ -39,7 +43,7 @@ namespace IcsMonitor.Tests
         public void SaveDatasetTest()
         {
             var ml = new MLContext();
-            var ctx = new Interactive();
+            var ctx = new Monitor();
             var dataset = ctx.ComputeModbusDataset(@"C:\Users\user\Captures\sorting_station_ver2.pcap", TimeSpan.FromSeconds(180));
             var records = dataset.ConversationTables.SelectMany(x => x.AsEnumerable());
             var dataframe = records.ToDataFrame();
@@ -54,11 +58,11 @@ namespace IcsMonitor.Tests
         }
 
         [TestMethod]
-        public void GetConversationDataViewTest()
+        public void ConversationsDataViewTest()
         {
             var pcapPath = Path.GetFullPath(@"data\PCAP\modbus.pcap");
             var ml = new MLContext();
-            var ctx = new Interactive();
+            var ctx = new Monitor();
             var dataset = ctx.ComputeModbusDataset(pcapPath, TimeSpan.FromDays(1000));
             var records = dataset.ConversationTables.SelectMany(x => x.AsEnumerable());
             var dataview = records.AsDataView(); 
@@ -78,11 +82,11 @@ namespace IcsMonitor.Tests
             ml.Data.SaveAsText(dataview, stream);
         }
         [TestMethod]
-        public void GetFrameDataViewTest()
+        public void FrameRecordsDataViewTest()
         {
             var pcapPath = Path.GetFullPath(@"data\PCAP\modbus.pcap");
             var ml = new MLContext();
-            var ctx = new Interactive();
+            var ctx = new Monitor();
             var dataset = ctx.ComputeModbusDataset(pcapPath, TimeSpan.FromDays(1000));
             var records = dataset.Frames.Select(x => new FrameRecord<IPPacket> { Timestamp = new DateTime(x.Ticks), FrameLength = x.OriginalLength, Data = Packet.ParsePacket(x.LinkLayer, x.Data).Extract<IPPacket>() });
             var dataview = records.AsDataView();

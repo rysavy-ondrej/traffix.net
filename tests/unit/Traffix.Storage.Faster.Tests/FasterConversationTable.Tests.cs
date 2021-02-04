@@ -83,7 +83,7 @@ namespace Traffix.Storage.Faster.Tests
             sw.Start();
             var flowTable = OpenTable();
             Console.WriteLine($"--- LOADED --- [{sw.Elapsed}]");
-            var frames = flowTable.GetRawFrames();
+            var frames = flowTable.ProcessFrames<RawFrame>(flowTable.FrameKeys, new FasterConversationTable.RawFrameProcessor());
             var allFrames = 0;
             var otherPackets = 0;
             var ethernetPackets = 0;
@@ -128,12 +128,13 @@ namespace Traffix.Storage.Faster.Tests
         {
             var sw = new Stopwatch();
             sw.Start();
-            var table = OpenTable();
+            var flowTable = OpenTable();
             Console.WriteLine($"--- LOADED --- [{sw.Elapsed}]");
             sw.Restart();
             int frames = 0;
             long octets = 0;
-            foreach (var f in table.GetRawFrames())
+            var rawFrames = flowTable.ProcessFrames<RawFrame>(flowTable.FrameKeys, new FasterConversationTable.RawFrameProcessor());
+            foreach (var f in rawFrames)
             {
                 frames++;
                 octets += f.OriginalLength;

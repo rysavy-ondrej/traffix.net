@@ -5,7 +5,7 @@ using Traffix.Providers.PcapFile;
 
 namespace IcsMonitor
 {
-    public partial class Interactive
+    public partial class Monitor
     {
         /// <summary>
         /// The class collects necessary information of the single ICS dataset.

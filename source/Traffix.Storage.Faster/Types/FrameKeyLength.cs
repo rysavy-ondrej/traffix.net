@@ -1,5 +1,6 @@
 using FASTER.core;
 using System.Runtime.CompilerServices;
+using Traffix.Core;
 
 namespace Traffix.Storage.Faster
 {
