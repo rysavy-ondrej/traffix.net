@@ -345,7 +345,6 @@ namespace Traffix.Storage.Faster
             return windowConversations.GroupBy(x => x.Item1, x=>x.Item2).OrderBy(x=>x.Key);
         }
 
-
         /// <summary>
         /// Gets all frame keys. 
         /// </summary>

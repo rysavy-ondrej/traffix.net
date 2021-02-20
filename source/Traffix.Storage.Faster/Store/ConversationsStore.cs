@@ -53,7 +53,7 @@ namespace Traffix.Storage.Faster
                 value = new ConversationValue(32)
                 {
                     FrameCount = 1,
-                    ForwardFlow = new FlowMetrics
+                    ForwardFlow = new FlowValue
                     {
                         FirstSeen = input.FrameTicks,
                         LastSeen = input.FrameTicks,
@@ -90,7 +90,7 @@ namespace Traffix.Storage.Faster
                 value.FrameCount++;
             }
 
-            private void UpdateFlow(ref ConversationInput input, ref FlowMetrics flow)
+            private void UpdateFlow(ref ConversationInput input, ref FlowValue flow)
             {
                 flow.FirstSeen = Math.Min(flow.FirstSeen, input.FrameTicks);
                 flow.LastSeen = Math.Max(flow.LastSeen, input.FrameTicks);

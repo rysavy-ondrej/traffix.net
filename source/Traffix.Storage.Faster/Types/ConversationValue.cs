@@ -20,12 +20,12 @@ namespace Traffix.Storage.Faster
         /// <summary>
         /// Provides meta information about the forward flow.
         /// </summary>
-        public FlowMetrics ForwardFlow;
+        public FlowValue ForwardFlow;
 
         /// <summary>
         /// Provides meta information about the reverse flow.
         /// </summary>
-        public FlowMetrics ReverseFlow;
+        public FlowValue ReverseFlow;
         /// <summary>
         /// The actual number of flows. 
         /// <para/>

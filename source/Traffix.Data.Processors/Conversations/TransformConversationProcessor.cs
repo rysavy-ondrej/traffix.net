@@ -7,19 +7,19 @@ namespace Traffix.Processors
 {
     internal class TransformConversationProcessor<TSource, TTarget> : IConversationProcessor<TTarget>
     {
-        private readonly IConversationProcessor<TSource> processor;
-        private readonly Func<TSource, TTarget> transform;
+        private readonly IConversationProcessor<TSource> _processor;
+        private readonly Func<TSource, TTarget> _transform;
 
         public TransformConversationProcessor(IConversationProcessor<TSource> processor, Func<TSource, TTarget> transform)
         {
-            this.processor = processor;
-            this.transform = transform;
+            this._processor = processor;
+            this._transform = transform;
         }
 
         public TTarget Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
         {
-            var intermediate = processor.Invoke(flowKey, frames);
-            return transform.Invoke(intermediate);
+            var intermediate = _processor.Invoke(flowKey, frames);
+            return _transform.Invoke(intermediate);
         }
     }
     public static class TransformConversationProcessor

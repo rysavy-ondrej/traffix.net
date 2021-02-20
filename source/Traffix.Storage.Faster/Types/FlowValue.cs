@@ -8,7 +8,7 @@ namespace Traffix.Storage.Faster
     /// This structure provides basic summary information on a single flow.
     /// </summary>
     [StructLayout(LayoutKind.Explicit, Pack =1)]
-    public unsafe struct FlowMetrics
+    public unsafe struct FlowValue
     {
         public const int _StructSize = 28; 
         [FieldOffset(0)]
@@ -20,11 +20,11 @@ namespace Traffix.Storage.Faster
         [FieldOffset(24)]
         public uint Packets;
 
-        internal FlowMetrics Combine(FlowMetrics? delta)
+        internal FlowValue Combine(FlowValue? delta)
         {
             if (delta != null)
             {
-                return new FlowMetrics
+                return new FlowValue
                 {
                     FirstSeen = Math.Min(this.FirstSeen, delta.Value.FirstSeen),
                     LastSeen = Math.Max(this.LastSeen, delta.Value.LastSeen),
@@ -37,7 +37,7 @@ namespace Traffix.Storage.Faster
                 return this;
             }
         }
-        internal static void Update(ref FlowMetrics value, ref FlowMetrics? delta)
+        internal static void Update(ref FlowValue value, ref FlowValue? delta)
         {
             if (delta != null)
             {
