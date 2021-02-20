@@ -28,13 +28,13 @@ namespace Traffix.Storage.Faster
         /// <summary>
         /// Memory pool used for buffer allocations in this class.
         /// </summary>
-        private MemoryPool<byte> _memoryPool = MemoryPool<byte>.Shared;
+        private readonly MemoryPool<byte> _memoryPool = MemoryPool<byte>.Shared;
 
         /// <summary>
         /// The packet key provider used for finding keys in frames. 
         /// By default it uses <see cref="PacketKeyProvider"/> based on PacketDotNet package.
         /// </summary>
-        IFlowKeyProvider<FlowKey, Packet> _packetKeyProvider = new PacketKeyProvider();
+        readonly IFlowKeyProvider<FlowKey, Packet> _packetKeyProvider = new PacketKeyProvider();
 
         private bool _disposedValue;
         /// <summary>
@@ -192,7 +192,7 @@ namespace Traffix.Storage.Faster
 
                 var frameValue = new Span<byte>(bufferPtr, bufferSize);
                 Unsafe.Copy(bufferPtr, ref frameMetadata);
-                frameBytes.CopyTo(frameValue.Slice(Unsafe.SizeOf<FrameMetadata>()));
+                frameBytes.CopyTo(frameValue[Unsafe.SizeOf<FrameMetadata>()..]);
                 client.Put(frameKey.Address, ref frameValue);
             }
             else
@@ -203,7 +203,7 @@ namespace Traffix.Storage.Faster
                 {
                     var frameValue = new Span<byte>(bufferPtr, bufferSize);
                     Unsafe.Copy(bufferPtr, ref frameMetadata);
-                    frameBytes.CopyTo(frameValue.Slice(Unsafe.SizeOf<FrameMetadata>()));
+                    frameBytes.CopyTo(frameValue[Unsafe.SizeOf<FrameMetadata>()..]);
                     client.Put(frameKey.Address, ref frameValue);
                 }
             }
@@ -300,23 +300,19 @@ namespace Traffix.Storage.Faster
             }
         }
 
+        /// <summary>
+        /// Gets the number of frames in the table.
+        /// </summary>
+        public int FramesCount => _framesStore.GetRecordCount();
 
         /// <summary>
-        /// Provides enumerable for all stored conversations.
+        /// Gets the number of conversations in the table.
         /// </summary>
-        /// <returns>An enumerable of conversations.</returns>
-        public IEnumerable<KeyValuePair<ConversationKey, ConversationValue>> Conversations
-        {
-            get
-            {
-                return _conversationsStore.ProcessEntries<KeyValuePair<ConversationKey, ConversationValue>>(new KeyValueConversationProcessor());
-            }
-        }
+        public int ConversationsCount => (int)_conversationsStore.GetRecordCount();
 
         /// <summary>
         /// Gets all stored conversation keys.
         /// </summary>
-        /// <returns>An enumerable of conversation keys.</returns>
         public IEnumerable<ConversationKey> ConversationKeys
         {
             get
@@ -325,10 +321,9 @@ namespace Traffix.Storage.Faster
             }
         }
 
-        public int FramesCount => _framesStore.GetRecordCount();
-
-        public int ConversationsCount => (int)_conversationsStore.GetRecordCount();
-
+        /// <summary>
+        /// Gets all frame keys. 
+        /// </summary>
         public IEnumerable<FrameKey> FrameKeys =>
             _framesStore.ProcessEntries(new FrameKeyProcessor());
 
@@ -340,20 +335,20 @@ namespace Traffix.Storage.Faster
         public class FrameStreamer : IDisposable
         {
             private readonly FasterConversationTable _table;
-            private ConversationsStore.KeyValueStoreClient _conversationsStoreClient;
-            private RawFramesStore.ClientSession _framesStoreClient;
-            private readonly int _autoFlushRequests;
+            private readonly ConversationsStore.KeyValueStoreClient _conversationsStoreClient;
+            private readonly RawFramesStore.ClientSession _framesStoreClient;
+            private readonly int _autoFlushRecordCount;
             private bool _closed;
             private int _outstandingRequests;
             internal FrameStreamer(FasterConversationTable table, 
                 ConversationsStore.KeyValueStoreClient conversationsStoreClient,
                 RawFramesStore.ClientSession framesStoreClient,
-                int autoFlush)
+                int autoFlushRecordCount)
             {
                 _table = table;
                 _conversationsStoreClient = conversationsStoreClient;
                 _framesStoreClient = framesStoreClient;
-                _autoFlushRequests = autoFlush;
+                _autoFlushRecordCount = autoFlushRecordCount;
             }
 
             /// <summary>
@@ -394,19 +389,7 @@ namespace Traffix.Storage.Faster
                 _table.UpdateConversationWithFrame(_conversationsStoreClient, ref frameFlowKey, ref conversationUpdate);
                 
                 _outstandingRequests++;
-                if (_outstandingRequests > _autoFlushRequests) CompletePending();
-            }
-
-            /// <summary>
-            /// Gets the frame address from its timestamp and number.
-            /// </summary>
-            /// <param name="ticks"></param>
-            /// <param name="frameNumber"></param>
-            /// <returns>The frame address that consists of linux epoch time in higher 32 bits and frame number in lower 32 bits.</returns>
-            private long GetFrameAddress(long ticks, long frameNumber)
-            {
-                var epochSeconds = new DateTimeOffset(ticks, TimeSpan.Zero).ToUnixTimeSeconds();
-                return epochSeconds << 32 | (uint)(frameNumber);
+                if (_outstandingRequests > _autoFlushRecordCount) CompletePending();
             }
 
             /// <summary>
@@ -444,7 +427,7 @@ namespace Traffix.Storage.Faster
 
             public Configuration(string path)
             {
-                this._provider = new JsonConfigurationProvider(new JsonConfigurationSource { Path = Path.GetFullPath(path) }); ;
+                _provider = new JsonConfigurationProvider(new JsonConfigurationSource { Path = Path.GetFullPath(path) }); ;
             }
             public long FramesCapacity
             {
@@ -475,7 +458,7 @@ namespace Traffix.Storage.Faster
             public Configuration Save()
             {
                 string json = System.Text.Json.JsonSerializer.Serialize<Configuration>(this, new System.Text.Json.JsonSerializerOptions { WriteIndented = true } );
-                System.IO.File.WriteAllText(_provider.Source.Path, json);
+                File.WriteAllText(_provider.Source.Path, json);
                 return this;
             }
 
@@ -487,7 +470,8 @@ namespace Traffix.Storage.Faster
             }
         }
 
-        public class KeyValueConversationProcessor : IEntryProcessor<ConversationKey, ConversationValue, KeyValuePair<ConversationKey, ConversationValue>>
+        #region Private entry processors:
+        class KeyValueConversationProcessor : IEntryProcessor<ConversationKey, ConversationValue, KeyValuePair<ConversationKey, ConversationValue>>
         {
             public ProcessingState Invoke(ref ConversationKey key, ref ConversationValue value, out KeyValuePair<ConversationKey, ConversationValue> result)
             {
@@ -495,7 +479,7 @@ namespace Traffix.Storage.Faster
                 return ProcessingState.Success;
             }
         }
-        public class KeyConversationProcessor : IEntryProcessor<ConversationKey, ConversationValue, ConversationKey>
+        class KeyConversationProcessor : IEntryProcessor<ConversationKey, ConversationValue, ConversationKey>
         {
             public ProcessingState Invoke(ref ConversationKey key, ref ConversationValue value, out ConversationKey result)
             {
@@ -503,6 +487,15 @@ namespace Traffix.Storage.Faster
                 return ProcessingState.Success;
             }
         }
+        class FrameKeyProcessor : IEntryProcessor<ulong, Memory<byte>, FrameKey>
+        {
+            public ProcessingState Invoke(ref ulong key, ref Memory<byte> value, out FrameKey result)
+            {
+                result = new FrameKey(key);
+                return ProcessingState.Success;
+            }
+        }
+        #endregion
         public class RawFrameConversationProcessor : IConversationProcessor<IEnumerable<RawFrame>>
         {
             public IEnumerable<RawFrame> Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
@@ -518,20 +511,12 @@ namespace Traffix.Storage.Faster
                 }
             }
         }
+
         public class RawFrameProcessor : IFrameProcessor<RawFrame>
         {
             public RawFrame Invoke(ref FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
             {
                 return new RawFrame((LinkLayers)frameMetadata.LinkLayer, (int)frameKey.Number, frameMetadata.Ticks, 0, frameMetadata.OriginalLength, frameBytes.ToArray());
-            }
-        }
-
-        private class FrameKeyProcessor : IEntryProcessor<ulong, Memory<byte>, FrameKey>
-        {
-            public ProcessingState Invoke(ref ulong key, ref Memory<byte> value, out FrameKey result)
-            {
-                result = new FrameKey(key);
-                return ProcessingState.Success;
             }
         }
     }
