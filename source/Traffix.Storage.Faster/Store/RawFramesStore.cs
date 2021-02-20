@@ -14,7 +14,7 @@ namespace Traffix.Storage.Faster
     /// The store contains raw frames indexed by <see cref="FrameKey"/> address (ulong type). 
     /// </summary>
     public class RawFramesStore : IDisposable
-        {
+    {
             private readonly string _dataFolder;
             private readonly int _logSizeBits;
             private readonly IDevice _logDevice;
@@ -23,7 +23,7 @@ namespace Traffix.Storage.Faster
             /// <summary>
             /// Gets the number of records in the store.
             /// </summary>
-            public int GetRecordCount() => ProcessEntriesRaw(null);
+            public int GetRecordCount() => ProcessEntries(null);
 
             /// <summary>
             /// Creates a new instance of the frame store.
@@ -353,7 +353,12 @@ namespace Traffix.Storage.Faster
                 iterator.Dispose();
             }
 
-            private int ProcessEntriesRaw(Action<IFasterScanIterator<ulong, SpanByte>>? onNextValue)
+        /// <summary>
+        /// Process entries using delegate callback.
+        /// </summary>
+        /// <param name="onNextValue">The callback function to call on every entry.</param>
+        /// <returns>The number of entries processed.</returns>
+            internal int ProcessEntries(OnNextValueCallback<ulong,SpanByte>? onNextValue)
             {
                 if (_fasterKvh == null) throw new InvalidOperationException("The store is closed.");
                 var iterator = _fasterKvh.Iterate() ?? throw new InvalidOperationException("Cannot create conversations database iterator.");
@@ -361,7 +366,7 @@ namespace Traffix.Storage.Faster
                 while (iterator.GetNext(out _))
                 {
                     entriesCount++;
-                    onNextValue?.Invoke(iterator);
+                    onNextValue?.Invoke(ref iterator.GetKey(), ref iterator.GetValue());
                 }
                 iterator.Dispose();
                 return entriesCount;

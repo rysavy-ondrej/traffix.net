@@ -165,7 +165,7 @@ namespace Traffix.Storage.Faster.Tests
         /// <param name="flowKey"></param>
         /// <param name="frames"></param>
         /// <returns></returns>
-        public static (string key, int frames, int octets, int ip, int tcp, int udp) CountFrames(FlowKey flowKey, System.Collections.Generic.ICollection<Memory<byte>> frames)
+        public static (string key, int frames, int octets, int ip, int tcp, int udp) CountFrames(FlowKey flowKey, System.Collections.Generic.IEnumerable<Memory<byte>> frames)
         {
             (int octets, int ip, int tcp, int udp) GetFrameSize(Memory<byte> memory)
             {
@@ -178,13 +178,14 @@ namespace Traffix.Storage.Faster.Tests
                     packet.Extract<PacketDotNet.UdpPacket>() != null ? 1 : 0
                     );
             }
+            var framesList = frames.ToList();
             // intentionally it is computed in this inefficient way to test 
             // the implementated iteration over the input collection
-            return (flowKey.ToString(), frames.Count,
-                 frames.Sum(x => GetFrameSize(x).octets),
-                 frames.Sum(x => GetFrameSize(x).ip),
-                 frames.Sum(x => GetFrameSize(x).tcp),
-                 frames.Sum(x => GetFrameSize(x).udp)
+            return (flowKey.ToString(), framesList.Count,
+                 framesList.Sum(x => GetFrameSize(x).octets),
+                 framesList.Sum(x => GetFrameSize(x).ip),
+                 framesList.Sum(x => GetFrameSize(x).tcp),
+                 framesList.Sum(x => GetFrameSize(x).udp)
                 );
         }
 
@@ -200,10 +201,11 @@ namespace Traffix.Storage.Faster.Tests
             // create 10 windows
             var windowSpan = (lastPacketTime - firstPacketTime) / 10;
             var windows = table.ConversationsGroupByWindow(firstPacketTime.DateTime, windowSpan);
+            var processor = ConversationProcessor.FromFunction<string>((key, frames) => $"{key} : {frames.Count()}");
             foreach (var win in windows)
             {
-                Console.WriteLine($"{win.Key}-{win.Key + windowSpan}:");
-                var conversations = table.ProcessConversations(win, ConversationProcessor.FromFunction<string>((key, frames) => $"{key} : {frames.Count}").Window(win.Key, windowSpan));
+                Console.WriteLine($"{win.Key} - {win.Key + windowSpan}:");
+                var conversations = table.ProcessConversations(win, processor.ApplyToWindow(win.Key, windowSpan));
                 foreach (var c in conversations)
                 {
                     Console.WriteLine($"  {c}");

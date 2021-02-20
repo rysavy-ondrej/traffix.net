@@ -16,23 +16,10 @@ namespace Traffix.Processors
             this._transform = transform;
         }
 
-        public TTarget Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
+        public TTarget Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
         {
             var intermediate = _processor.Invoke(flowKey, frames);
             return _transform.Invoke(intermediate);
-        }
-    }
-    public static class TransformConversationProcessor
-    {
-        /// <summary>
-        /// Creates a new conversation processor that produces values of <typeparamref name="Target"/> objects 
-        /// by applying the given transofrmation function.
-        /// </summary>
-        /// <typeparam name="Target"></typeparam>
-        /// <returns></returns>
-        public static IConversationProcessor<Target> Transform<TSource, Target>(this IConversationProcessor<TSource> source, Func<TSource, Target> transform)
-        {
-            return new TransformConversationProcessor<TSource, Target>(source, transform);
         }
     }
 }

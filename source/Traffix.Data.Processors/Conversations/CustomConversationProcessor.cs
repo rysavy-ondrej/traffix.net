@@ -26,7 +26,7 @@ namespace Traffix.Processors
     /// <typeparam name="TData">The user data type. Used to parametrize <see cref="ConversationRecord{TData}"/> to define the target processor data type.</typeparam>
     public abstract class CustomConversationProcessor<TData> : IConversationProcessor<ConversationRecord<TData>>
     {
-        public ConversationRecord<TData> Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
+        public ConversationRecord<TData> Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
         {
             var fwdPackets = new List<MetaPacket>();
             var revPackets = new List<MetaPacket>();

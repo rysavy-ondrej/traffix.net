@@ -21,7 +21,7 @@ namespace Traffix.Storage.Faster
         /// Gets the total number of records in the conversations store.
         /// </summary>
         /// <returns></returns>
-        public int GetRecordCount() => ProcessEntriesRaw(null);
+        public int GetRecordCount() => ProcessEntries(null);
         internal class ConversationFunctions : KeyValueStore<ConversationKey, ConversationValue, ConversationInput, ConversationOutput, ConversationFunctions>.StoreFunctions
         {
             public override void ConcurrentReader(ref ConversationKey key, ref ConversationInput input, ref ConversationValue value, ref ConversationOutput dst)

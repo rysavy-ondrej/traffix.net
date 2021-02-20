@@ -3,7 +3,7 @@
 namespace Traffix.Storage.Faster
 {
     /// <summary>
-    /// Defines the entry processor for in the KeyValueStore.
+    /// Defines the processor for processing entries in the KeyValueStore.
     /// </summary>
     /// <typeparam name="TKey"></typeparam>
     /// <typeparam name="TValue"></typeparam>
@@ -12,7 +12,7 @@ namespace Traffix.Storage.Faster
         where TKey : new()
         where TValue : new()
     {
-         ProcessingState Invoke(ref TKey key, ref TValue value, out TResult result);
+        ProcessingState Invoke(ref TKey key, ref TValue value, out TResult result);
     }
     /// <summary>
     /// Indicates the result of processing the object.

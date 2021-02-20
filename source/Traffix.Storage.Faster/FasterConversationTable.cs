@@ -555,7 +555,7 @@ namespace Traffix.Storage.Faster
         #endregion
         public class RawFrameConversationProcessor : IConversationProcessor<IEnumerable<RawFrame>>
         {
-            public IEnumerable<RawFrame> Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
+            public IEnumerable<RawFrame> Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
             {
                 var _frameProcessor = new RawFrameProcessor();
                 FrameMetadata frameMetadata = default;

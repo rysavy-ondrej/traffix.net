@@ -16,6 +16,6 @@ namespace Traffix.Data
         /// <param name="flowKey">The flow key.</param>
         /// <param name="frames">The collection of byte arrays that constains metadata and bytes of frames of the flow.</param>
         /// <returns>The result of type <typeparamref name="T"/> or <see langword="null"/>.</returns>
-        T Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames);
+        T Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames);
     }
 }

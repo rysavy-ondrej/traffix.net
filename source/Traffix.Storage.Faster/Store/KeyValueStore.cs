@@ -6,7 +6,21 @@ using System.IO;
 
 namespace Traffix.Storage.Faster
 {
-
+    /// <summary>
+    /// The callback for processing entries. 
+    /// </summary>
+    /// <param name="key">The reference to key.</param>
+    /// <param name="value">The reference to value.</param>
+    public delegate void OnNextValueCallback<TKey, TValue>(ref TKey key, ref TValue value);
+    /// <summary>
+    /// The key-value store that provides convenient way of 
+    /// adding, removing and getting records.
+    /// </summary>
+    /// <typeparam name="TKey"></typeparam>
+    /// <typeparam name="TValue"></typeparam>
+    /// <typeparam name="TInput"></typeparam>
+    /// <typeparam name="TOutput"></typeparam>
+    /// <typeparam name="TFunctions"></typeparam>
     public class KeyValueStore<TKey, TValue, TInput, TOutput, TFunctions>
         where TKey : new()
         where TValue : new()
@@ -50,6 +64,10 @@ namespace Traffix.Storage.Faster
             };
         }
 
+        /// <summary>
+        /// Initializes the store and tries to recover it from the persisent storage.
+        /// </summary>
+        /// <returns>true if the storage was recovered; false otherwise.</returns>
         public bool InitAndRecover()
         {
             var logSize = 1L << _logSizeBits;
@@ -106,7 +124,10 @@ namespace Traffix.Storage.Faster
             _objDevice?.Dispose();
         }
 
-
+        /// <summary>
+        /// Gets the client of the store.
+        /// </summary>
+        /// <returns>The client instance.</returns>
         public KeyValueStoreClient GetClient()
         {
             var session = NewSession();
@@ -119,6 +140,12 @@ namespace Traffix.Storage.Faster
             return _fasterKvh.NewSession(sessionId, threadAffinitized);
         }
 
+        /// <summary>
+        /// Process entires using an implementation of entry processor.
+        /// </summary>
+        /// <param name="processor">The processor.</param>
+        /// <typeparam name="TResult">The result type.</typeparam>
+        /// <returns>An enumerable of results produced by entry processor.</returns>
         public IEnumerable<TResult> ProcessEntries<TResult>(IEntryProcessor<TKey, TValue, TResult> processor)
         {
             if (_fasterKvh == null) throw new InvalidOperationException("The store is closed.");
@@ -139,8 +166,13 @@ namespace Traffix.Storage.Faster
             }
             iterator.Dispose();
         }
-
-        protected int ProcessEntriesRaw(Action<IFasterScanIterator<TKey, TValue>>? onNextValue)
+ 
+        /// <summary>
+        /// Process entries using delegate callback.
+        /// </summary>
+        /// <param name="onNextValue">The callback function to call on every entry.</param>
+        /// <returns>The number of entries processed.</returns>
+        public int ProcessEntries(OnNextValueCallback<TKey,TValue>? onNextValue)
         {
             if (_fasterKvh == null) throw new InvalidOperationException("The store is closed.");
             var iterator = _fasterKvh.Iterate() ?? throw new InvalidOperationException("Cannot create conversations database iterator.");
@@ -148,7 +180,7 @@ namespace Traffix.Storage.Faster
             while (iterator.GetNext(out _))
             {
                 entriesCount++;
-                onNextValue?.Invoke(iterator);
+                onNextValue?.Invoke(ref iterator.GetKey(), ref iterator.GetValue());
             }
             iterator.Dispose();
             return entriesCount;
@@ -159,12 +191,13 @@ namespace Traffix.Storage.Faster
         /// </summary>
         public long EntryCount => _fasterKvh.EntryCount;
 
-
+        /// <summary>
+        /// The client of the key-value store.
+        /// </summary>
         public class KeyValueStoreClient : IDisposable
         {
             private KeyValueStore<TKey, TValue, TInput, TOutput, TFunctions> _keyValueStore;
             private ClientSession<TKey, TValue, TInput, TOutput, StoreContext<TOutput>, TFunctions> _session;
-
 
             public KeyValueStoreClient(KeyValueStore<TKey, TValue, TInput, TOutput, TFunctions> keyValueStore, ClientSession<TKey, TValue, TInput, TOutput, StoreContext<TOutput>, TFunctions> session)
             {
@@ -176,7 +209,13 @@ namespace Traffix.Storage.Faster
             {
                 ((IDisposable)_session).Dispose();
             }
-
+            /// <summary>
+            /// Tries get the value for the given key.
+            /// </summary>
+            /// <param name="key">The key.</param>
+            /// <param name="input">???</param>
+            /// <param name="output">The output containing the value if record of the given exists.</param>
+            /// <returns>true if the record of the key exists; false otherwise.</returns>
             public bool TryGet(ref TKey key, ref TInput input, ref TOutput output)
             {
                 var context = new StoreContext<TOutput>();
@@ -196,7 +235,11 @@ namespace Traffix.Storage.Faster
                 }
                 return true;
             }
-
+            /// <summary>
+            /// Tests if the store contains the given key.
+            /// </summary>
+            /// <param name="key">The key.</param>
+            /// <returns>true if the given key is in the store; false otherwise.</returns>
             public bool ContainsKey(ref TKey key)
             {
                 var input = new TInput();
@@ -217,8 +260,8 @@ namespace Traffix.Storage.Faster
             /// <summary>
             /// Puts a new record or replace the existing one in the store.
             /// </summary>
-            /// <param name="key"></param>
-            /// <param name="value"></param>
+            /// <param name="key">The key.</param>
+            /// <param name="value">The value.</param>
             public void Put(ref TKey key, ref TValue value)
             {
                 var context = new StoreContext<TOutput>();

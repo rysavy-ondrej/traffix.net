@@ -7,14 +7,14 @@ namespace Traffix.Processors
 {
     internal class FuncConversationProcessor<TData> : IConversationProcessor<TData>
     {
-        private Func<FlowKey, ICollection<Memory<byte>>, TData> _function;
+        private Func<FlowKey, IEnumerable<Memory<byte>>, TData> _function;
 
-        public FuncConversationProcessor(Func<FlowKey, ICollection<Memory<byte>>, TData> function)
+        public FuncConversationProcessor(Func<FlowKey, IEnumerable<Memory<byte>>, TData> function)
         {
             this._function = function;
         }
 
-        public TData Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
+        public TData Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
         {
             return _function.Invoke(flowKey, frames);
         }

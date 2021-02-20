@@ -6,6 +6,28 @@ using Traffix.Data;
 
 namespace Traffix.Processors
 {
+    internal class TakeConversationProcessor<TTarget> : IConversationProcessor<TTarget>
+    {
+        private readonly IConversationProcessor<TTarget> _processor;
+        private readonly int _count;
+
+        public TakeConversationProcessor(IConversationProcessor<TTarget> processor, int count)
+        {
+            _processor = processor;
+            _count = count;
+        }  
+        public TTarget Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
+        {
+            return _processor.Invoke(flowKey, frames.Take(_count));  
+        } 
+    }
+    public static class TakeConversationProcessor
+    {
+         public static IConversationProcessor<Target> ApplyToTake<Target>(this IConversationProcessor<Target> source, int count)
+        {
+            return new TakeConversationProcessor<Target>(source, count);
+        }       
+    }
     internal class WindowConversationProcessor<TTarget> : IConversationProcessor<TTarget>
     {
         private readonly IConversationProcessor<TTarget> _processor;
@@ -18,7 +40,7 @@ namespace Traffix.Processors
             this._windowStart = windowStart;
             this._duration = duration;
         }
-        public TTarget Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
+        public TTarget Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
         {
             var firstTicks = _windowStart.Ticks;
             var lastTicks = firstTicks + _duration.Ticks;
@@ -28,7 +50,7 @@ namespace Traffix.Processors
                 FrameMetadata.GetFrameFromMemory(frame, ref frameMetadata);
                 return (frameMetadata.Ticks >= firstTicks && frameMetadata.Ticks < lastTicks);
             }
-            return _processor.Invoke(flowKey, frames.Where(IsInWindow).ToList());
+            return _processor.Invoke(flowKey, frames.Where(IsInWindow));
         }
     }
     public static class WindowConversationProcessor
@@ -42,7 +64,7 @@ namespace Traffix.Processors
         /// <param name="duration">The duration of the window.</param>
         /// <typeparam name="Target">The type of results.</typeparam>
         /// <returns>A new converdation processor that limits the frames to the window.</returns>
-        public static IConversationProcessor<Target> Window<Target>(this IConversationProcessor<Target> source, DateTime windowStart, TimeSpan duration)
+        public static IConversationProcessor<Target> ApplyToWindow<Target>(this IConversationProcessor<Target> source, DateTime windowStart, TimeSpan duration)
         {
             return new WindowConversationProcessor<Target>(source, windowStart, duration);
         }

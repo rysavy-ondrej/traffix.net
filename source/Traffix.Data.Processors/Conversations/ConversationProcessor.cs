@@ -11,7 +11,7 @@ namespace Traffix.Processors
     /// </summary>
     public static class ConversationProcessor
     {
-        public static IConversationProcessor<TResult> FromFunction<TResult>(Func<FlowKey, ICollection<Memory<byte>>, TResult> function)
+        public static IConversationProcessor<TResult> FromFunction<TResult>(Func<FlowKey, IEnumerable<Memory<byte>>, TResult> function)
         {
             return new FuncConversationProcessor<TResult>(function);
         }
