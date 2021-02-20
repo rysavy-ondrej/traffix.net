@@ -12,7 +12,7 @@ namespace Traffix.Storage.Faster
 
         public long GetHashCode64(ref FrameKey k)
         {
-            return k.Address;
+            return (long)k.Address;
         }
     }
 }

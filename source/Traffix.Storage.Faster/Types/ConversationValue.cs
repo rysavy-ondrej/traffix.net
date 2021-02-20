@@ -36,14 +36,14 @@ namespace Traffix.Storage.Faster
         /// <summary>
         /// An array of frame numbers.
         /// </summary>
-        public long[] FrameAddresses;
+        public ulong[] FrameAddresses;
 
         /// <summary>
         /// Default parameterless constructor.
         /// </summary>
         public ConversationValue() 
         {
-            FrameAddresses = Array.Empty<long>();
+            FrameAddresses = Array.Empty<ulong>();
         }
 
         /// <summary>
@@ -52,7 +52,7 @@ namespace Traffix.Storage.Faster
         /// <param name="initialAddresses">The requested size of <see cref="FrameAddresses"/> array.</param>
         internal ConversationValue(int initialAddresses)
         {
-            FrameAddresses = new long[initialAddresses];
+            FrameAddresses = new ulong[initialAddresses];
         }
                                                
         public ulong Octets => ForwardFlow.Octets + ReverseFlow.Octets;
@@ -96,10 +96,10 @@ namespace Traffix.Storage.Faster
             value.ReverseFlow.Packets = reader.ReadUInt32();
             value.FrameCount = reader.ReadInt32();
             var size = reader.ReadInt32();
-            value.FrameAddresses = new long[size];
+            value.FrameAddresses = new ulong[size];
             for (int i = 0; i < size; i++)
             {
-                value.FrameAddresses[i] = reader.ReadInt64();
+                value.FrameAddresses[i] = reader.ReadUInt64();
             }
         }
     }

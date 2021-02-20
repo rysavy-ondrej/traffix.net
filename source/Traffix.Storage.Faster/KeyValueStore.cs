@@ -142,6 +142,20 @@ namespace Traffix.Storage.Faster
             iterator.Dispose();
         }
 
+        protected int ProcessEntriesRaw(Action<IFasterScanIterator<TKey, TValue>>? onNextValue)
+        {
+            if (_fasterKvh == null) throw new InvalidOperationException("The store is closed.");
+            var iterator = _fasterKvh.Iterate() ?? throw new InvalidOperationException("Cannot create conversations database iterator.");
+            var entriesCount = 0;
+            while (iterator.GetNext(out _))
+            {
+                entriesCount++;
+                onNextValue?.Invoke(iterator);
+            }
+            iterator.Dispose();
+            return entriesCount;
+        }
+
         /// <summary>
         /// Gets the number of entries in the store.
         /// </summary>

@@ -27,7 +27,7 @@ namespace Traffix.Interactive
             {
                 foreach (var frame in frames)
                 {
-                    loader.AddFrame(frame, frame.Number);
+                    loader.AddFrame(frame);
                     if (token?.IsCancellationRequested ?? false) break;
                 }
             }

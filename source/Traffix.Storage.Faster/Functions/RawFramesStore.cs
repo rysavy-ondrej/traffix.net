@@ -4,26 +4,26 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using Traffix.Data;
-using static Traffix.Storage.Faster.FasterConversationTable;
 
 namespace Traffix.Storage.Faster
 {
     /// <summary>
-    /// Implements a key-value store for frames.
+    /// Implements a key-value store for raw frames.
+    /// <para/>
+    /// The store contains raw frames indexed by <see cref="FrameKey"/> address (ulong type). 
     /// </summary>
     public class RawFramesStore : IDisposable
     {
         private readonly string _dataFolder;
         private readonly int _logSizeBits;
         private readonly IDevice _logDevice;
-        private readonly FasterKV<long, SpanByte> _fasterKvh;
+        private readonly FasterKV<ulong, SpanByte> _fasterKvh;
 
         /// <summary>
-        /// Gets the actual number of frames in the store.
+        /// Gets the number of records in the store.
         /// </summary>
-        public long EntryCount => _fasterKvh?.EntryCount ?? 0;
+        public int GetRecordCount() => ProcessEntriesRaw(null);
 
         /// <summary>
         /// Creates a new instance of the frame store.
@@ -35,7 +35,7 @@ namespace Traffix.Storage.Faster
             _dataFolder = folder;
             _logSizeBits = (int)Math.Log(capacity, 2) + 1;
             _logDevice = Devices.CreateLogDevice(@$"{this._dataFolder}\data\Store-hlog.log", preallocateFile: false);
-            _fasterKvh = new FasterKV<long, SpanByte>
+            _fasterKvh = new FasterKV<ulong, SpanByte>
                 (
                     size: 1L << _logSizeBits,
                     logSettings:
@@ -77,13 +77,14 @@ namespace Traffix.Storage.Faster
         public ClientSession GetClient()
         {
             var s = _fasterKvh.For(new Functions()).NewSession<Functions>();
+            if (s == null) throw new InvalidOperationException("Cannot create a session object.");
             return new ClientSession(this, s);
         }
 
         /// <summary>
         /// Called to intialize and possibly recover the storage from the checkpoint if exists.
         /// </summary>
-        /// <returns>true if store was recovered, false otherwise.</returns>
+        /// <returns>true if the store was recovered, false otherwise (new store created).</returns>
         public bool InitAndRecover()
         {
             if (Directory.Exists($"{this._dataFolder}/data/checkpoints"))
@@ -122,7 +123,7 @@ namespace Traffix.Storage.Faster
             /// Called from <see cref="Functions.UpsertCompletionCallback"/>.
             /// </summary>
             /// <param name="key">The key of the value that was inserted</param>
-            public void EndUpsert(long key);
+            public void EndUpsert(ulong key);
             /// <summary>
             /// Called from <see cref="Functions.RMWCompletionCallback"/>.
             /// </summary>
@@ -132,7 +133,7 @@ namespace Traffix.Storage.Faster
             /// Called from <see cref="Functions.DeleteCompletionCallback"/>.
             /// </summary>
             /// <param name="key">The key of the value that was deleted.</param>
-            public void EndDelete(long key);
+            public void EndDelete(ulong key);
         }
         /// <summary>
         /// Callback functions for int key and SpanByte value. It creates byte array as an output.
@@ -141,21 +142,21 @@ namespace Traffix.Storage.Faster
         /// Function object is shared in a session. The context object is supplied for each operation.
         /// </summary>
 
-        internal sealed class Functions : FunctionsBase<long, SpanByte, Empty, byte[], IFunctionContext<byte[]>>
+        internal sealed class Functions : FunctionsBase<ulong, SpanByte, Empty, byte[], IFunctionContext<byte[]>>
         {
             /// <inheritdoc />
-            public override void SingleWriter(ref long key, ref SpanByte src, ref SpanByte dst)
+            public override void SingleWriter(ref ulong key, ref SpanByte src, ref SpanByte dst)
             {
                 src.CopyTo(ref dst);
             }
 
             /// <inheritdoc />
-            public override bool ConcurrentWriter(ref long key, ref SpanByte src, ref SpanByte dst)
+            public override bool ConcurrentWriter(ref ulong key, ref SpanByte src, ref SpanByte dst)
             {
                 return src.TryCopyTo(ref dst);
             }
             /// <inheritdoc />
-            public override void ReadCompletionCallback(ref long key, ref Empty input, ref byte[] output, IFunctionContext<byte[]> ctx, Status status)
+            public override void ReadCompletionCallback(ref ulong key, ref Empty input, ref byte[] output, IFunctionContext<byte[]> ctx, Status status)
             {
                 if (status != Status.OK)
                 {
@@ -164,25 +165,25 @@ namespace Traffix.Storage.Faster
                 ctx.EndRead(ref output);
             }
             /// <inheritdoc />
-            public override void SingleReader(ref long key, ref Empty input, ref SpanByte value, ref byte[] dst)
+            public override void SingleReader(ref ulong key, ref Empty input, ref SpanByte value, ref byte[] dst)
             {
                 dst = value.ToByteArray();
             }
             /// <inheritdoc />
-            public override void ConcurrentReader(ref long key, ref Empty input, ref SpanByte value, ref byte[] dst)
+            public override void ConcurrentReader(ref ulong key, ref Empty input, ref SpanByte value, ref byte[] dst)
             {
                 dst = value.ToByteArray();
             }
             /// <inheritdoc />
-            public override void DeleteCompletionCallback(ref long key, IFunctionContext<byte[]> ctx)
+            public override void DeleteCompletionCallback(ref ulong key, IFunctionContext<byte[]> ctx)
             {
                 ctx.EndDelete(key);
             }
-            public override void RMWCompletionCallback(ref long key, ref Empty input, IFunctionContext<byte[]> ctx, Status status)
+            public override void RMWCompletionCallback(ref ulong key, ref Empty input, IFunctionContext<byte[]> ctx, Status status)
             {
                 ctx.EndRMW(status);
             }
-            public override void UpsertCompletionCallback(ref long key, ref SpanByte value, IFunctionContext<byte[]> ctx)
+            public override void UpsertCompletionCallback(ref ulong key, ref SpanByte value, IFunctionContext<byte[]> ctx)
             {
                 ctx.EndUpsert(key);
             }
@@ -190,19 +191,19 @@ namespace Traffix.Storage.Faster
 
         public class ClientSession : IDisposable
         {
-            private RawFramesStore framesStoreSimple;
-            private ClientSession<long, SpanByte, Empty, byte[], IFunctionContext<byte[]>, Functions> _session;
+            private RawFramesStore _framesStore;
+            private ClientSession<ulong, SpanByte, Empty, byte[], IFunctionContext<byte[]>, Functions> _session;
 
-            internal ClientSession(RawFramesStore framesStoreSimple, ClientSession<long, SpanByte, Empty, byte[], IFunctionContext<byte[]>, Functions>? session)
+            internal ClientSession(RawFramesStore framesStore, ClientSession<ulong, SpanByte, Empty, byte[], IFunctionContext<byte[]>, Functions> session)
             {
-                this.framesStoreSimple = framesStoreSimple;
+                this._framesStore = framesStore;
                 this._session = session;
             }
             public void Dispose()
             {
                 ((IDisposable)_session).Dispose();
             }
-            public bool TryGet(long key, out byte[]? array)
+            public bool TryGet(ulong key, out byte[]? array)
             {
                 array = null;
                 Status status = Status.OK;
@@ -215,12 +216,14 @@ namespace Traffix.Storage.Faster
                     _session?.CompletePending(true);
                     System.Diagnostics.Debug.Assert(status != Status.OK || array != null);
                 }
-                switch(status)
+                switch (status)
                 {
                     case Status.OK:
                         return true;
                     case Status.NOTFOUND:
                         return false;
+                    case Status.PENDING:
+                    case Status.ERROR:
                     default:
                         throw new InvalidOperationException("Error ocurred when reading data.");
                 }
@@ -231,7 +234,7 @@ namespace Traffix.Storage.Faster
             /// </summary>
             /// <param name="key">The key of the record.</param>
             /// <param name="value">The record value.</param>
-            public void Put(long key, ref Span<byte> value)
+            public void Put(ulong key, ref Span<byte> value)
             {
                 var status = Status.OK;
                 var context = Context.WithUpsert(s => { status = s; });
@@ -265,11 +268,11 @@ namespace Traffix.Storage.Faster
             /// </summary>
             class Context : IFunctionContext<byte[]>
             {
-                private readonly Action<long>? _onKey; 
+                private readonly Action<ulong>? _onKey; 
                 private readonly Action<byte[]>? _onValue;
                 private readonly Action<Status>? _onStatus;
 
-                private Context(Action<long>? onKey = null, Action<byte[]>? onValue = null, Action<Status>? onStatus = null)
+                private Context(Action<ulong>? onKey = null, Action<byte[]>? onValue = null, Action<Status>? onStatus = null)
                 {
                     this._onKey = onKey;
                     this._onValue = onValue;
@@ -285,7 +288,7 @@ namespace Traffix.Storage.Faster
                     return new Context(onValue: onSuccess, onStatus: onError);
                 }
 
-                public void EndDelete(long key)
+                public void EndDelete(ulong key)
                 {
                     _onKey?.Invoke(key);
                 }
@@ -305,7 +308,7 @@ namespace Traffix.Storage.Faster
                     _onStatus?.Invoke(status);
                 }
 
-                public void EndUpsert(long key)
+                public void EndUpsert(ulong key)
                 {
                     _onKey?.Invoke(key);
                 }
@@ -326,7 +329,7 @@ namespace Traffix.Storage.Faster
         /// <typeparam name="TResult">The type of results</typeparam>
         /// <param name="processor">The entry processor implementation.</param>
         /// <returns>A lazy collection of  results generated by the processor.</returns>
-        internal IEnumerable<TResult> ProcessEntries<TResult>(IEntryProcessor<long, Memory<byte>, TResult> processor)
+        internal IEnumerable<TResult> ProcessEntries<TResult>(IEntryProcessor<ulong, Memory<byte>, TResult> processor)
         {
             if (_fasterKvh == null) throw new InvalidOperationException("The store is closed.");
             var iterator = _fasterKvh.Iterate() ?? throw new InvalidOperationException("Cannot create conversations database iterator.");
@@ -348,6 +351,20 @@ namespace Traffix.Storage.Faster
                 }
             }
             iterator.Dispose();
+        }
+
+        private int ProcessEntriesRaw(Action<IFasterScanIterator<ulong, SpanByte>>? onNextValue)
+        {
+            if (_fasterKvh == null) throw new InvalidOperationException("The store is closed.");
+            var iterator = _fasterKvh.Iterate() ?? throw new InvalidOperationException("Cannot create conversations database iterator.");
+            var entriesCount = 0;
+            while (iterator.GetNext(out _))
+            {
+                entriesCount++;
+                onNextValue?.Invoke(iterator);
+            }
+            iterator.Dispose();
+            return entriesCount;
         }
 
         /// <summary>

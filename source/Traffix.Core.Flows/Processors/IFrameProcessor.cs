@@ -9,6 +9,6 @@ namespace Traffix.Data
     /// <typeparam name="T"></typeparam>
     public interface IFrameProcessor<T>
     {
-        T Invoke(FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes);
+        T Invoke(ref FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes);
     }
 }

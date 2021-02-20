@@ -21,26 +21,25 @@ namespace Traffix.Storage.Faster.Tests
         {
             var sw = new Stopwatch();
             var pcapPath = Path.GetFullPath(@"data\PCAP\modbus.pcap");
-            //var pcapPath = Path.GetFullPath(@"C:\Users\user\Captures\sorting_station_ver2.pcap");
-
             var dbPath = Path.GetFullPath(@"c:\temp\0001\");
             if (Directory.Exists(dbPath)) Directory.Delete(dbPath, true);
-            sw.Start();
+            
             var flowTable = FasterConversationTable.Create(dbPath, framesCapacity:1700000);
             var frameNumber = 0;
+            sw.Restart();
             using (var loader = flowTable.GetStreamer())
             using (var pcapReader = new SharpPcapReader(pcapPath))
             {
                 while (pcapReader.GetNextFrame(out var rawFrame))
                 {
-                    loader.AddFrame(rawFrame, ++frameNumber);
+                    loader.AddFrame(rawFrame);
                 }
                 loader.Close();
             }
                         
             Console.WriteLine($"--- LOADED --- [{sw.Elapsed}]");
             sw.Restart();
-            Console.WriteLine($"Convs= {flowTable.Conversations.Count()} [{sw.Elapsed}]");
+            Console.WriteLine($"Convs= {flowTable.ConversationsCount} [{sw.Elapsed}]");
             sw.Restart();
             Console.WriteLine($"Frames= {flowTable.FramesCount} /{frameNumber} [{sw.Elapsed}]");
             sw.Restart();

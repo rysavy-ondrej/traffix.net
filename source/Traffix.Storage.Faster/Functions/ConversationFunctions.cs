@@ -85,5 +85,11 @@ namespace Traffix.Storage.Faster
         public ConversationsStore(string folder, long capacity) : base(folder, (int)Math.Log(capacity,2)+1, new ConversationKeyFastComparer(), new ConversationFunctions(), () => new ConversationKeySerializer(), () => new ConversationValueSerializer())
         {
         }
+
+        /// <summary>
+        /// Gets the total number of records in the conversations store.
+        /// </summary>
+        /// <returns></returns>
+        public int GetRecordCount() => ProcessEntriesRaw(null);
     }
 }

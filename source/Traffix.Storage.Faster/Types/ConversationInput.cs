@@ -7,6 +7,6 @@ namespace Traffix.Storage.Faster
         public FlowKey FrameKey;
         public long FrameTicks;
         public int FrameSize;
-        public long FrameAddress;
+        public ulong FrameAddress;
     }
 }

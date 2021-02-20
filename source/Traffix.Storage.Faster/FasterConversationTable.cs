@@ -232,17 +232,17 @@ namespace Traffix.Storage.Faster
         /// It uses port numbers to determine the conversation key.
         /// The assumption is that client has greater port number than server.
         /// </summary>
-        /// <param name="frameKey">The frame key.</param>
-        /// <returns>The conversation key for the frame.</returns>
-        private static ConversationKey GetConversationKey(FlowKey frameKey)
+        /// <param name="flowKey">The flow key.</param>
+        /// <returns>The conversation key forthe given flow key.</returns>
+        private static ConversationKey GetConversationKey(FlowKey flowKey)
         {
-            if (frameKey.SourcePort > frameKey.DestinationPort)
+            if (flowKey.SourcePort > flowKey.DestinationPort)
             {
-                return new ConversationKey(frameKey);
+                return new ConversationKey(flowKey);
             }
             else
             {
-                return new ConversationKey(frameKey.Reverse());
+                return new ConversationKey(flowKey.Reverse());
             }
         }
 
@@ -267,7 +267,7 @@ namespace Traffix.Storage.Faster
                     var frameList = new List<byte[]>();
                     for (int i = 0; i < output.Value.FrameCount; i++)
                     {
-                        long frameAddress = output.Value.FrameAddresses[i];
+                        ulong frameAddress = output.Value.FrameAddresses[i];
                         if (framesClient.TryGet(frameAddress, out var frameOutput))
                         {
                             frameList.Add(frameOutput);
@@ -291,9 +291,10 @@ namespace Traffix.Storage.Faster
             {
                 if (framesClient.TryGet(key.Address, out var bytes))
                 {
-                    FrameMetadata meta = default;
-                    var data = FrameMetadata.GetFrameFromMemory(bytes, ref meta);
-                    var result = processor.Invoke(key, ref meta, data);
+                    FrameKey frameKey = key;
+                    FrameMetadata frameMetadata = default;
+                    var frameBytes = FrameMetadata.GetFrameFromMemory(bytes, ref frameMetadata);
+                    var result = processor.Invoke(ref frameKey, ref frameMetadata, frameBytes);
                     yield return result;
                 }
             }
@@ -324,13 +325,12 @@ namespace Traffix.Storage.Faster
             }
         }
 
-        public int FramesCount => (int)_framesStore.EntryCount;
+        public int FramesCount => _framesStore.GetRecordCount();
 
-        public int ConversationsCount => (int)_conversationsStore.EntryCount;
+        public int ConversationsCount => (int)_conversationsStore.GetRecordCount();
 
         public IEnumerable<FrameKey> FrameKeys =>
-            _framesStore.EntryCount > 0 ?
-            Enumerable.Range(0, (int)_framesStore.EntryCount - 1).Select(x => new FrameKey { Address = x }) : Array.Empty<FrameKey>(); 
+            _framesStore.ProcessEntries(new FrameKeyProcessor());
 
         /// <summary>
         /// Frame streamer is responsible for streaming external frame into table. 
@@ -367,7 +367,7 @@ namespace Traffix.Storage.Faster
             /// <param name="frame">The raw frame object.</param>
             /// <param name="frameNumber">The frame number.</param>
             /// <exception cref="InvalidOperationException">Raises when the stremer is closed.</exception>
-            public void AddFrame(RawFrame frame, long frameNumber)
+            public void AddFrame(RawFrame frame)
             {
                 if (_closed) throw new InvalidOperationException("Cannot add new data. The stream is closed.");
                 var frameFlowKey = _table.GetFlowKey(frame.LinkLayer, frame.Data);
@@ -380,7 +380,7 @@ namespace Traffix.Storage.Faster
                     FlowKeyHash = frameFlowKey.GetHashCode64()
                 };
 
-                var frameKey = new FrameKey { Address = GetFrameAddress(frame.Ticks, frameNumber) };
+                var frameKey = new FrameKey(frame.Ticks, (uint)frame.Number);
                  _table.InsertFrame(_framesStoreClient, ref frameKey, ref frameFlowKey, ref frameMeta, frame.Data);
 
                 var conversationUpdate = new ConversationInput  // stack allocated struct
@@ -508,21 +508,30 @@ namespace Traffix.Storage.Faster
             public IEnumerable<RawFrame> Invoke(FlowKey flowKey, ICollection<Memory<byte>> frames)
             {
                 var _frameProcessor = new RawFrameProcessor();
-                FrameMetadata meta = default;
-                FrameKey frameKey = default;
+                FrameMetadata frameMetadata = default;
+                uint frameNumber = 0;
                 foreach (var frame in frames)
                 {
-                    var data = FrameMetadata.GetFrameFromMemory(frame, ref meta);
-                    yield return _frameProcessor.Invoke(frameKey, ref meta, data.ToArray());
+                    var frameBytes = FrameMetadata.GetFrameFromMemory(frame, ref frameMetadata);
+                    var frameKey = new FrameKey(frameMetadata.Ticks, ++frameNumber);
+                    yield return _frameProcessor.Invoke(ref frameKey, ref frameMetadata, frameBytes.ToArray());
                 }
             }
         }
         public class RawFrameProcessor : IFrameProcessor<RawFrame>
         {
-            int _frameNumber = 0;
-            public RawFrame Invoke(FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
+            public RawFrame Invoke(ref FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
             {
-                return new RawFrame((LinkLayers)frameMetadata.LinkLayer, ++_frameNumber, frameMetadata.Ticks, 0, frameMetadata.OriginalLength, frameBytes.ToArray());
+                return new RawFrame((LinkLayers)frameMetadata.LinkLayer, (int)frameKey.Number, frameMetadata.Ticks, 0, frameMetadata.OriginalLength, frameBytes.ToArray());
+            }
+        }
+
+        private class FrameKeyProcessor : IEntryProcessor<ulong, Memory<byte>, FrameKey>
+        {
+            public ProcessingState Invoke(ref ulong key, ref Memory<byte> value, out FrameKey result)
+            {
+                result = new FrameKey(key);
+                return ProcessingState.Success;
             }
         }
     }

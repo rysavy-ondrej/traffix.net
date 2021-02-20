@@ -30,7 +30,7 @@ namespace Traffix.Interactive
 
         class PacketProcessor : IFrameProcessor<(long Ticks, Packet Packet)>
         {
-            public (long Ticks, Packet Packet) Invoke(FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
+            public (long Ticks, Packet Packet) Invoke(ref FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
             {
                 return (frameMetadata.Ticks, Packet.ParsePacket((LinkLayers)frameMetadata.LinkLayer, frameBytes.ToArray()));
             }

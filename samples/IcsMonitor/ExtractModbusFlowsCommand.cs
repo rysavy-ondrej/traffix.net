@@ -27,7 +27,7 @@ namespace IcsMonitor.Commands
             {
                 while (pcapReader.GetNextFrame(out var rawFrame))
                 {
-                    loader.AddFrame(rawFrame,  ++frameNumber);
+                    loader.AddFrame(rawFrame);
                 }
                 loader.Close();
             }
