@@ -32,6 +32,7 @@ namespace Traffix.Storage.Faster.Tests
             {
                 while (pcapReader.GetNextFrame(out var rawFrame))
                 {
+                    frameNumber++;
                     loader.AddFrame(rawFrame);
                 }
                 loader.Close();

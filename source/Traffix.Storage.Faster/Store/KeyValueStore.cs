@@ -1,10 +1,8 @@
-﻿using FASTER.core;
+﻿
+using FASTER.core;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using static Traffix.Storage.Faster.FasterConversationTable;
 
 namespace Traffix.Storage.Faster
 {
@@ -121,7 +119,7 @@ namespace Traffix.Storage.Faster
             return _fasterKvh.NewSession(sessionId, threadAffinitized);
         }
 
-        public IEnumerable<TResult> ProcessEntries<TResult>(IEntryProcessor<TKey, TValue,TResult> processor)
+        public IEnumerable<TResult> ProcessEntries<TResult>(IEntryProcessor<TKey, TValue, TResult> processor)
         {
             if (_fasterKvh == null) throw new InvalidOperationException("The store is closed.");
             var iterator = _fasterKvh.Iterate() ?? throw new InvalidOperationException("Cannot create conversations database iterator.");
@@ -262,7 +260,7 @@ namespace Traffix.Storage.Faster
                 }
             }
 
-            public bool CompletePending(bool spinWait=false)
+            public bool CompletePending(bool spinWait = false)
             {
                 return _session.CompletePending(spinWait);
             }
@@ -304,7 +302,7 @@ namespace Traffix.Storage.Faster
 
             public virtual void ReadCompletionCallback(ref TKey key, ref TInput input, ref TOutput output, StoreContext<TOutput> ctx, Status status)
             {
-                
+
                 ctx.Populate(status, ref output);
             }
 
