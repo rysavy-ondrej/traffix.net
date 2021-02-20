@@ -10,21 +10,15 @@ the conversation processor can be built from a function:
 public static IConversationProcessor<TResult> ConversationProcessor.FromFunction<TResult>(Func<FlowKey, ICollection<Memory<byte>>, TResult> function)
 ```
 
-To adjust the type of results of the conversation processor `Transform` operator can be applied:
-
-```csharp
-public static IConversationProcessor<Target> Transform<TSource, Target>(this IConversationProcessor<TSource> source, Func<TSource, Target> transform) 
-```
-
-`Window` operator enable to filter frames provided to the conversation processor. Only frames that are wihtin the given time window 
-are send to conversation processor:
+`Window` operator enables to filter frames provided to the conversation processor. Only frames that are wihtin the given time window 
+are sent to conversation processor:
 
 ```csharp
 public static IConversationProcessor<Target> Window<Target>(this IConversationProcessor<Target> source, DateTime windowStart, TimeSpan duration)
 ```
 
 ## Usage
-the following example demonstrates the usage of conversation processor operators.
+The following example demonstrates how to build the conversation processor, which scope is limited by the time window:
 
 ```csharp
 processor = ConversationProcessor.FromFunction<string>((key, frames) => $"{key} : {frames.Count}").Window(windowStart, windowSpan);
