@@ -52,7 +52,7 @@ namespace Traffix.Storage.Faster.Tests
             flowTable.Dispose();
         }
 
-        private void PrintConversations(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<ConversationKey, IConversationValue>> conversations)
+        private void PrintConversations(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<ConversationKey, ConversationValue>> conversations)
         {
             foreach (var c in conversations)
             {

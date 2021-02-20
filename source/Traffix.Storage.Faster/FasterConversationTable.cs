@@ -15,7 +15,7 @@ using Traffix.Providers.PcapFile;
 namespace Traffix.Storage.Faster
 {
     /// <summary>
-    /// Implements a flow table backed by the FASTER Key-Value Database. This class provides API for 
+    /// Implements a flow table backed by the FASTER key-value store. This class provides API for 
     /// adding packets and accessing conversations and frames.
     /// </summary>
     public class FasterConversationTable : IDisposable
@@ -365,9 +365,9 @@ namespace Traffix.Storage.Faster
             /// </para>
             /// </summary>
             /// <param name="frame">The raw frame object.</param>
-            /// <param name="address">Offset/key of the frame. Can be used to refer to the frame to the external data source.</param>
+            /// <param name="frameNumber">The frame number.</param>
             /// <exception cref="InvalidOperationException">Raises when the stremer is closed.</exception>
-            public void AddFrame(RawFrame frame, long address)
+            public void AddFrame(RawFrame frame, long frameNumber)
             {
                 if (_closed) throw new InvalidOperationException("Cannot add new data. The stream is closed.");
                 var frameFlowKey = _table.GetFlowKey(frame.LinkLayer, frame.Data);
@@ -380,7 +380,7 @@ namespace Traffix.Storage.Faster
                     FlowKeyHash = frameFlowKey.GetHashCode64()
                 };
 
-                var frameKey = new FrameKey { Address = address };
+                var frameKey = new FrameKey { Address = GetFrameAddress(frame.Ticks, frameNumber) };
                  _table.InsertFrame(_framesStoreClient, ref frameKey, ref frameFlowKey, ref frameMeta, frame.Data);
 
                 var conversationUpdate = new ConversationInput  // stack allocated struct
@@ -395,6 +395,18 @@ namespace Traffix.Storage.Faster
                 
                 _outstandingRequests++;
                 if (_outstandingRequests > _autoFlushRequests) CompletePending();
+            }
+
+            /// <summary>
+            /// Gets the frame address from its timestamp and number.
+            /// </summary>
+            /// <param name="ticks"></param>
+            /// <param name="frameNumber"></param>
+            /// <returns>The frame address that consists of linux epoch time in higher 32 bits and frame number in lower 32 bits.</returns>
+            private long GetFrameAddress(long ticks, long frameNumber)
+            {
+                var epochSeconds = new DateTimeOffset(ticks, TimeSpan.Zero).ToUnixTimeSeconds();
+                return epochSeconds << 32 | (uint)(frameNumber);
             }
 
             /// <summary>

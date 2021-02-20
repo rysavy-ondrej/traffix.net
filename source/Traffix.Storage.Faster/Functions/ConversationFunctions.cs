@@ -51,7 +51,6 @@ namespace Traffix.Storage.Faster
             if (Equals(key.FlowKey, input.FrameKey))
             {
                 UpdateFlow(ref input, ref value.ForwardFlow);
-
             }
             else
             {

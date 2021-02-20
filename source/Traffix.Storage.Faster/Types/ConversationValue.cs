@@ -10,22 +10,12 @@ using System.ComponentModel;
 
 namespace Traffix.Storage.Faster
 {
-    public interface IConversationValue
-    {
-        FlowMetrics ForwardFlowMetrics { get; }
-
-        FlowMetrics ReverseFlowMetrics { get; }
-        long FirstSeen { get; }
-        long LastSeen { get; }
-        ulong Octets { get; }
-        uint Packets { get; }
-    }
 
     /// <summary>
     /// Provides the conversation value, which consists of pair of flow meta data and 
     /// a collection of frames.
     /// </summary>
-    public class ConversationValue : IConversationValue
+    public class ConversationValue
     {
         /// <summary>
         /// Provides meta information about the forward flow.
@@ -65,19 +55,13 @@ namespace Traffix.Storage.Faster
             FrameAddresses = new long[initialAddresses];
         }
                                                
-        #region Public interface - IConversationValue
         public ulong Octets => ForwardFlow.Octets + ReverseFlow.Octets;
 
         public uint Packets => ForwardFlow.Packets + ReverseFlow.Packets;
 
-        public long FirstSeen => ReverseFlow.Packets != 0 ? Math.Min(ForwardFlow.FirstSeen, ReverseFlow.FirstSeen) : ForwardFlow.FirstSeen;
+        public long FirstSeen => Ticks.Min(ForwardFlow.FirstSeen, ReverseFlow.FirstSeen);
 
-        public long LastSeen => Math.Max(ForwardFlow.LastSeen, ReverseFlow.LastSeen);
-
-        public FlowMetrics ForwardFlowMetrics => this.ForwardFlow;
-
-        public FlowMetrics ReverseFlowMetrics => this.ReverseFlow;
-        #endregion
+        public long LastSeen => Ticks.Max(ForwardFlow.LastSeen, ReverseFlow.LastSeen);
     }
     internal class ConversationValueSerializer : BinaryObjectSerializer<ConversationValue>
     {
@@ -119,5 +103,25 @@ namespace Traffix.Storage.Faster
             }
         }
     }
+    static class Ticks
+    {
+        // 6,93792e16
+        // 9,223372036854776e18
+        static readonly long TicksBase = new DateTime(1970, 1,1).Ticks; 
+        public static long Min(long ticks1, long ticks2)
+        {
+            if (ticks1 != 0 && ticks2 != 0) return Math.Min(ticks1, ticks2);
+            return ticks1 == 0 ? ticks2 : ticks1;
+        }
+        public static long Max(long ticks1, long ticks2)
+        {
+            if (ticks1 != 0 && ticks2 != 0) return Math.Max(ticks1, ticks2);
+            return ticks1 == 0 ? ticks2 : ticks1;
+        }
 
+        internal static long GetEpochTicks(long ticks)
+        {
+            return ticks - TicksBase;
+        }
+    }
 }
