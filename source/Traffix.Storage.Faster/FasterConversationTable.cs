@@ -327,9 +327,9 @@ namespace Traffix.Storage.Faster
         /// <param name="timeOrigin">The time origin.</param>
         /// <param name="windowSpan">The duration of each window.</param>
         /// <returns>Grouping consisting of non-empty windows. Each window has a list of conversation keys that were active in window's interval.</returns>
-        public IEnumerable<IGrouping<DateTime, ConversationKey>> GetConversationWindows(DateTime timeOrigin, TimeSpan windowSpan)
+        public IEnumerable<IGrouping<DateTime, ConversationKey>> ConversationsGroupByWindow(DateTime timeOrigin, TimeSpan windowSpan)
         {
-            var conv = _conversationsStore.ProcessEntries(new WindowConversationProcessor(timeOrigin, windowSpan));
+            var conversations = _conversationsStore.ProcessEntries(new WindowConversationProcessor(timeOrigin, windowSpan));
             DateTime GetTime(int i)
             {
                 return new DateTime(windowSpan.Ticks * i + timeOrigin.Ticks);
@@ -341,8 +341,8 @@ namespace Traffix.Storage.Faster
                     yield return (GetTime(i), record.key);
                 }
             }
-            var recs = conv.SelectMany(GetRecords);
-            return recs.GroupBy(x => x.Item1, x=>x.Item2).OrderBy(x=>x.Key);
+            var windowConversations = conversations.SelectMany(GetRecords);
+            return windowConversations.GroupBy(x => x.Item1, x=>x.Item2).OrderBy(x=>x.Key);
         }
 
 
