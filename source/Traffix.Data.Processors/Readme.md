@@ -82,4 +82,12 @@ This processor first filters frames by the window and then selects 10 first fram
 ## ConversationRecord
 
 While conversation processor can be defined to return any type, the library provides an additional support
-for conversation processors that return value of type `ConversationRecord<T>`. 
+for conversation processors of type `ConversationRecord<T>`.
+
+Using `ConversationRecord<T>` provides several advantages:
+
+* `ConversationProcessorBase` preprocess the conversation frames to provide some basic conversation information, such as flow metrics. Also, the frames are parsed into packets and provided as two collections each for either direction.
+* `ConversationRecord<T>` implements support for DataView of the shelf. It is thus possible to use the output from the conversation processor as the input for the ML.NET pipeline.
+
+Conversation processors that produces `ConversationRecord<T>` can be implemented either by derive from an abstract class `ConversationProcessorBase` or by providing 
+a function to `ConversationProcessor.FromFunction` delegate.
