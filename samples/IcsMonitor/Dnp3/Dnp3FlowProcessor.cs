@@ -3,6 +3,7 @@ using PacketDotNet;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using Traffix.Core.Flows;
 using Traffix.Data;
 using Traffix.Extensions.Decoders.Industrial;
 using Traffix.Processors;
@@ -10,9 +11,9 @@ using Traffix.Storage.Faster;
 
 namespace IcsMonitor.Modbus
 {
-    public class Dnp3BiflowProcessor : CustomConversationProcessor<Dnp3FlowData>
+    public class Dnp3BiflowProcessor : ConversationProcessorBase<Dnp3FlowData>
     {
-        protected override Dnp3FlowData Invoke(IReadOnlyCollection<MetaPacket> fwdPackets, IReadOnlyCollection<MetaPacket> revPackets)
+        protected override Dnp3FlowData Invoke(ref FlowKey flowKey, ref FlowMetrics fwdMetrics, ref FlowMetrics revMetrics, IReadOnlyCollection<MetaPacket> fwdPackets, IReadOnlyCollection<MetaPacket> revPackets)
         {
             var dnp3FlowData = new Dnp3FlowData();
             foreach (var packet in fwdPackets)

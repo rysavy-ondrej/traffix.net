@@ -2,6 +2,7 @@
 using PacketDotNet;
 using System;
 using System.Collections.Generic;
+using Traffix.Core.Flows;
 using Traffix.Extensions.Decoders.Industrial;
 using Traffix.Processors;
 using Traffix.Storage.Faster;
@@ -10,13 +11,13 @@ namespace IcsMonitor.Modbus
 {
 
 
-    public class ModbusBiflowProcessor : CustomConversationProcessor<ModbusFlowData>
+    public class ModbusBiflowProcessor : ConversationProcessorBase<ModbusFlowData>
     {
         public ModbusBiflowProcessor()
         {
         }
 
-        protected override ModbusFlowData Invoke(IReadOnlyCollection<MetaPacket> fwdPackets, IReadOnlyCollection<MetaPacket> revPackets)
+        protected override ModbusFlowData Invoke(ref FlowKey flowKey, ref FlowMetrics fwdMetrics, ref FlowMetrics revMetrics, IReadOnlyCollection<MetaPacket> fwdPackets, IReadOnlyCollection<MetaPacket> revPackets)
         {
             var modbusFlowData = new ModbusFlowData();
             foreach (var packet in fwdPackets)

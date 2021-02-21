@@ -13,7 +13,7 @@ using Traffix.Storage.Faster;
 namespace IcsMonitor.S7Comm
 {
 
-    public class S7CommConversationProcessor : CustomConversationProcessor<S7CommConversationData>
+    public class S7CommConversationProcessor : ConversationProcessorBase<S7CommConversationData>
     {
         Logger<S7CommConversationProcessor> _logger = null; 
         public S7CommConversationProcessor(ILoggerFactory loggerFactory = null)
@@ -22,7 +22,7 @@ namespace IcsMonitor.S7Comm
                 _logger = new Logger<S7CommConversationProcessor>(loggerFactory);
         }
 
-        protected override S7CommConversationData Invoke(IReadOnlyCollection<MetaPacket> fwdPackets, IReadOnlyCollection<MetaPacket> revPackets)
+        protected override S7CommConversationData Invoke(ref FlowKey flowKey, ref FlowMetrics fwdMetrics, ref FlowMetrics revMetrics, IReadOnlyCollection<MetaPacket> fwdPackets, IReadOnlyCollection<MetaPacket> revPackets)
         {
             var conversation = new S7CommConversationData();
             foreach (var packet in fwdPackets) UpdateConversation(conversation, packet.Metadata, packet.Packet, FlowDirection.Forward);

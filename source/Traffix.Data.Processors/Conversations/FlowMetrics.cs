@@ -6,7 +6,7 @@ using System;
 namespace Traffix.Processors
 {
     [MessagePackObject]
-    public class FlowMetrics
+    public struct FlowMetrics
     {
 
         [Key("METRICS_START")]

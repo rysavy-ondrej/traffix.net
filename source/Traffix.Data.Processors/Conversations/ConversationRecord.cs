@@ -53,7 +53,6 @@ namespace Traffix.Processors
         [Key("CONVERSATION_DATA")]
         public TData Data;
 
-
         public ConversationRecord<TTarget> Transform<TTarget>(Func<TData, TTarget> transform)
         {
             return new ConversationRecord<TTarget>

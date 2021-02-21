@@ -6,6 +6,7 @@ using Traffix.Data;
 
 namespace Traffix.Processors
 {
+
     internal class TakeConversationProcessor<TTarget> : IConversationProcessor<TTarget>
     {
         private readonly IConversationProcessor<TTarget> _processor;
@@ -28,6 +29,52 @@ namespace Traffix.Processors
             return new TakeConversationProcessor<Target>(source, count);
         }       
     }
+
+    internal class TakeWhileConversationProcessor<TTarget> : IConversationProcessor<TTarget>
+    {
+        private readonly IConversationProcessor<TTarget> _processor;
+        private readonly Func<Memory<byte>,Int32,Boolean> _predicate;
+
+        public TakeWhileConversationProcessor(IConversationProcessor<TTarget> processor, Func<Memory<byte>,Int32,Boolean> predicate)
+        {
+            _processor = processor;
+            _predicate = predicate;
+        }  
+        public TTarget Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
+        {
+            return _processor.Invoke(flowKey, frames.TakeWhile(_predicate));  
+        } 
+    }
+    public static class TakeWhileConversationProcessor
+    {
+         public static IConversationProcessor<Target> ApplyToTakeWhile<Target>(this IConversationProcessor<Target> source, Func<Memory<byte>,Int32,Boolean> predicate)
+        {
+            return new TakeWhileConversationProcessor<Target>(source, predicate);
+        }       
+    }
+    internal class WhereConversationProcessor<TTarget> : IConversationProcessor<TTarget>
+    {
+        private readonly IConversationProcessor<TTarget> _processor;
+        private readonly Func<Memory<byte>,Int32,Boolean> _predicate;
+
+        public WhereConversationProcessor(IConversationProcessor<TTarget> processor, Func<Memory<byte>,Int32,Boolean> predicate)
+        {
+            _processor = processor;
+            _predicate = predicate;
+        }  
+        public TTarget Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
+        {
+            return _processor.Invoke(flowKey, frames.Where(_predicate));  
+        } 
+    }
+    public static class WhereConversationProcessor
+    {
+         public static IConversationProcessor<Target> ApplyToWhere<Target>(this IConversationProcessor<Target> source, Func<Memory<byte>,Int32,Boolean> predicate)
+        {
+            return new WhereConversationProcessor<Target>(source, predicate);
+        }       
+    }
+
     internal class WindowConversationProcessor<TTarget> : IConversationProcessor<TTarget>
     {
         private readonly IConversationProcessor<TTarget> _processor;
