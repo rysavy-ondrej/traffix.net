@@ -523,12 +523,33 @@ namespace Traffix.Storage.Faster
                 }
             }
         }
+        public class PacketConversationProcessor : IConversationProcessor<(FlowKey Key, IReadOnlyCollection<Packet> Packets)>
+        {
+            (FlowKey Key, IReadOnlyCollection<Packet> Packets) IConversationProcessor<(FlowKey Key, IReadOnlyCollection<Packet> Packets)>.Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
+            {
+                Packet GetPacket(Memory<byte> frameBuffer)
+                {
+                    FrameMetadata frameMetadata = default;
+                    var frameBytes = FrameMetadata.GetFrameFromMemory(frameBuffer, ref frameMetadata);
+                    return Packet.ParsePacket((LinkLayers)frameMetadata.LinkLayer, frameBytes.ToArray());
+                }
+                var packets = frames.Select(GetPacket);
+                return (flowKey, packets.ToArray());
+            }
+        }
 
         public class RawFrameProcessor : IFrameProcessor<RawFrame>
         {
             public RawFrame Invoke(ref FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
             {
                 return new RawFrame((LinkLayers)frameMetadata.LinkLayer, (int)frameKey.Number, frameMetadata.Ticks, 0, frameMetadata.OriginalLength, frameBytes.ToArray());
+            }
+        }
+        public class PacketFrameProcessor : IFrameProcessor<Packet>
+        {
+            public Packet Invoke(ref FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
+            {
+                return Packet.ParsePacket((LinkLayers)frameMetadata.LinkLayer, frameBytes.ToArray());
             }
         }
     }

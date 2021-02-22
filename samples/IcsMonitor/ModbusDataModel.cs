@@ -13,7 +13,7 @@ using Traffix.Processors;
 
 namespace IcsMonitor
 {
-    class ModbusDataModel
+    public class ModbusDataModel
     {
         private readonly Mapper _mapper;
 
