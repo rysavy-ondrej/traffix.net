@@ -322,27 +322,14 @@ namespace Traffix.Storage.Faster
         }
 
         /// <summary>
-        /// Gets conversations splitted in windows of the specified duration.
+        /// Gets all stored conversations.
         /// </summary>
-        /// <param name="timeOrigin">The time origin.</param>
-        /// <param name="windowSpan">The duration of each window.</param>
-        /// <returns>Grouping consisting of non-empty windows. Each window has a list of conversation keys that were active in window's interval.</returns>
-        public IEnumerable<IGrouping<DateTime, ConversationKey>> ConversationsGroupByWindow(DateTime timeOrigin, TimeSpan windowSpan)
+        public IEnumerable<(ConversationKey Key, long FirstSeen, long LastSeen, uint Packets, ulong Octets)> Conversations
         {
-            var conversations = _conversationsStore.ProcessEntries(new WindowConversationProcessor(timeOrigin, windowSpan));
-            DateTime GetTime(int i)
+            get
             {
-                return new DateTime(windowSpan.Ticks * i + timeOrigin.Ticks);
+                return _conversationsStore.ProcessEntries<KeyValuePair<ConversationKey, ConversationValue>>(new KeyValueConversationProcessor()).Select(x => (x.Key, x.Value.FirstSeen, x.Value.LastSeen, x.Value.Packets, x.Value.Octets));
             }
-            IEnumerable<(DateTime,ConversationKey)> GetRecords((ConversationKey key, int first, int last) record)
-            {
-                for (int i = record.first; i <= record.last; i++)
-                {
-                    yield return (GetTime(i), record.key);
-                }
-            }
-            var windowConversations = conversations.SelectMany(GetRecords);
-            return windowConversations.GroupBy(x => x.Item1, x=>x.Item2).OrderBy(x=>x.Key);
         }
 
         /// <summary>
@@ -512,38 +499,6 @@ namespace Traffix.Storage.Faster
             }
         }
 
-        /// <summary>
-        /// Provides window operator on the collection of conversations.
-        /// </summary>
-        class WindowConversationProcessor : IEntryProcessor<ConversationKey, ConversationValue, (ConversationKey key, int first, int last)>
-        {
-            private readonly DateTime _timeOrigin;
-            private readonly TimeSpan _windowSpan;
-
-            /// <summary>
-            /// Creates the processor using the specified parameters.
-            /// </summary>
-            /// <param name="timeOrigin"></param>
-            /// <param name="windowSpan"></param>
-            public WindowConversationProcessor(DateTime timeOrigin, TimeSpan windowSpan)
-            {
-                this._timeOrigin = timeOrigin;
-                this._windowSpan = windowSpan;
-            }
-
-            public ProcessingState Invoke(ref ConversationKey key, ref ConversationValue value, out (ConversationKey key, int first, int last) result)
-            {
-                var firstSeen = value.FirstSeen;
-                var lastSeen = value.LastSeen;
-                var firstSeenOffset = firstSeen - _timeOrigin.Ticks;
-                var lastSeenOffset = lastSeen - _timeOrigin.Ticks;
-                var firstWindow = firstSeenOffset / _windowSpan.Ticks;
-                var lastWindow = lastSeenOffset / _windowSpan.Ticks;
-                result = (key, (int)firstWindow, (int)lastWindow);
-                return ProcessingState.Success;
-            }
-        }
-
         class FrameKeyProcessor : IEntryProcessor<ulong, Memory<byte>, FrameKey>
         {
             public ProcessingState Invoke(ref ulong key, ref Memory<byte> value, out FrameKey result)
@@ -574,6 +529,63 @@ namespace Traffix.Storage.Faster
             public RawFrame Invoke(ref FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
             {
                 return new RawFrame((LinkLayers)frameMetadata.LinkLayer, (int)frameKey.Number, frameMetadata.Ticks, 0, frameMetadata.OriginalLength, frameBytes.ToArray());
+            }
+        }
+    }
+
+    public static class ConversationTableWindowed
+    {
+        /// <summary>
+        /// Gets conversations splitted in windows of the specified duration.
+        /// </summary>
+        /// <param name="timeOrigin">The time origin.</param>
+        /// <param name="windowSpan">The duration of each window.</param>
+        /// <returns>Grouping consisting of non-empty windows. Each window has a list of conversation keys that were active in window's interval.</returns>
+        public static IEnumerable<IGrouping<DateTime, ConversationKey>> GroupByWindow(this IEnumerable<(ConversationKey Key, long FirstSeen, long LastSeen, uint Packets, ulong Octets)> conversations, DateTime timeOrigin, TimeSpan windowSpan)
+        {
+            var processor = new WindowConversationProcessor(timeOrigin, windowSpan);
+            DateTime GetTime(int i)
+            {
+                return new DateTime(windowSpan.Ticks * i + timeOrigin.Ticks);
+            }
+            IEnumerable<(DateTime, ConversationKey)> GetRecords((ConversationKey key, int first, int last) record)
+            {
+                for (int i = record.first; i <= record.last; i++)
+                {
+                    yield return (GetTime(i), record.key);
+                }
+            }
+            var windowConversations = conversations.Select(processor.Invoke).SelectMany(GetRecords);
+            return windowConversations.GroupBy(x => x.Item1, x => x.Item2).OrderBy(x => x.Key);
+        }
+        /// <summary>
+        /// Provides window operator on the collection of conversations.
+        /// </summary>
+        class WindowConversationProcessor
+        {
+            private readonly DateTime _timeOrigin;
+            private readonly TimeSpan _windowSpan;
+
+            /// <summary>
+            /// Creates the processor using the specified parameters.
+            /// </summary>
+            /// <param name="timeOrigin"></param>
+            /// <param name="windowSpan"></param>
+            public WindowConversationProcessor(DateTime timeOrigin, TimeSpan windowSpan)
+            {
+                this._timeOrigin = timeOrigin;
+                this._windowSpan = windowSpan;
+            }
+
+            public (ConversationKey key, int first, int last) Invoke((ConversationKey Key, long FirstSeen, long LastSeen, uint Packets, ulong Octets) value)
+            {
+                var firstSeen = value.FirstSeen;
+                var lastSeen = value.LastSeen;
+                var firstSeenOffset = firstSeen - _timeOrigin.Ticks;
+                var lastSeenOffset = lastSeen - _timeOrigin.Ticks;
+                var firstWindow = firstSeenOffset / _windowSpan.Ticks;
+                var lastWindow = lastSeenOffset / _windowSpan.Ticks;
+                return (value.Key, (int)firstWindow, (int)lastWindow);
             }
         }
     }

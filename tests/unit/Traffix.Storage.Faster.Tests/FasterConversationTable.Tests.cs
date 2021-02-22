@@ -10,8 +10,14 @@ using Traffix.Providers.PcapFile;
 
 namespace Traffix.Storage.Faster.Tests
 {
+
+    public class FasterConversationTableBenchmarks
+    {
+
+    }
+
     [TestClass]
-    public partial class FasterConversationTableTests
+    public  class FasterConversationTableTests
     {
         /// <summary>
         /// Loads the table from the given pcap file.
@@ -200,8 +206,8 @@ namespace Traffix.Storage.Faster.Tests
             var lastPacketTime = DateTimeOffset.FromUnixTimeSeconds(table.FrameKeys.Last().Epoch);
             // create 10 windows
             var windowSpan = (lastPacketTime - firstPacketTime) / 10;
-            var windows = table.ConversationsGroupByWindow(firstPacketTime.DateTime, windowSpan);
-            var processor = ConversationProcessor.FromFunction<string>((key, frames) => $"{key} : {frames.Count()}");
+            var windows = table.Conversations.GroupByWindow(firstPacketTime.DateTime, windowSpan);
+            var processor = ConversationProcessor.FromFunction((key, frames) => $"{key} : {frames.Count()}");
             foreach (var win in windows)
             {
                 Console.WriteLine($"{win.Key} - {win.Key + windowSpan}:");
