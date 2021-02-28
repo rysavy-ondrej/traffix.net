@@ -5,8 +5,9 @@ using System;
 using System.IO;
 using System.Linq;
 using Traffix.Providers.PcapFile;
-
-namespace FasterConversationTable.Perf
+using Traffix.Storage.Faster;
+using Traffix.Processors;
+namespace FasterConversationTablePerf
 {
     [SimpleJob(RunStrategy.Monitoring, targetCount: 5)]
     [MinColumn, MaxColumn, MeanColumn, MedianColumn]
@@ -19,7 +20,7 @@ namespace FasterConversationTable.Perf
         [GlobalSetup]
         public void Setup()
         {
-            _conversationTable = Traffix.Storage.Faster.FasterConversationTable.Create($"{dataset}.{loadTableRun}", 3000000);
+            _conversationTable = FasterConversationTable.Create($"{dataset}.{loadTableRun}", 3000000);
             using (var loader = _conversationTable.GetStreamer())
             using (var pcapReader = new SharpPcapReader(dataset))
             {
@@ -37,7 +38,7 @@ namespace FasterConversationTable.Perf
         public void LoadTable()
         {
             loadTableRun++;
-            using var conversationTable = Traffix.Storage.Faster.FasterConversationTable.Create($"{dataset}.{loadTableRun}", 3000000);
+            using var conversationTable = FasterConversationTable.Create($"{dataset}.{loadTableRun}", 3000000);
             using (var loader = conversationTable.GetStreamer())
             using (var pcapReader = new SharpPcapReader(dataset))
             {
@@ -52,13 +53,24 @@ namespace FasterConversationTable.Perf
         [Benchmark]
         public void ExportPackets()
         {
-            var packets = _conversationTable.ProcessFrames(_conversationTable.FrameKeys, new Traffix.Storage.Faster.FasterConversationTable.PacketFrameProcessor());
+            var packets = _conversationTable.ProcessFrames(_conversationTable.FrameKeys, new FasterConversationTable.PacketFrameProcessor());
             packets.Count();
         }
         [Benchmark]
         public void ExportConversations()
         {
-            var conversations = _conversationTable.ProcessConversations(_conversationTable.ConversationKeys, new Traffix.Storage.Faster.FasterConversationTable.PacketConversationProcessor());
+            var conversations = _conversationTable.ProcessConversations(_conversationTable.ConversationKeys, new FasterConversationTable.PacketConversationProcessor());
+            conversations.Count();
+        }
+        [Benchmark]
+        public void ExportWindowedConversations()
+        {
+            var start = DateTimeOffset.FromUnixTimeSeconds(_conversationTable.FrameKeys.First().Epoch);
+            var end = DateTimeOffset.FromUnixTimeSeconds(_conversationTable.FrameKeys.Last().Epoch);
+            var span = (end - start) / 100;
+            var windows = _conversationTable.Conversations.GroupByWindow(start.DateTime, span);
+            var conversations = windows.SelectMany(conversationKeys =>
+                _conversationTable.ProcessConversations(conversationKeys, new FasterConversationTable.PacketConversationProcessor().ApplyToWindow(start.DateTime, span)));
             conversations.Count();
         }
     }
