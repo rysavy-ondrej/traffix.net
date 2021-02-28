@@ -22,7 +22,7 @@ namespace Traffix.Storage.Faster
         /// </summary>
         /// <returns></returns>
         public int GetRecordCount() => ProcessEntries(null);
-        internal class ConversationFunctions : KeyValueStore<ConversationKey, ConversationValue, ConversationInput, ConversationOutput, ConversationFunctions>.StoreFunctions
+        internal class ConversationFunctions : StoreFunctions
         {
             public override void ConcurrentReader(ref ConversationKey key, ref ConversationInput input, ref ConversationValue value, ref ConversationOutput dst)
             {

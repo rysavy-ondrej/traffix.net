@@ -63,6 +63,15 @@ namespace FasterConversationTablePerf
             conversations.Count();
         }
         [Benchmark]
+        public void GroupWindowedConversations()
+        {
+            var start = DateTimeOffset.FromUnixTimeSeconds(_conversationTable.FrameKeys.First().Epoch);
+            var end = DateTimeOffset.FromUnixTimeSeconds(_conversationTable.FrameKeys.Last().Epoch);
+            var span = (end - start) / 100;
+            var windows = _conversationTable.Conversations.GroupByWindow(start.DateTime, span);
+            windows.Count();
+        }
+        [Benchmark]
         public void ExportWindowedConversations()
         {
             var start = DateTimeOffset.FromUnixTimeSeconds(_conversationTable.FrameKeys.First().Epoch);
