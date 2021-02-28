@@ -283,6 +283,13 @@ namespace Traffix.Storage.Faster
             }
             return keys.Select(key => ProcessConversation(ref key));
         }
+        /// <summary>
+        /// Applies a frame  <paramref name="processor"/> to frames given by their <paramref name="keys"/>. 
+        /// </summary>
+        /// <typeparam name="TResult">The resulting type.</typeparam>
+        /// <param name="keys">The collection of keys.</param>
+        /// <param name="processor">The frame processor.</param>
+        /// <returns>The collection of reuslts computed by the <paramref name="processor"/>.</returns>
 
         public IEnumerable<TResult> ProcessFrames<TResult>(IEnumerable<FrameKey> keys, IFrameProcessor<TResult> processor)
         {
@@ -293,7 +300,7 @@ namespace Traffix.Storage.Faster
                 {
                     FrameKey frameKey = key;
                     FrameMetadata frameMetadata = default;
-                    var frameBytes = FrameMetadata.GetFrameFromMemory(bytes, ref frameMetadata);
+                    var frameBytes = FrameMetadata.ReadFrame(bytes, ref frameMetadata);
                     var result = processor.Invoke(ref frameKey, ref frameMetadata, frameBytes);
                     yield return result;
                 }
@@ -517,7 +524,7 @@ namespace Traffix.Storage.Faster
                 uint frameNumber = 0;
                 foreach (var frame in frames)
                 {
-                    var frameBytes = FrameMetadata.GetFrameFromMemory(frame, ref frameMetadata);
+                    var frameBytes = FrameMetadata.ReadFrame(frame.Span, ref frameMetadata);
                     var frameKey = new FrameKey(frameMetadata.Ticks, ++frameNumber);
                     yield return _frameProcessor.Invoke(ref frameKey, ref frameMetadata, frameBytes.ToArray());
                 }
@@ -530,7 +537,7 @@ namespace Traffix.Storage.Faster
                 Packet GetPacket(Memory<byte> frameBuffer)
                 {
                     FrameMetadata frameMetadata = default;
-                    var frameBytes = FrameMetadata.GetFrameFromMemory(frameBuffer, ref frameMetadata);
+                    var frameBytes = FrameMetadata.ReadFrame(frameBuffer.Span, ref frameMetadata);
                     return Packet.ParsePacket((LinkLayers)frameMetadata.LinkLayer, frameBytes.ToArray());
                 }
                 var packets = frames.Select(GetPacket);

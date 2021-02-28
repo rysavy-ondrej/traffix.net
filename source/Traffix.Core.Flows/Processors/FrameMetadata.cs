@@ -58,10 +58,10 @@ namespace Traffix.Data
         /// <param name="frame">The reference to <see cref="FrameMetadata"/> to be populated with Frame metadata.</param>
         /// <returns>The method returns span to the provided  <paramref name="buffer"/> containing the frame bytes. 
         /// Note that its lifetime is the same as the lifetime of the <paramref name="buffer"/>. </returns>
-        public static unsafe Span<byte> GetFrameFromMemory(Memory<byte> buffer, ref FrameMetadata frame)
+        public static unsafe Span<byte> ReadFrame(Span<byte> buffer, ref FrameMetadata frame)
         {
-            FrameMetadata.ReadMetadata(buffer.Span, ref frame);
-            return buffer.Span[Unsafe.SizeOf<FrameMetadata>()..];   // provide the rest of the memory as frame payload
+            ReadMetadata(buffer, ref frame);
+            return buffer[Unsafe.SizeOf<FrameMetadata>()..];   // provide the rest of the memory as frame payload
         }
     }
 }
