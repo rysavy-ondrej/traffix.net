@@ -4,9 +4,19 @@ using SharpPcap.LibPcap;
 using System;
 using System.Collections;
 using System.IO;
+using System.Reactive;
+using System.Reactive.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Traffix.Providers.PcapFile
 {
+
+    public static class SharpPcapProducer
+    {
+
+    }
+    
 
     public class SharpPcapReader : ICaptureFileReader
     {
@@ -24,6 +34,9 @@ namespace Traffix.Providers.PcapFile
             _device.Open();
             _state = ReadingState.NotStarted;
         }
+
+
+        
 
 
 
@@ -133,6 +146,24 @@ namespace Traffix.Providers.PcapFile
             _device.Close();
             _device.Open();
             _state = ReadingState.NotStarted;
+        }
+        public static IObservable<RawFrame> CreateObservable(string captureFile)
+        {
+            var reader = new SharpPcapReader(captureFile);
+            return CreateObservable(reader);
+        }
+        public static IObservable<RawFrame> CreateObservable(ICaptureFileReader captureReader)
+        {
+            return Observable.Create<RawFrame>((observer, cancellation) => Task.Factory.StartNew(
+                () =>
+                {
+                    while (!cancellation.IsCancellationRequested && captureReader.GetNextFrame(out var rawFrame))
+                    {
+                        observer.OnNext(rawFrame);
+                    }
+                    observer.OnCompleted();
+                    captureReader.Dispose();
+                }));
         }
     }
 }

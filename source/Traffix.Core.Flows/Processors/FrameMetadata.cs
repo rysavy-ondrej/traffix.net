@@ -2,8 +2,10 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Traffix.Data
+namespace Traffix.Core
 {
+
+
     /// <summary>
     /// Represents the metadata of a single frame.
     /// It is a structure that has fixed size of 20 bytes.

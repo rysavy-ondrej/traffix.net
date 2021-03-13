@@ -11,21 +11,28 @@ namespace Traffix.Core.Flows
 
     /// <summary>
     /// Represents the smallest structure to store IPv4 flow key.
+    /// <para/>
+    /// The size of this struct is 14 bytes.
     /// </summary>
     [MessagePackObject]
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Explicit)]
     public struct _FlowKeyInternetwork  : IEquatable<_FlowKeyInternetwork>
     {
 
         [Key(0)]
+        [FieldOffset(0)]
         public  ushort ProtocolType;
         [Key(1)]
+        [FieldOffset(2)]
         public  uint SourceAddressBytes;
         [Key(2)]
+        [FieldOffset(6)]
         public  ushort SourcePort;
         [Key(3)]
+        [FieldOffset(8)]
         public  uint DestinationAddressBytes;
         [Key(4)]
+        [FieldOffset(12)]
         public  ushort DestinationPort;
 
         public _FlowKeyInternetwork(ushort protocolType, uint sourceAddressBytes, ushort sourcePort, uint destinationAddressBytes, ushort destinationPort)
@@ -36,6 +43,11 @@ namespace Traffix.Core.Flows
             DestinationAddressBytes = destinationAddressBytes;
             DestinationPort = destinationPort;
         }
+
+        [IgnoreMember]
+        public IPEndPoint SourceIpEndPoint => new IPEndPoint(SourceAddressBytes, SourcePort);
+        [IgnoreMember]
+        public IPEndPoint DestinationIpEndPoint => new IPEndPoint(DestinationAddressBytes, DestinationPort);
 
         public override bool Equals(object other) => other is _FlowKeyInternetwork l && Equals(l);
 

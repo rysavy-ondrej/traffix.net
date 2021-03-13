@@ -4,6 +4,13 @@ using System.Net.Sockets;
 
 namespace Traffix.Core.Flows
 {
+    public static class PacketKeyProviderHelper
+    {
+        public static FlowKey GetFlowKey(this Packet packet)
+        {
+            return PacketKeyProvider.GetFlowKeyFromPacket(packet);
+        }
+    }
 
     public class PacketKeyProvider : IFlowKeyProvider<FlowKey, Packet>
     {

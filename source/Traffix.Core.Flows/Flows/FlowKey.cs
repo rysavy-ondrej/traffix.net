@@ -2,10 +2,129 @@ using MessagePack;
 using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
 namespace Traffix.Core.Flows
 {
+    [StructLayout(LayoutKind.Explicit)]
+    public struct _FlowKey : IEquatable<_FlowKey>
+    {
+        [FieldOffset(0)]
+        ushort protocolFamily;
+
+        [FieldOffset(2)]
+        _NullFlowKey nullFlowKey;
+
+        [FieldOffset(2)]
+        _FlowKeyInternetwork flowKeyInternetwork;
+
+        [FieldOffset(2)]
+        _FlowKeyInternetworkV6 flowKeyInternetworkV6;
+
+        #region Constructor methods
+        public _FlowKey(ref _NullFlowKey nullFlowKey)
+        {
+            this.protocolFamily = 0;
+            this.flowKeyInternetwork = default;
+            this.flowKeyInternetworkV6 = default;
+            this.nullFlowKey = nullFlowKey;
+        }
+        public _FlowKey(ref _FlowKeyInternetwork flowKeyInternetwork)
+        {
+            this.protocolFamily = (ushort)ProtocolFamily.InterNetwork;
+            this.nullFlowKey = default;
+            this.flowKeyInternetworkV6 = default;
+            this.flowKeyInternetwork = flowKeyInternetwork;
+        }
+        public _FlowKey(ref _FlowKeyInternetworkV6 flowKeyInternetworkV6)
+        {
+            this.protocolFamily = (ushort)ProtocolFamily.InterNetworkV6;
+            this.nullFlowKey = default;
+            this.flowKeyInternetwork = default;
+            this.flowKeyInternetworkV6 = flowKeyInternetworkV6;
+        }
+        #endregion
+        #region IEquatable implementation
+        public override bool Equals(object? obj)
+        {
+            return obj is _FlowKey key && Equals(key);
+        }
+
+        public bool Equals(_FlowKey other)
+        {
+            return flowKeyInternetworkV6.Equals(other.flowKeyInternetworkV6);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(flowKeyInternetworkV6);
+        }
+
+        public static bool operator ==(_FlowKey left, _FlowKey right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(_FlowKey left, _FlowKey right)
+        {
+            return !(left == right);
+        }
+        #endregion
+        #region Access methods
+        ProtocolType ProtocolType
+        {
+            get
+            {
+                switch (protocolFamily)
+                {
+                    case (ushort)ProtocolFamily.InterNetwork:
+                        return (ProtocolType)flowKeyInternetwork.ProtocolType;
+                    case (ushort)ProtocolFamily.InterNetworkV6:
+                        return (ProtocolType)flowKeyInternetworkV6.ProtocolType;
+                    default:
+                        return ProtocolType.Unspecified;
+                }
+            }
+        }
+
+        public IPEndPoint SourceIpEndPoint
+        {
+            get
+            {
+                switch(protocolFamily)
+                {
+                    case (ushort)ProtocolFamily.InterNetwork:
+                        return flowKeyInternetwork.SourceIpEndPoint;
+                    case (ushort)ProtocolFamily.InterNetworkV6:
+                        return flowKeyInternetworkV6.SourceIpEndPoint;
+                    default:
+                        return new IPEndPoint(IPAddress.None, 0);
+                }
+            }
+        }
+        public IPEndPoint DestinationIpEndPoint
+        {
+            get
+            {
+                switch (protocolFamily)
+                {
+                    case (ushort)ProtocolFamily.InterNetwork:
+                        return flowKeyInternetwork.DestinationIpEndPoint;
+                    case (ushort)ProtocolFamily.InterNetworkV6:
+                        return flowKeyInternetworkV6.DestinationIpEndPoint;
+                    default:
+                        return new IPEndPoint(IPAddress.None, 0);
+                }
+            }
+        }
+        #endregion
+
+        // TODO: support for serialization and deserialization
+
+    }
+
     [Union(NullFlowKey.FlowKeyType, typeof(NullFlowKey))]
     [Union(FlowKeyInternetwork.FlowKeyType, typeof(FlowKeyInternetwork))]
     [Union(FlowKeyInternetworkV6.FlowKeyType, typeof(FlowKeyInternetworkV6))]

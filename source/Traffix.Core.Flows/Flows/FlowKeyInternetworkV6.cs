@@ -8,24 +8,32 @@ using System.Runtime.InteropServices;
 
 namespace Traffix.Core.Flows
 {
+    /// <summary>
+    /// Represents a flow key for IPv6 
+    /// </summary>
     [MessagePackObject]
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Explicit)]
     public unsafe struct _FlowKeyInternetworkV6 : IEquatable<_FlowKeyInternetworkV6>
     {
 
         [Key(0)]
+        [FieldOffset(0)]
         public ushort ProtocolType;
 
         [Key(1)]
+        [FieldOffset(2)]
         public fixed byte SourceAddressBytes[16];
 
         [Key(2)]
+        [FieldOffset(18)]
         public ushort SourcePort;
 
         [Key(3)]
+        [FieldOffset(20)]
         public fixed byte DestinationAddressBytes[16];
 
         [Key(4)]
+        [FieldOffset(36)]
         public ushort DestinationPort;
 
         public _FlowKeyInternetworkV6(ushort protocolType, ReadOnlySpan<byte> sourceAddressBytes, ushort sourcePort, ReadOnlySpan<byte> destinationAddressBytes, ushort destinationPort)
@@ -41,6 +49,28 @@ namespace Traffix.Core.Flows
                 destinationAddressBytes.CopyTo(new Span<byte>(dst, 16));
             }
             DestinationPort = destinationPort;
+        }
+
+        [IgnoreMember]
+        public IPEndPoint SourceIpEndPoint { 
+            get 
+            {
+                fixed (byte* ptr = this.SourceAddressBytes)
+                {
+                    return new IPEndPoint(new IPAddress(new Span<byte>(ptr, 16)), SourcePort);
+                }
+            }
+        }
+        [IgnoreMember]
+        public IPEndPoint DestinationIpEndPoint
+        {
+            get
+            {
+                fixed (byte* ptr = this.DestinationAddressBytes)
+                {
+                    return new IPEndPoint(new IPAddress(new Span<byte>(ptr, 16)), DestinationPort);
+                }
+            }
         }
 
         public override bool Equals(object other) => other is _FlowKeyInternetworkV6 l && Equals(l);

@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Traffix.Core;
 using Traffix.Core.Flows;
 using Traffix.Data;
 using Traffix.Processors;
@@ -10,11 +11,6 @@ using Traffix.Providers.PcapFile;
 
 namespace Traffix.Storage.Faster.Tests
 {
-
-    public class FasterConversationTableBenchmarks
-    {
-
-    }
 
     [TestClass]
     public  class FasterConversationTableTests

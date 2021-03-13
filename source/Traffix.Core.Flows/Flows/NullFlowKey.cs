@@ -2,9 +2,39 @@ using MessagePack;
 using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 
 namespace Traffix.Core.Flows
 {
+    [StructLayout(LayoutKind.Explicit)]
+    public struct _NullFlowKey : IEquatable<_NullFlowKey>
+    {
+        public override bool Equals(object? obj)
+        {
+            return obj is _NullFlowKey key;
+        }
+
+        public bool Equals(_NullFlowKey other)
+        {
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(0);
+        }
+
+        public static bool operator ==(_NullFlowKey left, _NullFlowKey right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(_NullFlowKey left, _NullFlowKey right)
+        {
+            return !(left == right);
+        }
+    }
+
     [MessagePackObject]
     public sealed class NullFlowKey : FlowKey
     {

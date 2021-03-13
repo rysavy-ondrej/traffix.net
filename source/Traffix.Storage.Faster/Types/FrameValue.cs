@@ -2,6 +2,7 @@ using FASTER.core;
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Traffix.Core;
 using Traffix.Data;
 
 namespace Traffix.Storage.Faster

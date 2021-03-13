@@ -14,17 +14,12 @@ using Traffix.Data;
 
 namespace Traffix.Storage.Faster
 {
-
-    public class TrillConversationTable
-    {
-
-    }
-
     /// <summary>
     /// Faster conversation table enables to store full packet captures in  a key-value database.
     /// The store is optimized for fast insert and access.
+    /// It should be faster to read frames from this table than original pcap file.
     /// </summary>
-    public partial class FasterFrameTable
+    public partial class FasterFrameTable : IDisposable
     {
         private readonly string _rootFolder;
         private readonly Configuration _config;
@@ -152,18 +147,14 @@ namespace Traffix.Storage.Faster
             return packetKey;
         }
 
-        public delegate TValue FrameProcessor<TValue>(ref FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes);
-
         /// <summary>
         /// Enables to subscribe to the stream of frames produced by the current table.
         /// <para/>
         /// It is possible to create an observable as follows:
         /// <code>
         /// FasterFrameTable table;
-        /// observable = Observable.Create(table.Subscribe);
+        /// var observable = Observable.Create(table.GetSubscriber(processor));
         /// </code>
-        /// <para/>
-        /// Or 
         /// </summary>
         /// <typeparam name="TValue"></typeparam>
         /// <param name="observer"></param>
@@ -242,6 +233,7 @@ namespace Traffix.Storage.Faster
                     _observer.OnNext(_processor(ref frameKey, ref frameMetadata, frameBytes));
                 }
                 _framesStore.ProcessEntries(onNextFrame, _cancel.Token);
+                _observer.OnCompleted();
             }
         }
 
