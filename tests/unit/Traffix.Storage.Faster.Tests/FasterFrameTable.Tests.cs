@@ -10,9 +10,12 @@ using System.Text;
 using System.Threading.Tasks;
 using Traffix.Core;
 using Traffix.Core.Flows;
+using Traffix.Core.Observable;
 using Traffix.Data;
 using Traffix.Providers.PcapFile;
 using Microsoft.StreamProcessing;
+using Traffix.Processors;
+
 namespace Traffix.Storage.Faster.Tests
 {
     [TestClass]
@@ -133,12 +136,13 @@ namespace Traffix.Storage.Faster.Tests
         [TestMethod]
         public async Task ObservableFromFileTimeWindow()
         {
-            var pcapPath = Path.Combine(dataFolderPath, "testbed-32.pcap");
+            var pcapPath = Path.Combine(dataFolderPath, "testbed-16.pcap");
             var sw = new Stopwatch();
             sw.Start();
             var observable = SharpPcapReader.CreateObservable(pcapPath).Select(GetPacket);
-            var wins = observable.TimeWindow(t=>t.Ticks, TimeSpan.FromSeconds(60)).Select(o => o.GroupBy(f => f.Packet.GetFlowKey()));
+            var wins = observable.TimeWindow(t => t.Ticks, TimeSpan.FromSeconds(60)).Select(o => o.GroupBy(f => f.Packet.GetFlowKey()));
             var windowNumber = 0;
+            var totalPackets = 0;
             await wins.ForEachAsync(async win =>
             {
                 Console.WriteLine($"Window {++windowNumber}:  ");
@@ -150,17 +154,58 @@ namespace Traffix.Storage.Faster.Tests
                     var lastSeen = long.MinValue;
                     await flow.ForEachAsync(packet =>
                     {
+                        totalPackets++;
                         packets++;
                         octets += packet.Packet.TotalPacketLength;
                         firstSeen = Math.Min(firstSeen, packet.Ticks);
                         lastSeen = Math.Max(lastSeen, packet.Ticks);
                     });
                     // Console.Write(".");
-                    Console.WriteLine($"  Flow {flow.Key}: firstSeen={new DateTime(firstSeen)}, duration={new TimeSpan(lastSeen-firstSeen)}, packets={packets}, octets={octets}");
+                    Console.WriteLine($"  Flow {flow.Key}: firstSeen={new DateTime(firstSeen)}, duration={new TimeSpan(lastSeen - firstSeen)}, packets={packets}, octets={octets}");
                 });
-                Console.WriteLine();
+                Console.WriteLine($"Packets = {totalPackets}");
             });
         }
+
+        [TestMethod]
+        public async Task TestProcessor()
+        {
+            var pcapPath = Path.Combine(dataFolderPath, "testbed-16.pcap");
+            var sw = new Stopwatch();
+            sw.Start();
+            var observable = SharpPcapReader.CreateObservable(pcapPath).Select(GetPacket);
+            // get windows of flows:
+            var wins = observable.TimeWindow(t => t.Ticks, TimeSpan.FromSeconds(60)).Select(o => o.GroupBy(f => f.Packet.GetFlowKey()));
+
+            var windowNumber = 0;
+
+            // loop through all windows and flows and apply processor:
+            await wins.ForEachAsync(async win =>
+            {
+                Console.WriteLine($"Window {++windowNumber}:  ");   
+                await win.ApplyFlowProcessor(FlowProcessor).ForEachAsync(flowStr =>
+                {
+                    Console.WriteLine(flowStr);
+                });
+            });
+        }
+
+        private async Task<string> FlowProcessor(FlowKey flowKey, IObservable<(long Ticks, Packet Packet)> packets)
+        {
+            var packetCount = 0;
+            var firstSeen = long.MaxValue;
+            var lastSeen = long.MinValue;
+            var octets = 0;
+            await packets.ForEachAsync(packet =>
+            {
+                packetCount++;
+                octets += packet.Packet.TotalPacketLength;
+                firstSeen = Math.Min(firstSeen, packet.Ticks);
+                lastSeen = Math.Max(lastSeen, packet.Ticks);
+            });
+            return $"  Flow {flowKey}: firstSeen={new DateTime(firstSeen)}, duration={new TimeSpan(lastSeen - firstSeen)}, packets={packetCount}, octets={octets}";
+        }
+
         [TestMethod]
         public async Task TrillTest()
         {
@@ -183,27 +228,4 @@ namespace Traffix.Storage.Faster.Tests
         }
     }
 
-
-    public static class ObservableWindowExplicit
-    {
-        /// <summary>
-        /// Projects each element of an observable sequence into consecutive non-overlapping windows. 
-        /// The projection is controlled by time provided by <paramref name="getTicks"/> and the 
-        /// <paramref name="timeSpan"/> interval.
-        /// </summary>
-        /// <typeparam name="T">The type of source.</typeparam>
-        /// <param name="observable">The source sequence to produce windows over.</param>
-        /// <param name="getTicks">The function to get time value of the element.</param>
-        /// <param name="timeSpan">The time interval of windows produced.</param>
-        /// <returns>An observable sequence of windows.</returns>
-        public static IObservable<IObservable<T>> TimeWindow<T>(this IObservable<T> observable, Func<T, long> getTicks, TimeSpan timeSpan)
-        {
-            // implemented using side-effect operations, which is not nice, but it is short and efficient.
-            var shared = observable.Publish().RefCount();
-            var index = shared.Select(x => getTicks(x)).Publish().RefCount();
-            long? windowEdgeTicks = null;
-            long timeSpanTicks = timeSpan.Ticks;
-            return shared.Window(() => index.Do(ticks => windowEdgeTicks ??= ticks + timeSpanTicks).SkipWhile(ticks => ticks < windowEdgeTicks).Do(ticks => { windowEdgeTicks = ticks + timeSpanTicks; }));
-        }
-    }
 }
