@@ -37,7 +37,7 @@ namespace Traffix.Storage.Faster.Tests
         /// Loads the table from the given pcap file.
         /// </summary>
         [TestMethod]
-        public async Task CreateTable()
+        public async Task TestCreateFrameTable()
         {
             var pcapPath = Path.Combine(dataFolderPath, "testbed-16.pcap");
             var sw = new Stopwatch();
@@ -81,7 +81,7 @@ namespace Traffix.Storage.Faster.Tests
         }
 
         [TestMethod]
-        public async Task ObservableFromFile()
+        public async Task TestObservableFromReader()
         {
             var pcapPath = Path.Combine(dataFolderPath, "testbed-16.pcap");
             var sw = new Stopwatch();
@@ -104,7 +104,7 @@ namespace Traffix.Storage.Faster.Tests
             Console.WriteLine($"- Flows = {flows.Count}");
         }
         [TestMethod]
-        public async Task ObservableFromFileWindow()
+        public async Task TestCountWindowOperator()
         {
             var pcapPath = Path.Combine(dataFolderPath, "testbed-16.pcap");
             var sw = new Stopwatch();
@@ -134,7 +134,7 @@ namespace Traffix.Storage.Faster.Tests
         }
 
         [TestMethod]
-        public async Task ObservableFromFileTimeWindow()
+        public async Task TestTimeWindowOperator()
         {
             var pcapPath = Path.Combine(dataFolderPath, "testbed-16.pcap");
             var sw = new Stopwatch();
@@ -168,7 +168,7 @@ namespace Traffix.Storage.Faster.Tests
         }
 
         [TestMethod]
-        public async Task TestProcessor()
+        public async Task TestApplyFlowProcessor()
         {
             var pcapPath = Path.Combine(dataFolderPath, "testbed-16.pcap");
             var sw = new Stopwatch();
@@ -188,6 +188,60 @@ namespace Traffix.Storage.Faster.Tests
                     Console.WriteLine(flowStr);
                 });
             });
+            Console.WriteLine($"All done [{sw.Elapsed}]");
+        }
+        [TestMethod]
+        public async Task TestCreateBiflow()
+        {
+            var pcapPath = Path.Combine(dataFolderPath, "testbed-16.pcap");
+            var sw = new Stopwatch();
+            sw.Start();
+            var source = SharpPcapReader.CreateObservable(pcapPath).Select(GetPacket);
+            // get windows of flows:
+            var wins = source.TimeWindow(packet => packet.Ticks, TimeSpan.FromSeconds(60))
+                       .Select(win => win.GroupBy(packet => packet.Packet.GetFlowKey()).GroupBy(flow => GetConversationKey(flow.Key)));
+
+            var windowNumber = 0;
+            // loop through all windows and flows and apply processor:
+            await wins.ForEachAsync(async win =>
+            {
+                Console.WriteLine($"Window {++windowNumber}:  ");
+                await win.ApplyFlowProcessor(ConvProcessor).ForEachAsync(flowStr =>
+                {
+                    Console.WriteLine(flowStr);
+                });
+            });
+            Console.WriteLine($"All done [{sw.Elapsed}]");
+        }
+
+        private long GetConversationKey(FlowKey key)
+        {
+            var hash1 = key.GetHashCode64();
+            var hash2 = key.Reverse().GetHashCode64();
+            return Math.Min(hash1, hash2);
+        }
+
+        private async Task<string> ConvProcessor(long conversationKey, IObservable<IGroupedObservable<FlowKey, (long Ticks, Packet Packet)>> flows)
+        {
+            FlowKey flowKey = null;
+            var packetCount = 0;
+            var firstSeen = long.MaxValue;
+            var lastSeen = long.MinValue;
+            var octets = 0;
+            var flowCount = 0;
+            await flows.ForEachAsync(async flow =>
+            {
+                flowKey ??= flow.Key;
+                flowCount++;
+                await flow.ForEachAsync(packet =>
+                {
+                    packetCount++;
+                    octets += packet.Packet.TotalPacketLength;
+                    firstSeen = Math.Min(firstSeen, packet.Ticks);
+                    lastSeen = Math.Max(lastSeen, packet.Ticks);
+                });
+            });
+            return $"  Conv ({conversationKey}) {flowKey}: flows={flowCount}, firstSeen={new DateTime(firstSeen)}, duration={new TimeSpan(lastSeen - firstSeen)}, packets={packetCount}, octets={octets}"; 
         }
 
         private async Task<string> FlowProcessor(FlowKey flowKey, IObservable<(long Ticks, Packet Packet)> packets)
