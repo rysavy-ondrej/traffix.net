@@ -56,7 +56,7 @@ namespace FasterConversationTablePerf
             var windows = packets.TimeSpanWindow(t => t.Ticks, TimeSpan.FromMinutes(5));
             await windows.ForEachAsync(async window =>
             {
-                await packets.ForEachAsync(_ =>
+                await window.ForEachAsync(_ =>
                 {
                     packetCount++;
                 });
