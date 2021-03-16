@@ -1,4 +1,5 @@
 using PacketDotNet;
+using System;
 using System.Net;
 using System.Net.Sockets;
 
@@ -9,6 +10,11 @@ namespace Traffix.Core.Flows
         public static FlowKey GetFlowKey(this Packet packet)
         {
             return PacketKeyProvider.GetFlowKeyFromPacket(packet);
+        }
+
+        public static bool TryGetFlowKey(this Packet packet, ref _FlowKey flowKey)
+        {
+            throw new NotImplementedException();
         }
     }
 

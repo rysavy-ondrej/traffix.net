@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading.Tasks;
 
 namespace Traffix.Core.Observable
 {
     public static class ObservableFlows
-    { 
+    {
         /// <summary>
         /// Projects each element of an observable sequence into consecutive non-overlapping windows. 
         /// The projection is controlled by time provided by <paramref name="getTicks"/> and the 
@@ -63,10 +64,48 @@ namespace Traffix.Core.Observable
         /// <param name="getFlowKey">The function to get a flow key from the element.</param>
         /// <param name="getConversationKey">The function to get a conversation key fro the flow key.</param>
         /// <returns>An observable sequence of conversations.</returns>
-        public static IObservable<IGroupedObservable<TConversationKey, IGroupedObservable<TFlowKey, TSource>>> GroupConversations<TFlowKey, TConversationKey, TSource>(this IObservable<TSource> observable, Func<TSource, TFlowKey> getFlowKey, Func<TFlowKey,TConversationKey> getConversationKey)
+        public static IObservable<IGroupedObservable<TConversationKey, IGroupedObservable<TFlowKey, TSource>>> GroupConversations<TFlowKey, TConversationKey, TSource>(this IObservable<TSource> observable, Func<TSource, TFlowKey> getFlowKey, Func<TFlowKey, TConversationKey> getConversationKey)
         {
             var flows = observable.GroupFlows(getFlowKey);
             return flows.GroupBy(flow => getConversationKey(flow.Key));
+        }
+
+
+        /// <summary>
+        /// Projects each element of an observable sequence into consecutive non-overlapping windows. 
+        /// The projection is controlled by time provided by <paramref name="getTicks"/> and the 
+        /// <paramref name="timeSpan"/> interval.
+        /// </summary>
+        /// <typeparam name="T">The type of source.</typeparam>
+        /// <param name="observable">The source sequence to produce windows over.</param>
+        /// <param name="getTicks">The function to get time value of the element.</param>
+        /// <param name="timeSpan">The time interval of windows produced.</param>
+        /// <returns>An observable sequence of windows.</returns>
+        public static IObservable<IObservable<TSource>> TickIntervalWindow<TSource>(this IObservable<TSource> source, Func<TSource, long> getTicks, TimeSpan timeSpan)
+        {
+            return System.Reactive.Linq.Observable.Create<IObservable<TSource>>(observer =>
+            {
+                long? _windowEdgeTicks = null;
+                Subject<TSource>? _currentWindow = new Subject<TSource>();
+                return source.Subscribe(value =>
+                {
+                    var ticks = getTicks(value);
+                    _windowEdgeTicks ??= ticks + timeSpan.Ticks;
+
+                    if (ticks < _windowEdgeTicks)
+                    {
+                        _currentWindow?.OnNext(value);
+                    }
+                    else
+                    {
+                        _currentWindow?.OnCompleted();
+
+                        _windowEdgeTicks += timeSpan.Ticks;
+                        _currentWindow = new Subject<TSource>();
+                        observer.OnNext(_currentWindow);
+                    }
+                }, observer.OnError, observer.OnCompleted);
+            });
         }
     }
 }
