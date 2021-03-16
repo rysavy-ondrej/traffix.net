@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace FasterConversationTablePerf
 {
-    [SimpleJob(RunStrategy.Monitoring, targetCount: 5)]
+    [SimpleJob(RunStrategy.Monitoring, targetCount: 2)]
     [MinColumn, MaxColumn, MeanColumn, MedianColumn]
     public class IngestPacketTraceBenchmarkObservable
     {
@@ -32,8 +32,22 @@ namespace FasterConversationTablePerf
             });
         }
         /// <summary>
+        /// Reads all frames from the source file and converts them to Packet objects. 
+        /// </summary>
+        [Benchmark]
+        public async Task ExportPacketsWithFlowKey()
+        {
+            var packetCount = 0;
+            var packets = SharpPcapReader.CreateObservable(dataset).Select(GetPacket).Select(x=>(x.Ticks,x.Packet,x.Packet.GetFlowKey()));
+            await packets.ForEachAsync(packet =>
+            {
+                packetCount++;
+            });
+        }
+        /// <summary>
         /// Reads all frames from the source file, converts them to Packet objects, and groups them in windows (5 duration).  
         /// </summary>
+        /// <remarks>This does not run correctly. Why?</remarks>
         [Benchmark]
         public async Task ExportWindowedPackets()
         {
