@@ -21,23 +21,26 @@
 
 # BenchmarkObservable
 
-|                      Method |              dataset |        Mean |       Error |      StdDev |         Min |         Max |      Median |
-|---------------------------- |--------------------- |------------:|------------:|------------:|------------:|------------:|------------:|
-|               ExportPackets | D:\Ca(...).pcap [61] |    127.3 ms |    64.28 ms |    16.69 ms |    115.4 ms |    154.2 ms |    117.5 ms |
-|       ExportWindowedPackets | D:\Ca(...).pcap [61] |          NA |          NA |          NA |          NA |          NA |          NA |
-|                 ExportFlows | D:\Ca(...).pcap [61] |    502.7 ms |   168.31 ms |    43.71 ms |    469.2 ms |    576.4 ms |    480.6 ms |
-|         ExportWindowedFlows | D:\Ca(...).pcap [61] |    539.1 ms |   146.03 ms |    37.92 ms |    475.0 ms |    575.0 ms |    550.9 ms |
-|         ExportConversations | D:\Ca(...).pcap [61] |    609.2 ms |   185.85 ms |    48.26 ms |    562.6 ms |    681.8 ms |    607.0 ms |
-| ExportWindowedConversations | D:\Ca(...).pcap [61] |    563.2 ms |   129.50 ms |    33.63 ms |    520.3 ms |    598.6 ms |    551.8 ms |
-|               ExportPackets | D:\Ca(...).pcap [61] |    615.4 ms |   162.48 ms |    42.19 ms |    579.2 ms |    676.3 ms |    597.6 ms |
-|       ExportWindowedPackets | D:\Ca(...).pcap [61] |          NA |          NA |          NA |          NA |          NA |          NA |
-|                 ExportFlows | D:\Ca(...).pcap [61] |  4,867.1 ms |   738.17 ms |   191.70 ms |  4,701.0 ms |  5,126.3 ms |  4,778.0 ms |
-|         ExportWindowedFlows | D:\Ca(...).pcap [61] |  4,385.0 ms |   732.66 ms |   190.27 ms |  4,171.8 ms |  4,618.4 ms |  4,384.1 ms |
-|         ExportConversations | D:\Ca(...).pcap [61] |  5,703.2 ms |   881.98 ms |   229.05 ms |  5,494.7 ms |  6,085.8 ms |  5,667.3 ms |
-| ExportWindowedConversations | D:\Ca(...).pcap [61] |  5,041.2 ms |   466.58 ms |   121.17 ms |  4,947.1 ms |  5,242.9 ms |  5,018.4 ms |
-|               ExportPackets | D:\Ca(...).pcap [61] |  1,007.6 ms |   280.63 ms |    72.88 ms |    920.3 ms |  1,099.8 ms |    994.9 ms |
-|       ExportWindowedPackets | D:\Ca(...).pcap [61] |          NA |          NA |          NA |          NA |          NA |          NA |
-|                 ExportFlows | D:\Ca(...).pcap [61] | 25,864.3 ms | 2,080.57 ms |   540.32 ms | 24,992.0 ms | 26,297.0 ms | 26,026.8 ms |
-|         ExportWindowedFlows | D:\Ca(...).pcap [61] | 25,037.8 ms |   723.66 ms |   187.93 ms | 24,770.8 ms | 25,291.8 ms | 25,023.1 ms |
-|         ExportConversations | D:\Ca(...).pcap [61] | 33,284.5 ms | 4,370.63 ms | 1,135.04 ms | 31,531.4 ms | 34,428.1 ms | 33,663.8 ms |
-| ExportWindowedConversations | D:\Ca(...).pcap [61] | 31,834.9 ms | 1,094.93 ms |   284.35 ms | 31,440.5 ms | 32,193.2 ms | 31,800.5 ms |
+|                      Method |              dataset |        Mean | Error |    StdDev |         Min |         Max |      Median |
+|---------------------------- |--------------------- |------------:|------:|----------:|------------:|------------:|------------:|
+|               ExportPackets | D:\Ca(...).pcap [61] |    143.3 ms |    NA |   2.69 ms |    141.3 ms |    145.2 ms |    143.3 ms |
+|    ExportPacketsWithFlowKey | D:\Ca(...).pcap [61] |    242.9 ms |    NA |  41.53 ms |    213.5 ms |    272.2 ms |    242.9 ms |
+|       ExportWindowedPackets | D:\Ca(...).pcap [61] |    183.8 ms |    NA |  53.24 ms |    146.2 ms |    221.4 ms |    183.8 ms |
+|                 ExportFlows | D:\Ca(...).pcap [61] |    558.4 ms |    NA |  68.28 ms |    510.1 ms |    606.7 ms |    558.4 ms |
+|         ExportWindowedFlows | D:\Ca(...).pcap [61] |    551.3 ms |    NA |  16.06 ms |    539.9 ms |    562.7 ms |    551.3 ms |
+|         ExportConversations | D:\Ca(...).pcap [61] |    615.0 ms |    NA |  13.29 ms |    605.6 ms |    624.4 ms |    615.0 ms |
+| ExportWindowedConversations | D:\Ca(...).pcap [61] |    533.6 ms |    NA |  30.43 ms |    512.1 ms |    555.2 ms |    533.6 ms |
+|               ExportPackets | D:\Ca(...).pcap [61] |    660.0 ms |    NA |   2.97 ms |    657.9 ms |    662.1 ms |    660.0 ms |
+|    ExportPacketsWithFlowKey | D:\Ca(...).pcap [61] |  1,082.1 ms |    NA |  18.05 ms |  1,069.3 ms |  1,094.9 ms |  1,082.1 ms |
+|       ExportWindowedPackets | D:\Ca(...).pcap [61] |    622.4 ms |    NA |  19.43 ms |    608.6 ms |    636.1 ms |    622.4 ms |
+|                 ExportFlows | D:\Ca(...).pcap [61] |  4,587.1 ms |    NA | 175.35 ms |  4,463.1 ms |  4,711.0 ms |  4,587.1 ms |
+|         ExportWindowedFlows | D:\Ca(...).pcap [61] |  4,450.2 ms |    NA |  82.21 ms |  4,392.0 ms |  4,508.3 ms |  4,450.2 ms |
+|         ExportConversations | D:\Ca(...).pcap [61] |  5,788.8 ms |    NA | 123.21 ms |  5,701.7 ms |  5,875.9 ms |  5,788.8 ms |
+| ExportWindowedConversations | D:\Ca(...).pcap [61] |  4,508.8 ms |    NA | 117.00 ms |  4,426.0 ms |  4,591.5 ms |  4,508.8 ms |
+|               ExportPackets | D:\Ca(...).pcap [61] |  1,040.8 ms |    NA |  13.41 ms |  1,031.3 ms |  1,050.2 ms |  1,040.8 ms |
+|    ExportPacketsWithFlowKey | D:\Ca(...).pcap [61] |  1,926.5 ms |    NA |  70.64 ms |  1,876.6 ms |  1,976.5 ms |  1,926.5 ms |
+|       ExportWindowedPackets | D:\Ca(...).pcap [61] |  1,049.5 ms |    NA |  10.45 ms |  1,042.1 ms |  1,056.9 ms |  1,049.5 ms |
+|                 ExportFlows | D:\Ca(...).pcap [61] | 25,297.2 ms |    NA | 126.03 ms | 25,208.1 ms | 25,386.3 ms | 25,297.2 ms |
+|         ExportWindowedFlows | D:\Ca(...).pcap [61] | 24,923.3 ms |    NA | 269.42 ms | 24,732.8 ms | 25,113.8 ms | 24,923.3 ms |
+|         ExportConversations | D:\Ca(...).pcap [61] | 31,440.4 ms |    NA | 893.27 ms | 30,808.8 ms | 32,072.1 ms | 31,440.4 ms |
+| ExportWindowedConversations | D:\Ca(...).pcap [61] | 32,224.7 ms |    NA | 845.23 ms | 31,627.0 ms | 32,822.3 ms | 32,224.7 ms |rtWindowedConversations | D:\Ca(...).pcap [61] | 31,834.9 ms | 1,094.93 ms |   284.35 ms | 31,440.5 ms | 32,193.2 ms | 31,800.5 ms |
