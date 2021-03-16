@@ -19,7 +19,7 @@ namespace Traffix.Storage.Faster.Tests
         /// Loads the table from the given pcap file.
         /// </summary>
         [TestMethod]
-        public void CreateTable()
+        public void TestCreateTable()
         {
             var sw = new Stopwatch();
             var pcapPath = Path.GetFullPath(@"data\PCAP\modbus.pcap");
@@ -53,20 +53,11 @@ namespace Traffix.Storage.Faster.Tests
 
             flowTable.Dispose();
         }
-
-        private void PrintConversations(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<ConversationKey, ConversationValue>> conversations)
-        {
-            foreach (var c in conversations)
-            {
-                Console.WriteLine(c.Key);
-            }
-        }
-
         /// <summary>
         /// Open existing table.
         /// </summary>
         [TestMethod]
-        public void ReadExistingTable()
+        public void TestReadExistingTable()
         {
             var sw = new Stopwatch();
             sw.Start();
@@ -79,7 +70,7 @@ namespace Traffix.Storage.Faster.Tests
         }
 
         [TestMethod]
-        public void ReadRawFrames()
+        public void TestReadRawFrames()
         {
             var sw = new Stopwatch();
             sw.Start();
@@ -114,19 +105,8 @@ namespace Traffix.Storage.Faster.Tests
             Console.WriteLine($"UDP={udpPackets}]");
         }
 
-        /// <summary>
-        /// Opens the existing table.
-        /// </summary>
-        /// <returns></returns>
-        public static FasterConversationTable OpenTable()
-        {
-            var dbPath = Path.GetFullPath(@"c:\temp\0001\");
-            var table = FasterConversationTable.Open(dbPath);
-            return table;
-        }
-
         [TestMethod]
-        public void ReadAllFrames()
+        public void TestReadAllFrames()
         {
             var sw = new Stopwatch();
             sw.Start();
@@ -148,7 +128,7 @@ namespace Traffix.Storage.Faster.Tests
         /// Opens the existing table and counts all frames using frame processor of all conversations.
         /// </summary>
         [TestMethod]
-        public void ReadAllFramesOfConversations()
+        public void TestReadAllFramesOfConversations()
         {
             var sw = new Stopwatch();
             sw.Start();
@@ -161,13 +141,49 @@ namespace Traffix.Storage.Faster.Tests
             }
         }
 
+       
+
+        [TestMethod]
+        public void TestGroupConversationsInWindow()
+        {
+            var sw = new Stopwatch();
+            sw.Start();
+            var table = OpenTable();
+            Console.WriteLine($"--- LOADED --- [{sw.Elapsed}]");
+            var firstPacketTime = DateTimeOffset.FromUnixTimeSeconds(table.FrameKeys.First().Epoch);
+            var lastPacketTime = DateTimeOffset.FromUnixTimeSeconds(table.FrameKeys.Last().Epoch);
+            // create 10 windows
+            var windowSpan = (lastPacketTime - firstPacketTime) / 10;
+            var windows = table.Conversations.GroupByWindow(firstPacketTime.DateTime, windowSpan);
+            var processor = ConversationProcessor.FromFunction((key, frames) => $"{key} : {frames.Count()}");
+            foreach (var win in windows)
+            {
+                Console.WriteLine($"{win.Key} - {win.Key + windowSpan}:");
+                var conversations = table.ProcessConversations(win, processor.ApplyToWindow(win.Key, windowSpan));
+                foreach (var c in conversations)
+                {
+                    Console.WriteLine($"  {c}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Opens the existing table.
+        /// </summary>
+        /// <returns></returns>
+        private FasterConversationTable OpenTable()
+        {
+            var dbPath = Path.GetFullPath(@"c:\temp\0001\");
+            var table = FasterConversationTable.Open(dbPath);
+            return table;
+        }
         /// <summary>
         /// Implements a function to be used in the Count Frame conversation processor.
         /// </summary>
         /// <param name="flowKey"></param>
         /// <param name="frames"></param>
         /// <returns></returns>
-        public static (string key, int frames, int octets, int ip, int tcp, int udp) CountFrames(FlowKey flowKey, System.Collections.Generic.IEnumerable<Memory<byte>> frames)
+        private (string key, int frames, int octets, int ip, int tcp, int udp) CountFrames(FlowKey flowKey, System.Collections.Generic.IEnumerable<Memory<byte>> frames)
         {
             (int octets, int ip, int tcp, int udp) GetFrameSize(Memory<byte> memory)
             {
@@ -189,30 +205,6 @@ namespace Traffix.Storage.Faster.Tests
                  framesList.Sum(x => GetFrameSize(x).tcp),
                  framesList.Sum(x => GetFrameSize(x).udp)
                 );
-        }
-
-        [TestMethod]
-        public void ConversationsInWindow()
-        {
-            var sw = new Stopwatch();
-            sw.Start();
-            var table = OpenTable();
-            Console.WriteLine($"--- LOADED --- [{sw.Elapsed}]");
-            var firstPacketTime = DateTimeOffset.FromUnixTimeSeconds(table.FrameKeys.First().Epoch);
-            var lastPacketTime = DateTimeOffset.FromUnixTimeSeconds(table.FrameKeys.Last().Epoch);
-            // create 10 windows
-            var windowSpan = (lastPacketTime - firstPacketTime) / 10;
-            var windows = table.Conversations.GroupByWindow(firstPacketTime.DateTime, windowSpan);
-            var processor = ConversationProcessor.FromFunction((key, frames) => $"{key} : {frames.Count()}");
-            foreach (var win in windows)
-            {
-                Console.WriteLine($"{win.Key} - {win.Key + windowSpan}:");
-                var conversations = table.ProcessConversations(win, processor.ApplyToWindow(win.Key, windowSpan));
-                foreach (var c in conversations)
-                {
-                    Console.WriteLine($"  {c}");
-                }
-            }
         }
     }
 }

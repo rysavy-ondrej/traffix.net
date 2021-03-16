@@ -18,10 +18,118 @@ namespace FasterConversationTablePerf
         [Params(@"D:\Captures\ecbs21paper.datasets\4SICS-GeekLounge-151020.pcap", @"D:\Captures\ecbs21paper.datasets\4SICS-GeekLounge-151021.pcap", @"D:\Captures\ecbs21paper.datasets\4SICS-GeekLounge-151022.pcap")]
         public string dataset;
 
+        /// <summary>
+        /// Reads all frames from the source file and converts them to Packet objects. 
+        /// </summary>
+        [Benchmark]
+        public async Task ExportPackets()
+        {
+            var packetCount = 0;
+            var packets = SharpPcapReader.CreateObservable(dataset).Select(GetPacket);
+            await packets.ForEachAsync(packet =>
+            {
+                packetCount++;
+            });
+        }
+        /// <summary>
+        /// Reads all frames from the source file, converts them to Packet objects, and groups them in windows (5 duration).  
+        /// </summary>
+        [Benchmark]
+        public async Task ExportWindowedPackets()
+        {
+            var packetCount = 0;
+            var packets = SharpPcapReader.CreateObservable(dataset).Select(GetPacket);
+            var windows = packets.TimeWindow(t => t.Ticks, TimeSpan.FromMinutes(5));
+            await windows.ForEachAsync(async window =>
+            {
+                await packets.ForEachAsync(_ =>
+                {
+                    packetCount++;
+                });
+            });
+        }
 
+        /// <summary>
+        /// Reads all frames and groups them to flows.
+        /// </summary>
+        /// <returns></returns>
+        [Benchmark]
+        public async Task ExportFlows()
+        {
+            var packets = SharpPcapReader.CreateObservable(dataset).Select(GetPacket);
+            var flows = packets.GroupFlows(f => f.Packet.GetFlowKey());
+            var flowCount = 0;
+            await flows.ApplyFlowProcessor(FlowProcessor).ForEachAsync(_ =>
+            {
+                flowCount++;
+            });
+        }
+        /// <summary>
+        /// Creates flows from source packets grouped in windows.
+        /// </summary>
+        [Benchmark]
+        public async Task ExportWindowedFlows()
+        {
+            var packets = SharpPcapReader.CreateObservable(dataset).Select(GetPacket);
+            var windows = packets.TimeWindow(t => t.Ticks, TimeSpan.FromMinutes(5)).Select(packets => packets.GroupFlows(f => f.Packet.GetFlowKey()));
+            var windowCount = 0;
+            var flowCount = 0;
+            await windows.ForEachAsync(async window =>
+            {
+                windowCount++;
+                await window.ApplyFlowProcessor(FlowProcessor).ForEachAsync(_ =>
+                {
+                    flowCount++;
+                });
+            });
+        }
+
+        /// <summary>
+        /// Creates conversations from source packets.
+        /// </summary>
+        [Benchmark]
+        public async Task ExportConversations()
+        {
+            var packets = SharpPcapReader.CreateObservable(dataset).Select(GetPacket);
+            var conversations = packets.GroupConversations(f => f.Packet.GetFlowKey(), f => GetConversationKey(f));
+            var conversationCount = 0;
+            await conversations.ApplyFlowProcessor(ConversationProcessor).ForEachAsync(_ =>
+            {
+                conversationCount++;
+            });
+        }
+
+        /// <summary>
+        /// Creates conversations from source packets grouped in windows.
+        /// </summary>
+        [Benchmark]
+        public async Task ExportWindowedConversations()
+        {
+            var packets = SharpPcapReader.CreateObservable(dataset).Select(GetPacket);
+            var windows = packets.TimeWindow(t => t.Ticks, TimeSpan.FromMinutes(5)).Select(packets => packets.GroupConversations(f => f.Packet.GetFlowKey(), f => GetConversationKey(f)));
+            var windowCount = 0;
+            var conversationCount = 0;
+            await windows.ForEachAsync(async window =>
+            {
+                windowCount++;
+                await window.ApplyFlowProcessor(ConversationProcessor).ForEachAsync(_ =>
+                {
+                    conversationCount++;
+                });
+            });
+        }
+
+        #region Helper methods
         private (long Ticks, Packet Packet) GetPacket(RawFrame arg)
         {
             return (arg.Ticks, Packet.ParsePacket(arg.LinkLayer, arg.Data));
+        }
+        private FlowKey GetConversationKey(FlowKey key)
+        {
+            var revKey = key.Reverse();
+            var sp1 = key.SourcePort;
+            var sp2 = revKey.SourcePort;
+            return sp1 > sp2 ? key : revKey;
         }
         private async Task<string> FlowProcessor(FlowKey flowKey, IObservable<(long Ticks, Packet Packet)> packets)
         {
@@ -38,23 +146,28 @@ namespace FasterConversationTablePerf
             });
             return $"  Flow {flowKey}: firstSeen={new DateTime(firstSeen)}, duration={new TimeSpan(lastSeen - firstSeen)}, packets={packetCount}, octets={octets}";
         }
-
-        [Benchmark]
-        public async Task ExportWindowedConversationsObservable()
+        private async Task<string> ConversationProcessor(FlowKey conversationKey, IObservable<IGroupedObservable<FlowKey, (long Ticks, Packet Packet)>> flows)
         {
-            var observable = SharpPcapReader.CreateObservable(dataset).Select(GetPacket);
-            // get windows of flows:
-            var wins = observable.TimeWindow(t => t.Ticks, TimeSpan.FromMinutes(5)).Select(o => o.GroupBy(f => f.Packet.GetFlowKey()));
-            var windowCount = 0;
+            FlowKey flowKey = null;
+            var packetCount = 0;
+            var firstSeen = long.MaxValue;
+            var lastSeen = long.MinValue;
+            var octets = 0;
             var flowCount = 0;
-            await wins.ForEachAsync(async win =>
+            await flows.ForEachAsync(async flow =>
             {
-                windowCount++;
-                await win.ApplyFlowProcessor(FlowProcessor).ForEachAsync(flowStr =>
+                flowKey ??= flow.Key;
+                flowCount++;
+                await flow.ForEachAsync(packet =>
                 {
-                    flowCount++;
+                    packetCount++;
+                    octets += packet.Packet.TotalPacketLength;
+                    firstSeen = Math.Min(firstSeen, packet.Ticks);
+                    lastSeen = Math.Max(lastSeen, packet.Ticks);
                 });
             });
+            return $"  Conv ({conversationKey}) {flowKey}: flows={flowCount}, firstSeen={new DateTime(firstSeen)}, duration={new TimeSpan(lastSeen - firstSeen)}, packets={packetCount}, octets={octets}";
         }
+        #endregion
     }
 }

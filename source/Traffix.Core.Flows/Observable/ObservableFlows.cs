@@ -39,5 +39,34 @@ namespace Traffix.Core.Observable
         {
             return flows.Select(flow => flowProcessor(flow.Key, flow)).Merge();
         }
+
+        /// <summary>
+        /// Projects each element of an observable sequence into the corresponding flow.  
+        /// </summary>
+        /// <typeparam name="TFlowKey">The type of flow key.</typeparam>
+        /// <typeparam name="TSource">The packet type.</typeparam>
+        /// <param name="observable">The source sequence of packets.</param>
+        /// <param name="getFlowKey">The function to get flow key from the element.</param>
+        /// <returns>An observable sequence of flows.</returns>
+        public static IObservable<IGroupedObservable<TFlowKey, TSource>> GroupFlows<TFlowKey, TSource>(this IObservable<TSource> observable, Func<TSource, TFlowKey> getFlowKey)
+        {
+            return observable.GroupBy(packet => getFlowKey(packet));
+        }
+
+        /// <summary>
+        /// Projects each element of an observable sequence into the corresponding conversation.  
+        /// </summary>
+        /// <typeparam name="TFlowKey">The type of flow key.</typeparam>
+        /// <typeparam name="TConversationKey">The type of conversation key.</typeparam>
+        /// <typeparam name="TSource">The packet type.</typeparam>
+        /// <param name="observable">The source sequence of packets.</param>
+        /// <param name="getFlowKey">The function to get a flow key from the element.</param>
+        /// <param name="getConversationKey">The function to get a conversation key fro the flow key.</param>
+        /// <returns>An observable sequence of conversations.</returns>
+        public static IObservable<IGroupedObservable<TConversationKey, IGroupedObservable<TFlowKey, TSource>>> GroupConversations<TFlowKey, TConversationKey, TSource>(this IObservable<TSource> observable, Func<TSource, TFlowKey> getFlowKey, Func<TFlowKey,TConversationKey> getConversationKey)
+        {
+            var flows = observable.GroupFlows(getFlowKey);
+            return flows.GroupBy(flow => getConversationKey(flow.Key));
+        }
     }
 }
