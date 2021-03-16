@@ -175,17 +175,39 @@ namespace Traffix.Storage.Faster.Tests
             var windows = observable
                 .TimeSpanWindow(t => t.Ticks, TimeSpan.FromSeconds(60))
                 .Select(packets => packets.GroupFlows(packet => packet.Packet.GetFlowKey()));
-
+            var totalFlows = 0;
             var windowNumber = 0;
             await windows.ForEachAsync(async win =>
             {
                 Console.WriteLine($"Window {++windowNumber}:  ");
-                await win.ApplyFlowProcessor(FlowProcessor).ForEachAsync(flowStr =>
+                await win.ApplyFlowProcessor(FlowProcessor).Do(_ => totalFlows++).ForEachAsync(flowStr =>
                 {
                     Console.WriteLine(flowStr);
                 });
             });
-            Console.WriteLine($"All done [{sw.Elapsed}]");
+            Console.WriteLine($"All done, flows = {totalFlows} [{sw.Elapsed}]");
+        }
+        [TestMethod]
+        public async Task TestApplyFlowProcessor2()
+        {
+            var pcapPath = Path.Combine(TestEnvironment.DataPath, "testbed-32.pcap");
+            var sw = new Stopwatch();
+            sw.Start();
+            var observable = SharpPcapReader.CreateObservable(pcapPath).Select(TestHelperFunctions.GetPacket);
+            var windows = observable
+                .TimeSpanWindow(t => t.Ticks, TimeSpan.FromSeconds(60))
+                .Select(packets => packets.GroupFlowsDictionary(packet => packet.Packet.GetFlowKey()));
+            var windowNumber = 0;
+            var totalFlows = 0;
+            await windows.ForEachAsync(async win =>
+            {
+                Console.WriteLine($"Window {++windowNumber}:  ");
+                await win.ApplyFlowProcessor(FlowProcessor).Do(_ => totalFlows++).ForEachAsync(flowStr =>
+                {
+                    Console.WriteLine(flowStr);
+                });
+            });
+            Console.WriteLine($"All done, flows = {totalFlows} [{sw.Elapsed}]");
         }
         [TestMethod]
         public async Task TestCreateConversations()

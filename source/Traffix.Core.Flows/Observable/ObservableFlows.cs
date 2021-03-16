@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
@@ -72,6 +73,65 @@ namespace Traffix.Core.Observable
 
 
         /// <summary>
+        /// Projects each element of an observable sequence into the corresponding flow.
+        /// <para/>
+        /// This method implements the operator directly without the use of GroupBy. The performance is similar. 
+        /// </summary>
+        /// <typeparam name="TFlowKey">The type of flow key.</typeparam>
+        /// <typeparam name="TSource">The packet type.</typeparam>
+        /// <param name="observable">The source sequence of packets.</param>
+        /// <param name="getFlowKey">The function to get flow key from the element.</param>
+        /// <returns>An observable sequence of flows.</returns>
+        public static IObservable<IGroupedObservable<TFlowKey, TSource>> GroupFlowsDictionary<TFlowKey, TSource>(this IObservable<TSource> source, Func<TSource, TFlowKey> getFlowKey)
+        {
+
+            return System.Reactive.Linq.Observable.Create<IGroupedObservable<TFlowKey, TSource>>(observer =>
+            {
+                var flowDictionary = new Dictionary<TFlowKey, GroupedObservable<TFlowKey, TSource>>();
+                return source.Subscribe(value =>
+                {
+                    var flowKey = getFlowKey(value);
+                    if (!flowDictionary.TryGetValue(flowKey, out var groupedObservable))
+                    {
+                        groupedObservable = new GroupedObservable<TFlowKey, TSource>(flowKey);
+                        flowDictionary.Add(flowKey, groupedObservable);
+                        observer.OnNext(groupedObservable);
+                    }
+                    groupedObservable.OnNext(value);
+
+                }, observer.OnError, () => { foreach (var c in flowDictionary) c.Value.OnComplete(); observer.OnCompleted(); });
+            });
+        }
+
+        internal sealed class GroupedObservable<TKey, TElement> : IGroupedObservable<TKey, TElement> 
+        {
+            private readonly TKey _flowKey;
+            private readonly Subject<TElement> _subject;
+
+            public GroupedObservable(TKey flowKey)
+            {
+                _flowKey = flowKey;
+                _subject = new Subject<TElement>();
+            }
+
+            public void OnNext(TElement element)
+            {
+                _subject.OnNext(element);
+            }
+            public void OnComplete()
+            {
+                _subject.OnCompleted();
+            }
+
+            public TKey Key =>_flowKey;
+
+            public IDisposable Subscribe(IObserver<TElement> observer)
+            {
+                return _subject.Subscribe(observer);
+            }
+        }
+
+        /// <summary>
         /// Projects each element of an observable sequence into consecutive non-overlapping windows. 
         /// The projection is controlled by time provided by <paramref name="getTicks"/> and the 
         /// <paramref name="timeSpan"/> interval.
@@ -85,7 +145,7 @@ namespace Traffix.Core.Observable
         {
             return System.Reactive.Linq.Observable.Create<IObservable<TSource>>(observer =>
             {
-                Window<TSource>? _currentWindow = null;
+                SubjectWindow<TSource>? _currentWindow = null;
                 
                 return source.Subscribe(value =>
                 {
@@ -93,7 +153,7 @@ namespace Traffix.Core.Observable
 
                     if (_currentWindow == null)
                     {
-                        _currentWindow = new Window<TSource>(ticks + timeSpan.Ticks);
+                        _currentWindow = new SubjectWindow<TSource>(ticks + timeSpan.Ticks);
                         _currentWindow.ForwardOnNext(observer);
                     }
 
@@ -108,12 +168,12 @@ namespace Traffix.Core.Observable
                 }, observer.OnError, () => { _currentWindow?.CloseWindow(); observer.OnCompleted(); });
             });
         }
-        internal sealed class Window<TSource>
+        internal sealed class SubjectWindow<TSource>
         {
             long _windowEdgeTicks;
             Subject<TSource> _subject;
 
-            internal Window(long windowEdgeTicks)
+            internal SubjectWindow(long windowEdgeTicks)
             {
                 _windowEdgeTicks = windowEdgeTicks;
                 _subject = new Subject<TSource>();
