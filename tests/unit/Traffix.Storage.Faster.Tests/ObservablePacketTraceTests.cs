@@ -138,12 +138,12 @@ namespace Traffix.Storage.Faster.Tests
             var sw = new Stopwatch();
             sw.Start();
             var observable = SharpPcapReader.CreateObservable(pcapPath).Select(TestHelperFunctions.GetPacket);
-            var wins = observable.TickIntervalWindow(t => t.Ticks, TimeSpan.FromSeconds(60)).Select(o => o.GroupBy(f => f.Packet.GetFlowKey()));
+            var wins = observable.TimeSpanWindow(t => t.Ticks, TimeSpan.FromSeconds(60)).Select(o => o.GroupBy(f => f.Packet.GetFlowKey()));
             var windowNumber = 0;
             var totalPackets = 0;
             await wins.ForEachAsync(async win =>
             {
-                Console.WriteLine($"Window {++windowNumber}:  ");
+                Console.Write($"Window {++windowNumber}:  ");
                 await win.ForEachAsync(async flow =>
                 {
                     var packets = 0;
@@ -158,8 +158,8 @@ namespace Traffix.Storage.Faster.Tests
                         firstSeen = Math.Min(firstSeen, packet.Ticks);
                         lastSeen = Math.Max(lastSeen, packet.Ticks);
                     });
-                    // Console.Write(".");
-                    Console.WriteLine($"  Flow {flow.Key}: firstSeen={new DateTime(firstSeen)}, duration={new TimeSpan(lastSeen - firstSeen)}, packets={packets}, octets={octets}");
+                    Console.Write(".");
+                    //Console.WriteLine($"  Flow {flow.Key}: firstSeen={new DateTime(firstSeen)}, duration={new TimeSpan(lastSeen - firstSeen)}, packets={packets}, octets={octets}");
                 });
                 Console.WriteLine($"Packets = {totalPackets}");
             });
@@ -173,7 +173,7 @@ namespace Traffix.Storage.Faster.Tests
             sw.Start();
             var observable = SharpPcapReader.CreateObservable(pcapPath).Select(TestHelperFunctions.GetPacket);
             var windows = observable
-                .TickIntervalWindow(t => t.Ticks, TimeSpan.FromSeconds(60))
+                .TimeSpanWindow(t => t.Ticks, TimeSpan.FromSeconds(60))
                 .Select(packets => packets.GroupFlows(packet => packet.Packet.GetFlowKey()));
 
             var windowNumber = 0;
@@ -196,7 +196,7 @@ namespace Traffix.Storage.Faster.Tests
             var source = SharpPcapReader.CreateObservable(pcapPath).Select(TestHelperFunctions.GetPacket);
             // get windows of flows:
             var windows = source
-                            .TickIntervalWindow(packet => packet.Ticks, TimeSpan.FromSeconds(60))
+                            .TimeSpanWindow(packet => packet.Ticks, TimeSpan.FromSeconds(60))
                             .Select(window => window.GroupConversations(packet => packet.Packet.GetFlowKey(), flowKey => GetConversationKey(flowKey)));
 
             var windowNumber = 0;

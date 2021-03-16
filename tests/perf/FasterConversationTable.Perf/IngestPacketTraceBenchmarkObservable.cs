@@ -53,7 +53,7 @@ namespace FasterConversationTablePerf
         {
             var packetCount = 0;
             var packets = SharpPcapReader.CreateObservable(dataset).Select(GetPacket);
-            var windows = packets.TimeWindow(t => t.Ticks, TimeSpan.FromMinutes(5));
+            var windows = packets.TimeSpanWindow(t => t.Ticks, TimeSpan.FromMinutes(5));
             await windows.ForEachAsync(async window =>
             {
                 await packets.ForEachAsync(_ =>
@@ -85,7 +85,7 @@ namespace FasterConversationTablePerf
         public async Task ExportWindowedFlows()
         {
             var packets = SharpPcapReader.CreateObservable(dataset).Select(GetPacket);
-            var windows = packets.TimeWindow(t => t.Ticks, TimeSpan.FromMinutes(5)).Select(packets => packets.GroupFlows(f => f.Packet.GetFlowKey()));
+            var windows = packets.TimeSpanWindow(t => t.Ticks, TimeSpan.FromMinutes(5)).Select(packets => packets.GroupFlows(f => f.Packet.GetFlowKey()));
             var windowCount = 0;
             var flowCount = 0;
             await windows.ForEachAsync(async window =>
@@ -120,7 +120,7 @@ namespace FasterConversationTablePerf
         public async Task ExportWindowedConversations()
         {
             var packets = SharpPcapReader.CreateObservable(dataset).Select(GetPacket);
-            var windows = packets.TimeWindow(t => t.Ticks, TimeSpan.FromMinutes(5)).Select(packets => packets.GroupConversations(f => f.Packet.GetFlowKey(), f => GetConversationKey(f)));
+            var windows = packets.TimeSpanWindow(t => t.Ticks, TimeSpan.FromMinutes(5)).Select(packets => packets.GroupConversations(f => f.Packet.GetFlowKey(), f => GetConversationKey(f)));
             var windowCount = 0;
             var conversationCount = 0;
             await windows.ForEachAsync(async window =>

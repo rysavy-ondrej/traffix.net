@@ -81,31 +81,69 @@ namespace Traffix.Core.Observable
         /// <param name="getTicks">The function to get time value of the element.</param>
         /// <param name="timeSpan">The time interval of windows produced.</param>
         /// <returns>An observable sequence of windows.</returns>
-        public static IObservable<IObservable<TSource>> TickIntervalWindow<TSource>(this IObservable<TSource> source, Func<TSource, long> getTicks, TimeSpan timeSpan)
+        public static IObservable<IObservable<TSource>> TimeSpanWindow<TSource>(this IObservable<TSource> source, Func<TSource, long> getTicks, TimeSpan timeSpan)
         {
             return System.Reactive.Linq.Observable.Create<IObservable<TSource>>(observer =>
             {
-                long? _windowEdgeTicks = null;
-                Subject<TSource>? _currentWindow = new Subject<TSource>();
+                Window<TSource>? _currentWindow = null;
+                
                 return source.Subscribe(value =>
                 {
                     var ticks = getTicks(value);
-                    _windowEdgeTicks ??= ticks + timeSpan.Ticks;
 
-                    if (ticks < _windowEdgeTicks)
+                    if (_currentWindow == null)
                     {
-                        _currentWindow?.OnNext(value);
+                        _currentWindow = new Window<TSource>(ticks + timeSpan.Ticks);
+                        _currentWindow.ForwardOnNext(observer);
                     }
-                    else
-                    {
-                        _currentWindow?.OnCompleted();
 
-                        _windowEdgeTicks += timeSpan.Ticks;
-                        _currentWindow = new Subject<TSource>();
-                        observer.OnNext(_currentWindow);
+                    if (!_currentWindow.IsInWindow(ticks))
+                    {
+                        _currentWindow.CloseWindow();
+                        _currentWindow.Shift(timeSpan.Ticks);
+                        _currentWindow.ForwardOnNext(observer);
                     }
-                }, observer.OnError, observer.OnCompleted);
+                    _currentWindow.OnNext(value);
+                    
+                }, observer.OnError, () => { _currentWindow?.CloseWindow(); observer.OnCompleted(); });
             });
+        }
+        internal sealed class Window<TSource>
+        {
+            long _windowEdgeTicks;
+            Subject<TSource> _subject;
+
+            internal Window(long windowEdgeTicks)
+            {
+                _windowEdgeTicks = windowEdgeTicks;
+                _subject = new Subject<TSource>();
+            }
+
+            internal void ForwardOnNext(IObserver<IObservable<TSource>> observer)
+            {
+                observer.OnNext(_subject);
+            }
+
+            internal bool IsInWindow(long ticks)
+            {
+                return ticks < _windowEdgeTicks;
+            }
+
+            internal void CloseWindow()
+            {
+                _subject.OnCompleted();
+            }
+
+            internal void OnNext(TSource value)
+            {
+                _subject.OnNext(value);
+            }
+
+            internal void Shift(long ticks)
+            {
+                _windowEdgeTicks += ticks;
+                _subject = new Subject<TSource>();
+            }
         }
     }
 }
