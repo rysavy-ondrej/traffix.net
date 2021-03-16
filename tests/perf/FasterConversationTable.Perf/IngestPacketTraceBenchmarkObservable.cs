@@ -45,15 +45,15 @@ namespace FasterConversationTablePerf
             var observable = SharpPcapReader.CreateObservable(dataset).Select(GetPacket);
             // get windows of flows:
             var wins = observable.TimeWindow(t => t.Ticks, TimeSpan.FromMinutes(5)).Select(o => o.GroupBy(f => f.Packet.GetFlowKey()));
-            var windowNumber = 0;
+            var windowCount = 0;
+            var flowCount = 0;
             await wins.ForEachAsync(async win =>
             {
-                Console.Write($"Window {++windowNumber}:  ");
+                windowCount++;
                 await win.ApplyFlowProcessor(FlowProcessor).ForEachAsync(flowStr =>
                 {
-                    Console.Write('.');
+                    flowCount++;
                 });
-                Console.WriteLine();
             });
         }
     }

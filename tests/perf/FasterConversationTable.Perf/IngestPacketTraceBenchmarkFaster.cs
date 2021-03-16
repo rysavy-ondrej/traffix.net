@@ -13,7 +13,7 @@ namespace FasterConversationTablePerf
 
     [SimpleJob(RunStrategy.Monitoring, targetCount: 5)]
     [MinColumn, MaxColumn, MeanColumn, MedianColumn]
-    public class IngestPacketTraceBenchmark
+    public class IngestPacketTraceBenchmarkFaster
     {
 
         [Params(@"D:\Captures\ecbs21paper.datasets\4SICS-GeekLounge-151020.pcap", @"D:\Captures\ecbs21paper.datasets\4SICS-GeekLounge-151021.pcap", @"D:\Captures\ecbs21paper.datasets\4SICS-GeekLounge-151022.pcap")]
@@ -69,7 +69,7 @@ namespace FasterConversationTablePerf
         {
             var start = DateTimeOffset.FromUnixTimeSeconds(_conversationTable.FrameKeys.First().Epoch);
             var end = DateTimeOffset.FromUnixTimeSeconds(_conversationTable.FrameKeys.Last().Epoch);
-            var span = (end - start) / 100;
+            var span = TimeSpan.FromMinutes(5);
             var windows = _conversationTable.Conversations.GroupByWindow(start.DateTime, span);
             windows.Count();
         }
@@ -78,7 +78,7 @@ namespace FasterConversationTablePerf
         {
             var start = DateTimeOffset.FromUnixTimeSeconds(_conversationTable.FrameKeys.First().Epoch);
             var end = DateTimeOffset.FromUnixTimeSeconds(_conversationTable.FrameKeys.Last().Epoch);
-            var span = (end - start) / 100;
+            var span = TimeSpan.FromMinutes(5);
             var windows = _conversationTable.Conversations.GroupByWindow(start.DateTime, span);
             var conversations = windows.SelectMany(conversationKeys =>
                 _conversationTable.ProcessConversations(conversationKeys, new FasterConversationTable.PacketConversationProcessor().ApplyToWindow(start.DateTime, span)));
