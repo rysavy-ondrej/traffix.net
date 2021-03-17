@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -76,6 +77,7 @@ namespace Traffix.Core.Observable
         /// Projects each element of an observable sequence into the corresponding flow.
         /// <para/>
         /// This method implements the operator directly without the use of GroupBy. The performance is similar. 
+        /// TODO - can we do it without the use of Subject?
         /// </summary>
         /// <typeparam name="TFlowKey">The type of flow key.</typeparam>
         /// <typeparam name="TSource">The packet type.</typeparam>
@@ -205,5 +207,42 @@ namespace Traffix.Core.Observable
                 _subject = new Subject<TSource>();
             }
         }
+    }
+    public class FlowProcessor<TSource, TFlowKey, TFlowRecord> : IEnumerable<KeyValuePair<TFlowKey, TFlowRecord>>
+    {
+        private readonly Dictionary<TFlowKey, TFlowRecord> _flowDictionary;
+        private readonly Action<TFlowRecord, TSource> _updateAction;
+        private readonly Func<TSource, TFlowRecord> _createFunc;
+
+        public FlowProcessor(Func<TSource, TFlowRecord> createFunc, Action<TFlowRecord, TSource> updateAction)
+        {
+            _flowDictionary = new Dictionary<TFlowKey, TFlowRecord>(1024);
+            _updateAction = updateAction;
+            _createFunc = createFunc;
+        }
+
+        public void OnNext(TFlowKey key, TSource packet)
+        {
+            if (_flowDictionary.TryGetValue(key, out var flowRecord))
+            {
+                _updateAction(flowRecord, packet);
+            }
+            else
+            {
+                _flowDictionary.Add(key, _createFunc(packet));
+            }
+        }
+
+        public IEnumerator<KeyValuePair<TFlowKey, TFlowRecord>> GetEnumerator()
+        {
+            return ((IEnumerable<KeyValuePair<TFlowKey, TFlowRecord>>)_flowDictionary).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return ((IEnumerable)_flowDictionary).GetEnumerator();
+        }
+
+        public int Count => _flowDictionary.Count;
     }
 }

@@ -73,7 +73,7 @@ namespace FasterConversationTablePerf
             var packets = SharpPcapReader.CreateObservable(dataset).Select(GetPacket);
             var flows = packets.GroupFlows(f => f.Packet.GetFlowKey());
             var flowCount = 0;
-            await flows.ApplyFlowProcessor(FlowProcessor).ForEachAsync(_ =>
+            await flows.ApplyFlowProcessor(FlowProcessorFunc).ForEachAsync(_ =>
             {
                 flowCount++;
             });
@@ -91,7 +91,7 @@ namespace FasterConversationTablePerf
             await windows.ForEachAsync(async window =>
             {
                 windowCount++;
-                await window.ApplyFlowProcessor(FlowProcessor).ForEachAsync(_ =>
+                await window.ApplyFlowProcessor(FlowProcessorFunc).ForEachAsync(_ =>
                 {
                     flowCount++;
                 });
@@ -133,7 +133,30 @@ namespace FasterConversationTablePerf
             });
         }
 
+        /// <summary>
+        /// Creates flows using flow processor applied in the consumer phase.
+        /// </summary>
+        public async Task ExportWindowedFlowsByProcessor()
+        {
+            var packets = SharpPcapReader.CreateObservable(dataset).Select(GetPacketAndKey);
+            var windows = packets.TimeSpanWindow(t => t.Ticks, TimeSpan.FromMinutes(5));
+            var windowCount = 0;
+            var totalPackets = 0;
+            await windows.ForEachAsync(async window =>
+            {
+                windowCount++;
+                var flowProcessor = new FlowProcessor<(long, FlowKey, Packet), FlowKey, NetFlowRecord>(NetFlowRecord.CreateRecord, NetFlowRecord.UpdateRecord);
+                await window.Do(_ => totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p.Key, p));
+                Console.WriteLine($"Window = {windowCount},  Flows = {flowProcessor.Count},  Packets = {totalPackets}");
+            });
+        }
+
         #region Helper methods
+        private (long Ticks, FlowKey Key, Packet Packet) GetPacketAndKey(RawFrame arg)
+        {
+            var packet = GetPacket(arg);
+            return (packet.Ticks, packet.Packet.GetFlowKey(), packet.Packet);
+        }
         private (long Ticks, Packet Packet) GetPacket(RawFrame arg)
         {
             return (arg.Ticks, Packet.ParsePacket(arg.LinkLayer, arg.Data));
@@ -145,7 +168,7 @@ namespace FasterConversationTablePerf
             var sp2 = revKey.SourcePort;
             return sp1 > sp2 ? key : revKey;
         }
-        private async Task<string> FlowProcessor(FlowKey flowKey, IObservable<(long Ticks, Packet Packet)> packets)
+        private async Task<string> FlowProcessorFunc(FlowKey flowKey, IObservable<(long Ticks, Packet Packet)> packets)
         {
             var packetCount = 0;
             var firstSeen = long.MaxValue;
@@ -181,6 +204,26 @@ namespace FasterConversationTablePerf
                 });
             });
             return $"  Conv ({conversationKey}) {flowKey}: flows={flowCount}, firstSeen={new DateTime(firstSeen)}, duration={new TimeSpan(lastSeen - firstSeen)}, packets={packetCount}, octets={octets}";
+        }
+        class NetFlowRecord
+        {
+            public long Octets { get; set; }
+            public int Packets { get; set; }
+            public long FirstSeen { get; set; }
+            public long LastSeen { get; set; }
+
+            public static NetFlowRecord CreateRecord((long, FlowKey, Packet) c)
+            {
+                return new NetFlowRecord { FirstSeen = c.Item1, LastSeen = c.Item1, Octets = c.Item3.TotalPacketLength, Packets = 1 };
+            }
+
+            public static void UpdateRecord(NetFlowRecord record, (long, FlowKey, Packet) packet)
+            {
+                record.Packets++;
+                record.Octets += packet.Item3.TotalPacketLength;
+                record.FirstSeen = Math.Min(record.FirstSeen, packet.Item1);
+                record.LastSeen = Math.Max(record.FirstSeen, packet.Item1);
+            }
         }
         #endregion
     }

@@ -14,6 +14,7 @@ using Traffix.Data;
 using Traffix.Providers.PcapFile;
 using Microsoft.StreamProcessing;
 using Traffix.Processors;
+using System.Collections;
 
 namespace Traffix.Storage.Faster.Tests
 {
@@ -180,7 +181,7 @@ namespace Traffix.Storage.Faster.Tests
             await windows.ForEachAsync(async win =>
             {
                 Console.WriteLine($"Window {++windowNumber}:  ");
-                await win.ApplyFlowProcessor(FlowProcessor).Do(_ => totalFlows++).ForEachAsync(flowStr =>
+                await win.ApplyFlowProcessor(FlowProcessorFunc).Do(_ => totalFlows++).ForEachAsync(flowStr =>
                 {
                     Console.WriteLine(flowStr);
                 });
@@ -202,7 +203,7 @@ namespace Traffix.Storage.Faster.Tests
             await windows.ForEachAsync(async win =>
             {
                 Console.WriteLine($"Window {++windowNumber}:  ");
-                await win.ApplyFlowProcessor(FlowProcessor).Do(_ => totalFlows++).ForEachAsync(flowStr =>
+                await win.ApplyFlowProcessor(FlowProcessorFunc).Do(_ => totalFlows++).ForEachAsync(flowStr =>
                 {
                     Console.WriteLine(flowStr);
                 });
@@ -233,7 +234,27 @@ namespace Traffix.Storage.Faster.Tests
             Console.WriteLine($"All done [{sw.Elapsed}]");
         }
 
+
+        [TestMethod]
+        public async Task TestTimeWindowFlowProcessorOperator()
+        {
+            var pcapPath = Path.Combine(TestEnvironment.DataPath, "testbed-32.pcap");
+            var sw = new Stopwatch();
+            sw.Start();
+            var observable = SharpPcapReader.CreateObservable(pcapPath).Select(TestHelperFunctions.GetPacketAndKey);
+            var windows = observable.TimeSpanWindow(t => t.Ticks, TimeSpan.FromSeconds(60));
+            var windowCount = 0;
+            var totalPackets = 0;
+            await windows.ForEachAsync(async window =>
+            {
+                var flowProcessor = new FlowProcessor<(long, FlowKey, Packet), FlowKey, NetFlowRecord>(NetFlowRecord.CreateRecord, NetFlowRecord.UpdateRecord);
+                await window.Do(_=>totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p.Key, p));
+                Console.WriteLine($"Window = {windowCount},  Flows = {flowProcessor.Count},  Packets = {totalPackets}");
+            });
+        }
+
         #region Helper methods
+        
         private FlowKey GetConversationKey(FlowKey key)
         {
             var revKey = key.Reverse();
@@ -265,7 +286,7 @@ namespace Traffix.Storage.Faster.Tests
             return $"  Conv ({conversationKey}) {flowKey}: flows={flowCount}, firstSeen={new DateTime(firstSeen)}, duration={new TimeSpan(lastSeen - firstSeen)}, packets={packetCount}, octets={octets}";
         }
 
-        private async Task<string> FlowProcessor(FlowKey flowKey, IObservable<(long Ticks, Packet Packet)> packets)
+        private async Task<string> FlowProcessorFunc(FlowKey flowKey, IObservable<(long Ticks, Packet Packet)> packets)
         {
             var packetCount = 0;
             var firstSeen = long.MaxValue;
@@ -279,6 +300,28 @@ namespace Traffix.Storage.Faster.Tests
                 lastSeen = Math.Max(lastSeen, packet.Ticks);
             });
             return $"  Flow {flowKey}: firstSeen={new DateTime(firstSeen)}, duration={new TimeSpan(lastSeen - firstSeen)}, packets={packetCount}, octets={octets}";
+        }
+
+
+        class NetFlowRecord
+        {
+            public long Octets { get; set; }
+            public int Packets { get; set; }
+            public long FirstSeen { get; set; }
+            public long LastSeen { get; set; }
+
+            public static NetFlowRecord CreateRecord((long, FlowKey, Packet) c)
+            {
+                return new NetFlowRecord { FirstSeen = c.Item1, LastSeen = c.Item1, Octets = c.Item3.TotalPacketLength, Packets = 1 };
+            }
+
+            public static void UpdateRecord(NetFlowRecord record, (long, FlowKey, Packet) packet)
+            {
+                record.Packets++;
+                record.Octets += packet.Item3.TotalPacketLength;
+                record.FirstSeen = Math.Min(record.FirstSeen, packet.Item1);
+                record.LastSeen = Math.Max(record.FirstSeen, packet.Item1);
+            }
         }
         #endregion
     }
