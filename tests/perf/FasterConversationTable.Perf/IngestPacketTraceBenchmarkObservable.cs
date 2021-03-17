@@ -136,6 +136,7 @@ namespace FasterConversationTablePerf
         /// <summary>
         /// Creates flows using flow processor applied in the consumer phase.
         /// </summary>
+        [Benchmark]
         public async Task ExportWindowedFlowsByProcessor()
         {
             var packets = SharpPcapReader.CreateObservable(dataset).Select(GetPacketAndKey);
