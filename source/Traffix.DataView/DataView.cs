@@ -129,39 +129,4 @@ namespace Traffix.DataView
             }
         }
     }
-
-    /*
-        static readonly Dictionary<Type, DataViewGetters> _gettersDictionary = new Dictionary<Type, DataViewGetters>();
-        static readonly Dictionary<Type, DataViewSchema> _schemaDictionary = new Dictionary<Type, DataViewSchema>();
-        private static DataViewSchema GetOrCreateSchema(Type type)
-        {
-            if (!_schemaDictionary.TryGetValue(type, out var schema))
-            {
-                schema = CreateSchema(type);
-                _schemaDictionary[type] = schema;
-            }
-            return schema;
-        }
-
-        private static DataViewSchema CreateSchema(Type type)
-        {
-            var builder = new DataViewSchema.Builder();
-            var members = DataViewTypeRegister.GetRecordInfo(type);
-            foreach (var member in members)
-            {
-                builder.AddColumn(member.Name, member.DataViewType);
-            }
-            return builder.ToSchema();
-        }
-
-        private static DataViewGetters GetOrCreateGetters(Type type)
-        {
-            if (!_gettersDictionary.TryGetValue(type, out var getters))
-            {
-                getters = DataViewGetters.CreateForType(type);
-                _gettersDictionary[type] = getters;
-            }
-            return getters;
-        }
-    */
 }

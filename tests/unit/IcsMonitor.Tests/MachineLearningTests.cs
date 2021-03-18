@@ -18,10 +18,8 @@ using Microsoft.ML.Data;
 
 namespace IcsMonitor.Tests
 {
-
-
     [TestClass]
-    public class IcsDatasetTests
+    public class MachineLearningTests
     {
         public void PrepareDataForOCKMeans(int numberOfClusters, string sourceFile, DateTime start, TimeSpan duration)
         {
