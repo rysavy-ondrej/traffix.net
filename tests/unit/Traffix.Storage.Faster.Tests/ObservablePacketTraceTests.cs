@@ -280,7 +280,7 @@ namespace Traffix.Storage.Faster.Tests
             var windows = observable.TimeSpanWindow(t => t.Ticks, TimeSpan.FromSeconds(60));
             var windowCount = 0;
             var totalPackets = 0;
-            await windows.ForEachAsync(async window =>
+            await windows.Do(_ => windowCount++).ForEachAsync(async window =>
             {
                 var flowProcessor = new NetFlowProcessor();
                 await window.Do(_ => totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p));
@@ -292,6 +292,38 @@ namespace Traffix.Storage.Faster.Tests
                 foreach (var flow in flowProcessor.AggregateFlows(f=>(f.ProtocolType, f.SourceIpAddress, f.DestinationIpAddress)))
                 {
                     Console.WriteLine($"| {new DateTime(flow.Value.FirstSeen)} |  {new TimeSpan(flow.Value.LastSeen - flow.Value.FirstSeen)} | {flow.Key.ProtocolType} | {flow.Key.SourceIpAddress} | {flow.Key.DestinationIpAddress} | {flow.Value.Packets} | {flow.Value.Octets} |");
+                }
+                Console.WriteLine();
+            });
+        }
+
+
+        [TestMethod]
+        public async Task TestTimeWindowConversationProcessor()
+        {
+            var pcapPath = Path.Combine(TestEnvironment.DataPath, "testbed-32.pcap");
+            var sw = new Stopwatch();
+            sw.Start();
+            var observable = SharpPcapReader.CreateObservable(pcapPath).Select(TestHelperFunctions.GetPacketAndKey);
+            var windows = observable.TimeSpanWindow(t => t.Ticks, TimeSpan.FromSeconds(60));
+            var windowCount = 0;
+            var totalPackets = 0;
+            await windows.Do(_ => windowCount++).ForEachAsync(async window =>
+            {
+                var flowProcessor = new NetFlowProcessor();
+
+                await window.Do(_ => totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p));
+
+                // Get the results:
+                Console.WriteLine($"# Window {windowCount}");
+                Console.WriteLine($"Flows = {flowProcessor.Count},  Packets = {totalPackets}");
+                Console.WriteLine();
+                Console.WriteLine("| Date first seen | Duration | Proto | Src IP Addr:Port | Dst IP Addr:Port | Packets | Bytes |");
+                Console.WriteLine("| --------------- | -------- | ----- | ---------------- | ---------------- | ------- | ----- |");
+
+                foreach (var flow in flowProcessor.GetConversations(flowProcessor.GetConversationKey))
+                {
+                    Console.WriteLine($"| {new DateTime(flow.Value.FirstSeen)} |  {new TimeSpan(flow.Value.LastSeen - flow.Value.FirstSeen)} | {flow.Key.FlowKey.ProtocolType} | {flow.Key.FlowKey.SourceIpAddress}:{flow.Key.FlowKey.SourcePort} | {flow.Key.FlowKey.DestinationIpAddress}:{flow.Key.FlowKey.DestinationPort} | {flow.Value.Packets} | {flow.Value.Octets} |");
                 }
                 Console.WriteLine();
             });
@@ -359,9 +391,20 @@ namespace Traffix.Storage.Faster.Tests
                 return NetFlowRecord.Create(source);
             }
 
-            protected override FlowKey GetKey((long, FlowKey, Packet) source)
+            protected override FlowKey GetFlowKey((long, FlowKey, Packet) source)
             {
                 return source.Item2;
+            }
+            public ConversationKey GetConversationKey(FlowKey flowKey)
+            {
+                if (flowKey.SourcePort > flowKey.DestinationPort)
+                {
+                    return new ConversationKey(flowKey);
+                }
+                else
+                {
+                    return new ConversationKey(flowKey.Reverse());
+                }
             }
 
             protected override void Update(NetFlowRecord record, (long, FlowKey, Packet) source)

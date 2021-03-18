@@ -8,6 +8,7 @@ using Traffix.Core.Flows;
 using PacketDotNet;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Traffix.Storage.Faster;
 
 namespace FasterConversationTablePerf
 {
@@ -219,7 +220,7 @@ namespace FasterConversationTablePerf
                 return NetFlowRecord.Create(source);
             }
 
-            protected override FlowKey GetKey((long, FlowKey, Packet) source)
+            protected override FlowKey GetFlowKey((long, FlowKey, Packet) source)
             {
                 return source.Item2;
             }

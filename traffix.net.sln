@@ -35,7 +35,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Traffix.Rules", "source\Tra
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "perf", "perf", "{8CB0CF0C-F8D6-4099-BED8-8D7BB722E55D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FasterConversationTable.Perf", "tests\perf\FasterConversationTable.Perf\FasterConversationTable.Perf.csproj", "{AFB8C64D-45BF-4E83-88C2-4FC41CE3E486}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FasterConversationTable.Perf", "tests\perf\FasterConversationTable.Perf\FasterConversationTable.Perf.csproj", "{AFB8C64D-45BF-4E83-88C2-4FC41CE3E486}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Traffix.DataView", "source\Traffix.DataView\Traffix.DataView.csproj", "{96EF8A96-C99D-452A-A59E-328583FFA72F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Traffix.DataView.Tests", "tests\unit\Traffix.DataView.Tests\Traffix.DataView.Tests.csproj", "{7334C819-F8DC-4C12-92F1-68A57270E610}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -91,6 +95,14 @@ Global
 		{AFB8C64D-45BF-4E83-88C2-4FC41CE3E486}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AFB8C64D-45BF-4E83-88C2-4FC41CE3E486}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AFB8C64D-45BF-4E83-88C2-4FC41CE3E486}.Release|Any CPU.Build.0 = Release|Any CPU
+		{96EF8A96-C99D-452A-A59E-328583FFA72F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{96EF8A96-C99D-452A-A59E-328583FFA72F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{96EF8A96-C99D-452A-A59E-328583FFA72F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{96EF8A96-C99D-452A-A59E-328583FFA72F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7334C819-F8DC-4C12-92F1-68A57270E610}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7334C819-F8DC-4C12-92F1-68A57270E610}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7334C819-F8DC-4C12-92F1-68A57270E610}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7334C819-F8DC-4C12-92F1-68A57270E610}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -110,6 +122,8 @@ Global
 		{531E47CA-6405-4A5E-B53E-3CDEB33C0C81} = {98D8FEC4-E6DB-445B-90DE-D5BA4D6F6B74}
 		{8CB0CF0C-F8D6-4099-BED8-8D7BB722E55D} = {350D5502-6201-4C5E-B565-82BCC303586B}
 		{AFB8C64D-45BF-4E83-88C2-4FC41CE3E486} = {8CB0CF0C-F8D6-4099-BED8-8D7BB722E55D}
+		{96EF8A96-C99D-452A-A59E-328583FFA72F} = {98D8FEC4-E6DB-445B-90DE-D5BA4D6F6B74}
+		{7334C819-F8DC-4C12-92F1-68A57270E610} = {350D5502-6201-4C5E-B565-82BCC303586B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7F60D44A-7A9B-4ADF-916D-C1CC93F10BC6}

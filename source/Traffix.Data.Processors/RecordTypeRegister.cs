@@ -83,17 +83,17 @@ namespace Traffix.Processors
         }
 
 
-    /// <summary>
-    /// Gets the collection of member information objects for the given <paramref name="type"/>.
-    /// <para/> 
-    /// This method enumerates the member in nested classed and structures. It provives a collection of all members found.
-    /// The full names of member are given as paths in the root class hierarchy.
-    /// </summary>
-    /// <param name="type">The type for which to get columns.</param>
-    /// <param name="prefix">The path prefix to use for constructing full names of members.</param>
-    /// <param name="pathDelimiter">The path delimiter used in member path names.</param>
-    /// <returns>A collection of member information objects that each consists of  member path,  member type and  accessor function.</returns>
-    public static ICollection<RecordMemberInfo> ExtractRecordMembers(Type type, string prefix = null, string pathDelimiter = "_")
+        /// <summary>
+        /// Gets the collection of member information objects for the given <paramref name="type"/>.
+        /// <para/> 
+        /// This method enumerates the member in nested classed and structures. It provives a collection of all members found.
+        /// The full names of member are given as paths in the root class hierarchy.
+        /// </summary>
+        /// <param name="type">The type for which to get columns.</param>
+        /// <param name="prefix">The path prefix to use for constructing full names of members.</param>
+        /// <param name="pathDelimiter">The path delimiter used in member path names.</param>
+        /// <returns>A collection of member information objects that each consists of  member path,  member type and  accessor function.</returns>
+        public static ICollection<RecordMemberInfo> ExtractRecordMembers(Type type, string prefix = null, string pathDelimiter = "_")
         {
             var members = new List<RecordMemberInfo>();
 
@@ -110,7 +110,7 @@ namespace Traffix.Processors
             static bool IsSupportedBasicType(Type type)
             {
                 return type.IsEnum
-                    || type.IsPrimitive  
+                    || type.IsPrimitive
                     || type == typeof(String)
                     || type == typeof(DateTime)
                     || type == typeof(DateTimeOffset)
@@ -132,7 +132,7 @@ namespace Traffix.Processors
                 // if so, we use it instead of analyzing the type via reflection...
                 if (_registeredRecordTypes.TryGetValue(objectType, out var recordMembers))
                 {
-                    members.AddRange(recordMembers.Select(m => m.Instantiate(x=>MemberPathCombine(objectPrefix,x), objectGetterFunc)));    
+                    members.AddRange(recordMembers.Select(m => m.Instantiate(x => MemberPathCombine(objectPrefix, x), objectGetterFunc)));
                 }
                 else
                 {
@@ -168,7 +168,49 @@ namespace Traffix.Processors
             CollectRecordMemberInfos(prefix != null ? new[] { prefix } : Array.Empty<string>(), type, x => x);
             return members;
         }
+    }
+    /// <summary>
+    /// Provides a member information for a single public field and property.
+    /// <para/> 
+    /// It contains name and type of the member as well as <see cref="ValueGetter"/> function.
+    /// </summary>
+    public class RecordMemberInfo
+    {
+        /// <summary>
+        /// The name of the accessible member.
+        /// </summary>
+        public string Name { get; }
+        /// <summary>
+        /// The member type.
+        /// </summary>
+        public Type Type { get; }
+        /// <summary>
+        /// The function to read the value of the member.
+        /// </summary>
+        public Func<object, object> ValueGetter { get; }
+        /// <summary>
+        /// The <see cref="DataViewType"/> to which this member is convertible.
+        /// </summary>
+        public DataViewType DataViewType => GetDataViewType(Type);
 
+        /// <summary>
+        /// Creates the new member info instance. 
+        /// </summary>
+        /// <param name="name"> The member type.</param>
+        /// <param name="type">The member type.</param>
+        /// <param name="getter">The function to read the value of the member.</param>
+        internal RecordMemberInfo(string name, Type type, Func<object, object> getter)
+        {
+            Name = name;
+            Type = type;
+            ValueGetter = getter;
+         
+        }
+
+        internal RecordMemberInfo Instantiate(Func<string, string> memberNameFunc, Func<object, object> objectGetterFunc)
+        {
+            return new RecordMemberInfo(memberNameFunc(this.Name), this.Type, x => this.ValueGetter(objectGetterFunc(x)));
+        }
         /// <summary>
         /// Gets the <see cref="DataViewType"/> that matches the provided <paramref name="rawType"/>. 
         /// </summary>
@@ -244,49 +286,6 @@ namespace Traffix.Processors
             else // anything else is error
             {
                 throw new NotSupportedException($"The type {rawType} does not have corresponding DataViewType.");
-            }
-        }
-        
-        /// <summary>
-        /// Provides a member information for a single public field and property.
-        /// <para/> 
-        /// It contains name and type of the member as well as <see cref="ValueGetter"/> function.
-        /// </summary>
-        public class RecordMemberInfo
-        {
-            /// <summary>
-            /// The name of the accessible member.
-            /// </summary>
-            public string Name { get; }
-            /// <summary>
-            /// The member type.
-            /// </summary>
-            public Type Type { get; }
-            /// <summary>
-            /// The function to read the value of the member.
-            /// </summary>
-            public Func<object, object> ValueGetter { get; }
-            /// <summary>
-            /// The <see cref="DataViewType"/> to which this member is convertible.
-            /// </summary>
-            public DataViewType DataViewType => GetDataViewType(Type);
-
-            /// <summary>
-            /// Creates the new member info instance. 
-            /// </summary>
-            /// <param name="name"> The member type.</param>
-            /// <param name="type">The member type.</param>
-            /// <param name="getter">The function to read the value of the member.</param>
-            internal RecordMemberInfo(string name, Type type, Func<object, object> getter)
-            {
-                Name = name;
-                Type = type;
-                ValueGetter = getter;
-            }
-
-            internal RecordMemberInfo Instantiate(Func<string, string> memberNameFunc, Func<object, object> objectGetterFunc)
-            {
-                return new RecordMemberInfo(memberNameFunc(this.Name), this.Type, x => this.ValueGetter(objectGetterFunc(x)));
             }
         }
     }

@@ -16,7 +16,7 @@ namespace Traffix.Processors
         }
 
 
-        public void AddColumn(RecordTypeRegister.RecordMemberInfo member, IEnumerable values)
+        public void AddColumn(RecordMemberInfo member, IEnumerable values)
         {
             _columns.Add(CreateColumn(member, values));
         }
@@ -29,7 +29,7 @@ namespace Traffix.Processors
         /// <param name="columnType">The column type.</param>
         /// <param name="values">The collection of values that must be of the <paramref name="columnType"/>.</param>
         /// <returns>The new <see cref="DataFrameColumn"/>for the parameters specified.</returns>
-        public static DataFrameColumn CreateColumn(RecordTypeRegister.RecordMemberInfo member, IEnumerable values)
+        public static DataFrameColumn CreateColumn(RecordMemberInfo member, IEnumerable values)
         {
             var columnType = member.Type;
             var name = member.Name;

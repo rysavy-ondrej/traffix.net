@@ -10,6 +10,7 @@ using Traffix.Core.Observable;
 using Traffix.Extensions.Decoders.Industrial;
 using Traffix.Processors;
 using Traffix.Providers.PcapFile;
+using Traffix.Storage.Faster;
 
 namespace IcsMonitor.Tests
 {
@@ -368,9 +369,21 @@ namespace IcsMonitor.Tests
             }
         }
 
-        protected override FlowKey GetKey(PacketRecord source)
+        protected override FlowKey GetFlowKey(PacketRecord source)
         {
             return source.Key;
+        }
+
+        public static ConversationKey GetConversationKey(FlowKey flowKey)
+        { 
+            if (flowKey.SourcePort > flowKey.DestinationPort)
+            {
+                return new ConversationKey(flowKey);
+            }
+            else
+            {
+                return new ConversationKey(flowKey.Reverse());
+            }
         }
     }
 }
