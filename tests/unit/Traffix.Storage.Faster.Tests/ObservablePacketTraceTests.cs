@@ -247,14 +247,49 @@ namespace Traffix.Storage.Faster.Tests
             var totalPackets = 0;
             await windows.ForEachAsync(async window =>
             {
-                var flowProcessor = new FlowProcessor<(long, FlowKey, Packet), FlowKey, NetFlowRecord>(NetFlowRecord.CreateRecord, NetFlowRecord.UpdateRecord);
+                var flowProcessor = new NetFlowProcessor();
                 await window.Do(_=>totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p.Key, p));
-                Console.WriteLine($"Window = {windowCount},  Flows = {flowProcessor.Count},  Packets = {totalPackets}");
+                Console.WriteLine($"# Window {windowCount}");
+                Console.WriteLine($"Flows = {flowProcessor.Count},  Packets = {totalPackets}");
+                Console.WriteLine();
+                Console.WriteLine("| Date first seen | Duration | Proto | Src IP Addr:Port | Dst IP Addr:Port | Packets | Bytes |");
+                Console.WriteLine("| --------------- | -------- | ----- | ---------------- | ---------------- | ------- | ----- |");
+                foreach (var flow in flowProcessor)
+                {
+                    Console.WriteLine($"| {new DateTime(flow.Value.FirstSeen)} |  {new TimeSpan(flow.Value.LastSeen - flow.Value.FirstSeen)} | {flow.Key.ProtocolType} | {flow.Key.SourceIpAddress}:{flow.Key.SourcePort} | {flow.Key.DestinationIpAddress}:{flow.Key.DestinationPort} | {flow.Value.Packets} | {flow.Value.Octets} |");
+                }
+                Console.WriteLine();
+            });
+        }
+        [TestMethod]
+        public async Task TestTimeWindowFlowProcessorAggregate()
+        {
+            var pcapPath = Path.Combine(TestEnvironment.DataPath, "testbed-32.pcap");
+            var sw = new Stopwatch();
+            sw.Start();
+            var observable = SharpPcapReader.CreateObservable(pcapPath).Select(TestHelperFunctions.GetPacketAndKey);
+            var windows = observable.TimeSpanWindow(t => t.Ticks, TimeSpan.FromSeconds(60));
+            var windowCount = 0;
+            var totalPackets = 0;
+            await windows.ForEachAsync(async window =>
+            {
+                var flowProcessor = new NetFlowProcessor();
+                await window.Do(_ => totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p.Key, p));
+                Console.WriteLine($"# Window {windowCount}");
+                Console.WriteLine($"Flows = {flowProcessor.Count},  Packets = {totalPackets}");
+                Console.WriteLine();
+                Console.WriteLine("| Date first seen | Duration | Proto | Src IP Addr:Port | Dst IP Addr:Port | Packets | Bytes |");
+                Console.WriteLine("| --------------- | -------- | ----- | ---------------- | ---------------- | ------- | ----- |");
+                foreach (var flow in flowProcessor.AggregateFlows(f=>(f.ProtocolType, f.SourceIpAddress, f.DestinationIpAddress)))
+                {
+                    Console.WriteLine($"| {new DateTime(flow.Value.FirstSeen)} |  {new TimeSpan(flow.Value.LastSeen - flow.Value.FirstSeen)} | {flow.Key.ProtocolType} | {flow.Key.SourceIpAddress} | {flow.Key.DestinationIpAddress} | {flow.Value.Packets} | {flow.Value.Octets} |");
+                }
+                Console.WriteLine();
             });
         }
 
         #region Helper methods
-        
+
         private FlowKey GetConversationKey(FlowKey key)
         {
             var revKey = key.Reverse();
@@ -303,24 +338,43 @@ namespace Traffix.Storage.Faster.Tests
         }
 
 
-        class NetFlowRecord
+        class NetFlowProcessor : FlowProcessor<(long, FlowKey, Packet), FlowKey, NetFlowProcessor.NetFlowRecord>
         {
-            public long Octets { get; set; }
-            public int Packets { get; set; }
-            public long FirstSeen { get; set; }
-            public long LastSeen { get; set; }
-
-            public static NetFlowRecord CreateRecord((long, FlowKey, Packet) c)
+            public NetFlowProcessor() : base(NetFlowRecord.Create, NetFlowRecord.Update, NetFlowRecord.Aggregate)
             {
-                return new NetFlowRecord { FirstSeen = c.Item1, LastSeen = c.Item1, Octets = c.Item3.TotalPacketLength, Packets = 1 };
             }
 
-            public static void UpdateRecord(NetFlowRecord record, (long, FlowKey, Packet) packet)
+            public class NetFlowRecord
             {
-                record.Packets++;
-                record.Octets += packet.Item3.TotalPacketLength;
-                record.FirstSeen = Math.Min(record.FirstSeen, packet.Item1);
-                record.LastSeen = Math.Max(record.FirstSeen, packet.Item1);
+                public long Octets { get; set; }
+                public int Packets { get; set; }
+                public long FirstSeen { get; set; }
+                public long LastSeen { get; set; }
+
+                public static NetFlowRecord Create((long, FlowKey, Packet) c)
+                {
+                    return new NetFlowRecord { FirstSeen = c.Item1, LastSeen = c.Item1, Octets = c.Item3.TotalPacketLength, Packets = 1 };
+                }
+
+                public static void Update(NetFlowRecord record, (long, FlowKey, Packet) packet)
+                {
+                    record.Packets++;
+                    record.Octets += packet.Item3.TotalPacketLength;
+                    record.FirstSeen = Math.Min(record.FirstSeen, packet.Item1);
+                    record.LastSeen = Math.Max(record.FirstSeen, packet.Item1);
+                }
+
+                public static NetFlowRecord Aggregate(NetFlowRecord arg1, NetFlowRecord arg2)
+                {
+                    return new NetFlowRecord
+                    {
+                        Octets = arg1.Octets + arg2.Octets,
+                        Packets = arg1.Packets + arg2.Packets,
+                        FirstSeen = Math.Min(arg1.FirstSeen, arg2.FirstSeen),
+                        LastSeen = Math.Max(arg1.LastSeen, arg2.LastSeen)
+                    };
+                }
+
             }
         }
         #endregion

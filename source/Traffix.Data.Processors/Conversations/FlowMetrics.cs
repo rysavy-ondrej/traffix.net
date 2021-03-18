@@ -24,7 +24,7 @@ namespace Traffix.Processors
         [Key("METRICS_OCTETS")]
         public long Octets; 
 
-        public static FlowMetrics Combine(FlowMetrics x, FlowMetrics y)
+        public static FlowMetrics Combine(ref FlowMetrics x, ref FlowMetrics y)
         {
             return new FlowMetrics
             {

@@ -146,7 +146,7 @@ namespace FasterConversationTablePerf
             await windows.ForEachAsync(async window =>
             {
                 windowCount++;
-                var flowProcessor = new FlowProcessor<(long, FlowKey, Packet), FlowKey, NetFlowRecord>(NetFlowRecord.CreateRecord, NetFlowRecord.UpdateRecord);
+                var flowProcessor = new FlowProcessor<(long, FlowKey, Packet), FlowKey, NetFlowRecord>(NetFlowRecord.CreateRecord, NetFlowRecord.UpdateRecord, NetFlowRecord.Aggregate);
                 await window.Do(_ => totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p.Key, p));
                 Console.WriteLine($"Window = {windowCount},  Flows = {flowProcessor.Count},  Packets = {totalPackets}");
             });
@@ -224,6 +224,17 @@ namespace FasterConversationTablePerf
                 record.Octets += packet.Item3.TotalPacketLength;
                 record.FirstSeen = Math.Min(record.FirstSeen, packet.Item1);
                 record.LastSeen = Math.Max(record.FirstSeen, packet.Item1);
+            }
+
+            public static NetFlowRecord Aggregate(NetFlowRecord arg1, NetFlowRecord arg2)
+            {
+                return new NetFlowRecord
+                {
+                    Octets = arg1.Octets + arg2.Octets,
+                    Packets = arg1.Packets + arg2.Packets,
+                    FirstSeen = Math.Min(arg1.FirstSeen, arg2.FirstSeen),
+                    LastSeen = Math.Max(arg1.LastSeen, arg2.LastSeen)
+                };
             }
         }
         #endregion

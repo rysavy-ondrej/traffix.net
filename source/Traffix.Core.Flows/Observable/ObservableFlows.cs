@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
@@ -159,7 +160,7 @@ namespace Traffix.Core.Observable
                         _currentWindow.ForwardOnNext(observer);
                     }
 
-                    if (!_currentWindow.IsInWindow(ticks))
+                    while(!_currentWindow.IsInWindow(ticks))
                     {
                         _currentWindow.CloseWindow();
                         _currentWindow.Shift(timeSpan.Ticks);
@@ -194,6 +195,7 @@ namespace Traffix.Core.Observable
             internal void CloseWindow()
             {
                 _subject.OnCompleted();
+                _subject.Dispose();
             }
 
             internal void OnNext(TSource value)
@@ -213,12 +215,14 @@ namespace Traffix.Core.Observable
         private readonly Dictionary<TFlowKey, TFlowRecord> _flowDictionary;
         private readonly Action<TFlowRecord, TSource> _updateAction;
         private readonly Func<TSource, TFlowRecord> _createFunc;
+        private readonly Func<TFlowRecord, TFlowRecord, TFlowRecord> _aggregateFunc;
 
-        public FlowProcessor(Func<TSource, TFlowRecord> createFunc, Action<TFlowRecord, TSource> updateAction)
+        public FlowProcessor(Func<TSource, TFlowRecord> createFunc, Action<TFlowRecord, TSource> updateAction, Func<TFlowRecord,TFlowRecord,TFlowRecord> aggregateFunc)
         {
             _flowDictionary = new Dictionary<TFlowKey, TFlowRecord>(1024);
             _updateAction = updateAction;
             _createFunc = createFunc;
+            _aggregateFunc = aggregateFunc;
         }
 
         public void OnNext(TFlowKey key, TSource packet)
@@ -244,5 +248,11 @@ namespace Traffix.Core.Observable
         }
 
         public int Count => _flowDictionary.Count;
+
+
+        public IEnumerable<KeyValuePair<TAggregateKey, TFlowRecord>> AggregateFlows<TAggregateKey>(Func<TFlowKey, TAggregateKey> aggregateKey)
+        {
+            return this.GroupBy(x => aggregateKey(x.Key)).Select(g => KeyValuePair.Create<TAggregateKey, TFlowRecord>(g.Key, g.Select(p=>p.Value).Aggregate(_aggregateFunc)));
+        }
     }
 }
