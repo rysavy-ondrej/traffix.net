@@ -76,8 +76,8 @@ namespace Traffix.Processors
             {
                 Key = left.Key,
                 OriginalFlowsPresent = left.OriginalFlowsPresent + right.OriginalFlowsPresent,
-                ForwardMetrics = FlowMetrics.Combine(ref left.ForwardMetrics, ref right.ForwardMetrics),
-                ReverseMetrics = FlowMetrics.Combine(ref left.ReverseMetrics, ref right.ReverseMetrics),
+                ForwardMetrics = FlowMetrics.Aggregate(ref left.ForwardMetrics, ref right.ForwardMetrics),
+                ReverseMetrics = FlowMetrics.Aggregate(ref left.ReverseMetrics, ref right.ReverseMetrics),
                 Data = combineData(left.Data, right.Data)
             };
         }

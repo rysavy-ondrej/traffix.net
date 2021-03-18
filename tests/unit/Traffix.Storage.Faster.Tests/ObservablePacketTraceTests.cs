@@ -248,13 +248,22 @@ namespace Traffix.Storage.Faster.Tests
             await windows.ForEachAsync(async window =>
             {
                 var flowProcessor = new NetFlowProcessor();
-                await window.Do(_=>totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p.Key, p));
+                
+                // The flow processor is a sink for the observable:
+                // Method 1:
+                // window.Do(_=>totalPackets++).Subscribe(flowProcessor);
+                // await flowProcessor.Completed;
+                // Method 2:
+                await window.Do(_ => totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p));
+
+                // Get the results:
                 Console.WriteLine($"# Window {windowCount}");
                 Console.WriteLine($"Flows = {flowProcessor.Count},  Packets = {totalPackets}");
                 Console.WriteLine();
                 Console.WriteLine("| Date first seen | Duration | Proto | Src IP Addr:Port | Dst IP Addr:Port | Packets | Bytes |");
                 Console.WriteLine("| --------------- | -------- | ----- | ---------------- | ---------------- | ------- | ----- |");
-                foreach (var flow in flowProcessor)
+                
+                foreach (var flow in flowProcessor.Flows)
                 {
                     Console.WriteLine($"| {new DateTime(flow.Value.FirstSeen)} |  {new TimeSpan(flow.Value.LastSeen - flow.Value.FirstSeen)} | {flow.Key.ProtocolType} | {flow.Key.SourceIpAddress}:{flow.Key.SourcePort} | {flow.Key.DestinationIpAddress}:{flow.Key.DestinationPort} | {flow.Value.Packets} | {flow.Value.Octets} |");
                 }
@@ -274,12 +283,12 @@ namespace Traffix.Storage.Faster.Tests
             await windows.ForEachAsync(async window =>
             {
                 var flowProcessor = new NetFlowProcessor();
-                await window.Do(_ => totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p.Key, p));
+                await window.Do(_ => totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p));
                 Console.WriteLine($"# Window {windowCount}");
                 Console.WriteLine($"Flows = {flowProcessor.Count},  Packets = {totalPackets}");
                 Console.WriteLine();
-                Console.WriteLine("| Date first seen | Duration | Proto | Src IP Addr:Port | Dst IP Addr:Port | Packets | Bytes |");
-                Console.WriteLine("| --------------- | -------- | ----- | ---------------- | ---------------- | ------- | ----- |");
+                Console.WriteLine("| Date first seen | Duration | Proto | Src IP Addr | Dst IP Addr | Packets | Bytes |");
+                Console.WriteLine("| --------------- | -------- | ----- | ----------- | ----------- | ------- | ----- |");
                 foreach (var flow in flowProcessor.AggregateFlows(f=>(f.ProtocolType, f.SourceIpAddress, f.DestinationIpAddress)))
                 {
                     Console.WriteLine($"| {new DateTime(flow.Value.FirstSeen)} |  {new TimeSpan(flow.Value.LastSeen - flow.Value.FirstSeen)} | {flow.Key.ProtocolType} | {flow.Key.SourceIpAddress} | {flow.Key.DestinationIpAddress} | {flow.Value.Packets} | {flow.Value.Octets} |");
@@ -340,8 +349,24 @@ namespace Traffix.Storage.Faster.Tests
 
         class NetFlowProcessor : FlowProcessor<(long, FlowKey, Packet), FlowKey, NetFlowProcessor.NetFlowRecord>
         {
-            public NetFlowProcessor() : base(NetFlowRecord.Create, NetFlowRecord.Update, NetFlowRecord.Aggregate)
+            protected override NetFlowRecord Aggregate(NetFlowRecord arg1, NetFlowRecord arg2)
             {
+               return  NetFlowRecord.Aggregate(arg1, arg2);
+            }
+
+            protected override NetFlowRecord Create((long, FlowKey, Packet) source)
+            {
+                return NetFlowRecord.Create(source);
+            }
+
+            protected override FlowKey GetKey((long, FlowKey, Packet) source)
+            {
+                return source.Item2;
+            }
+
+            protected override void Update(NetFlowRecord record, (long, FlowKey, Packet) source)
+            {
+                NetFlowRecord.Update(record, source);
             }
 
             public class NetFlowRecord

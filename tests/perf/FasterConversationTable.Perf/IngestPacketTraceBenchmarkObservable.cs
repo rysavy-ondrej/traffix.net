@@ -146,8 +146,8 @@ namespace FasterConversationTablePerf
             await windows.ForEachAsync(async window =>
             {
                 windowCount++;
-                var flowProcessor = new FlowProcessor<(long, FlowKey, Packet), FlowKey, NetFlowRecord>(NetFlowRecord.CreateRecord, NetFlowRecord.UpdateRecord, NetFlowRecord.Aggregate);
-                await window.Do(_ => totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p.Key, p));
+                var flowProcessor = new NetFlowProcessor();
+                await window.Do(_ => totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p));
                 Console.WriteLine($"Window = {windowCount},  Flows = {flowProcessor.Count},  Packets = {totalPackets}");
             });
         }
@@ -206,35 +206,60 @@ namespace FasterConversationTablePerf
             });
             return $"  Conv ({conversationKey}) {flowKey}: flows={flowCount}, firstSeen={new DateTime(firstSeen)}, duration={new TimeSpan(lastSeen - firstSeen)}, packets={packetCount}, octets={octets}";
         }
-        class NetFlowRecord
+
+        class NetFlowProcessor : FlowProcessor<(long, FlowKey, Packet), FlowKey, NetFlowProcessor.NetFlowRecord>
         {
-            public long Octets { get; set; }
-            public int Packets { get; set; }
-            public long FirstSeen { get; set; }
-            public long LastSeen { get; set; }
-
-            public static NetFlowRecord CreateRecord((long, FlowKey, Packet) c)
+            protected override NetFlowRecord Aggregate(NetFlowRecord arg1, NetFlowRecord arg2)
             {
-                return new NetFlowRecord { FirstSeen = c.Item1, LastSeen = c.Item1, Octets = c.Item3.TotalPacketLength, Packets = 1 };
+                return NetFlowRecord.Aggregate(arg1, arg2);
             }
 
-            public static void UpdateRecord(NetFlowRecord record, (long, FlowKey, Packet) packet)
+            protected override NetFlowRecord Create((long, FlowKey, Packet) source)
             {
-                record.Packets++;
-                record.Octets += packet.Item3.TotalPacketLength;
-                record.FirstSeen = Math.Min(record.FirstSeen, packet.Item1);
-                record.LastSeen = Math.Max(record.FirstSeen, packet.Item1);
+                return NetFlowRecord.Create(source);
             }
 
-            public static NetFlowRecord Aggregate(NetFlowRecord arg1, NetFlowRecord arg2)
+            protected override FlowKey GetKey((long, FlowKey, Packet) source)
             {
-                return new NetFlowRecord
+                return source.Item2;
+            }
+
+            protected override void Update(NetFlowRecord record, (long, FlowKey, Packet) source)
+            {
+                NetFlowRecord.Update(record, source);
+            }
+
+            public class NetFlowRecord
+            {
+                public long Octets { get; set; }
+                public int Packets { get; set; }
+                public long FirstSeen { get; set; }
+                public long LastSeen { get; set; }
+
+                public static NetFlowRecord Create((long, FlowKey, Packet) c)
                 {
-                    Octets = arg1.Octets + arg2.Octets,
-                    Packets = arg1.Packets + arg2.Packets,
-                    FirstSeen = Math.Min(arg1.FirstSeen, arg2.FirstSeen),
-                    LastSeen = Math.Max(arg1.LastSeen, arg2.LastSeen)
-                };
+                    return new NetFlowRecord { FirstSeen = c.Item1, LastSeen = c.Item1, Octets = c.Item3.TotalPacketLength, Packets = 1 };
+                }
+
+                public static void Update(NetFlowRecord record, (long, FlowKey, Packet) packet)
+                {
+                    record.Packets++;
+                    record.Octets += packet.Item3.TotalPacketLength;
+                    record.FirstSeen = Math.Min(record.FirstSeen, packet.Item1);
+                    record.LastSeen = Math.Max(record.FirstSeen, packet.Item1);
+                }
+
+                public static NetFlowRecord Aggregate(NetFlowRecord arg1, NetFlowRecord arg2)
+                {
+                    return new NetFlowRecord
+                    {
+                        Octets = arg1.Octets + arg2.Octets,
+                        Packets = arg1.Packets + arg2.Packets,
+                        FirstSeen = Math.Min(arg1.FirstSeen, arg2.FirstSeen),
+                        LastSeen = Math.Max(arg1.LastSeen, arg2.LastSeen)
+                    };
+                }
+
             }
         }
         #endregion

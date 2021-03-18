@@ -2,6 +2,9 @@
 
 namespace IcsMonitor.Tests
 {
+    /// <summary>
+    /// A full version of MODBUS IPFIX record extension.
+    /// </summary>
     [MessagePackObject]
     public struct ModbusData
     {
@@ -154,8 +157,8 @@ namespace IcsMonitor.Tests
 
         #endregion
 
-        #region Combinator function
-        public static ModbusData Combine(ref ModbusData x, ref ModbusData y)
+        #region Aggregate function
+        public static ModbusData Aggregate(ref ModbusData x, ref ModbusData y)
         {
             return new ModbusData
             {
@@ -227,7 +230,7 @@ namespace IcsMonitor.Tests
 
     }
     /// <summary>
-    /// A MODBUS flow extension that can be extracted from the simple MODBUS parser (parsing individual functions is not necessary).
+    /// A compact version of MODBUS IPFIX record extension.
     /// </summary>
     [MessagePackObject]
     public struct ModbusCompact

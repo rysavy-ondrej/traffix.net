@@ -29,8 +29,9 @@ namespace IcsMonitor.Tests
             {
                 var totalPackets = 0;
                 var flowProcessor = new ModbusFlowProcessor();
-                await window.packets.Do(_=>totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p.Key, p));
-                Console.WriteLine($"# Window {window.index} []");
+                await window.packets.Do(_=>totalPackets++).ForEachAsync(p => flowProcessor.OnNext(p));
+                Console.WriteLine($"# Window {window.index}");
+                Console.WriteLine();
                 Console.WriteLine($"Flows = {flowProcessor.Count},  Packets = {totalPackets}");
                 Console.WriteLine();
                 Console.WriteLine("| Date first seen | Duration | Proto | Src IP Addr:Port | Dst IP Addr:Port | Packets | Bytes | UnitId | ReadRequests | WriteRequests | DiagnosticRequests | OtherRequests | UndefinedRequests | ResponsesSuccess | ResponsesError | MalformedRequests | MalformedResponses |");
@@ -66,18 +67,16 @@ namespace IcsMonitor.Tests
 
     class ModbusFlowProcessor : FlowProcessor<PacketRecord, FlowKey, ModbusFlowRecord>
     {
-        public ModbusFlowProcessor() : base(Create, Update, Aggregate) {   }
-
-        private static ModbusFlowRecord Aggregate(ModbusFlowRecord arg1, ModbusFlowRecord arg2)
+        protected override ModbusFlowRecord Aggregate(ModbusFlowRecord arg1, ModbusFlowRecord arg2)
         {
             return new ModbusFlowRecord
             {
-                Metrics = FlowMetrics.Combine(ref arg1.Metrics, ref arg2.Metrics),
-                Modbus = ModbusData.Combine(ref arg1.Modbus, ref arg2.Modbus)
+                Metrics = FlowMetrics.Aggregate(ref arg1.Metrics, ref arg2.Metrics),
+                Modbus = ModbusData.Aggregate(ref arg1.Modbus, ref arg2.Modbus)
             };
         }
 
-        private static void Update(ModbusFlowRecord arg1, PacketRecord arg2)
+        protected override void Update(ModbusFlowRecord arg1, PacketRecord arg2)
         {
             if (arg2.Key.SourcePort > arg2.Key.DestinationPort)
             {
@@ -89,7 +88,7 @@ namespace IcsMonitor.Tests
             }
         }
 
-        private static ModbusFlowRecord Create(PacketRecord arg)
+        protected override ModbusFlowRecord Create(PacketRecord arg)
         {
             var record = new ModbusFlowRecord();
             record.Metrics.Packets = 1;
@@ -367,6 +366,11 @@ namespace IcsMonitor.Tests
                 exception = e;
                 return false;
             }
+        }
+
+        protected override FlowKey GetKey(PacketRecord source)
+        {
+            return source.Key;
         }
     }
 }
