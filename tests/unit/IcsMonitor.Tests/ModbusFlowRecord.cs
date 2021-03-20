@@ -6,19 +6,23 @@ using Traffix.Processors;
 
 namespace IcsMonitor.Tests
 {
-    class ModbusFlowRecord
+    public class ModbusFlowRecord
     {
         public FlowKey FlowKey;
-        public FlowMetrics Metrics;
+        public FlowMetrics ForwardMetrics;
+        public FlowMetrics ReverseMetrics;
         public ModbusData Modbus;
-        public ModbusCompact Compact => new ModbusCompact(Modbus); 
+        public ModbusCompact Compact => new ModbusCompact(Modbus);
+
+        public FlowMetrics Metrics => FlowMetrics.Aggregate(ref ForwardMetrics, ref ReverseMetrics);
     }
 
     class ModbusFlowRecordDataViewType : DataViewType<ModbusFlowRecord>
     {
         protected override void DefineColumns(DataViewColumnCollection columns) => columns
             .AddComplexColumn(nameof(ModbusFlowRecord.FlowKey), m => m.FlowKey, new FlowKeyDataViewType())
-            .AddComplexColumn(nameof(ModbusFlowRecord.Metrics), m => m.Metrics, new FlowMetricsDataViewType())
+            .AddComplexColumn(nameof(ModbusFlowRecord.ForwardMetrics), m => m.ForwardMetrics, new FlowMetricsDataViewType())
+            .AddComplexColumn(nameof(ModbusFlowRecord.ReverseMetrics), m => m.ReverseMetrics, new FlowMetricsDataViewType())
             .AddComplexColumn(nameof(ModbusFlowRecord.Compact), m => m.Compact, new ModbusCompactDataViewType());
     }
 
@@ -26,15 +30,15 @@ namespace IcsMonitor.Tests
     {
         protected override void DefineColumns(DataViewColumnCollection columns) => columns
             .AddColumn(nameof(ModbusCompact.UnitId), m => m.UnitId)
-            .AddColumn(nameof(ModbusCompact.ReadRequests), m => m.ReadRequests)
-            .AddColumn(nameof(ModbusCompact.WriteRequests), m => m.WriteRequests)
-            .AddColumn(nameof(ModbusCompact.DiagnosticRequests), m => m.DiagnosticRequests)
-            .AddColumn(nameof(ModbusCompact.OtherRequests), m => m.OtherRequests)
-            .AddColumn(nameof(ModbusCompact.UndefinedRequests), m => m.UndefinedRequests)
-            .AddColumn(nameof(ModbusCompact.MalformedRequests), m => m.MalformedRequests)
-            .AddColumn(nameof(ModbusCompact.ResponsesSuccess), m => m.ResponsesSuccess)
-            .AddColumn(nameof(ModbusCompact.ResponsesError), m => m.ResponsesError)
-            .AddColumn(nameof(ModbusCompact.MalformedResponses), m => m.MalformedResponses);
+            .AddColumn(nameof(ModbusCompact.ReadRequests), m => (float)m.ReadRequests)
+            .AddColumn(nameof(ModbusCompact.WriteRequests), m => (float)m.WriteRequests)
+            .AddColumn(nameof(ModbusCompact.DiagnosticRequests), m => (float)m.DiagnosticRequests)
+            .AddColumn(nameof(ModbusCompact.OtherRequests), m => (float)m.OtherRequests)
+            .AddColumn(nameof(ModbusCompact.UndefinedRequests), m => (float)m.UndefinedRequests)
+            .AddColumn(nameof(ModbusCompact.MalformedRequests), m => (float)m.MalformedRequests)
+            .AddColumn(nameof(ModbusCompact.ResponsesSuccess), m => (float)m.ResponsesSuccess)
+            .AddColumn(nameof(ModbusCompact.ResponsesError), m => (float)m.ResponsesError)
+            .AddColumn(nameof(ModbusCompact.MalformedResponses), m => (float)m.MalformedResponses);
     }
 
     internal class FlowKeyDataViewType : DataViewType<FlowKey>
@@ -52,8 +56,8 @@ namespace IcsMonitor.Tests
     {
         protected override void DefineColumns(DataViewColumnCollection columns) => columns
             .AddColumn(nameof(FlowMetrics.Start), m => m.Start)
-            .AddColumn(nameof(FlowMetrics.Duration), m => m.Duration)
-            .AddColumn(nameof(FlowMetrics.Packets), m => m.Packets)
-            .AddColumn(nameof(FlowMetrics.Octets), m => m.Octets);
+            .AddColumn(nameof(FlowMetrics.Duration), m => (float)m.Duration.TotalSeconds)
+            .AddColumn(nameof(FlowMetrics.Packets), m => (float)m.Packets)
+            .AddColumn(nameof(FlowMetrics.Octets), m => (float)m.Octets);
     }
 }

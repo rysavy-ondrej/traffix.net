@@ -10,13 +10,13 @@ namespace Traffix.Processors
     {
 
         [Key("METRICS_START")]
-        public DateTime Start;
+        public DateTime? Start;
 
         [Key("METRICS_END")]
-        public DateTime End;
+        public DateTime? End;
 
         [Key("METRICS_DURATION")]
-        public TimeSpan Duration => End - Start;
+        public TimeSpan Duration => (End - Start) ?? new TimeSpan(0);
 
         [Key("METRICS_PACKETS")]
         public int Packets;
@@ -26,21 +26,36 @@ namespace Traffix.Processors
 
         public static FlowMetrics Aggregate(ref FlowMetrics x, ref FlowMetrics y)
         {
-            return new FlowMetrics
+            var newMetrics = new FlowMetrics
             {
-                Start = x.Start < y.Start ? x.Start : y.Start,
-                End = x.End > y.End ? x.End : y.End,
+                Start = DateTimeMin(x.Start,y.Start),
+                End = DateTimeMax(x.End, y.End),
                 Packets = x.Packets + y.Packets,
                 Octets = x.Octets + y.Octets
             };
+            return newMetrics;
         }
-        internal static void AddToSchema(DataViewSchema.Builder builder, string prefix)
+
+        public static void Update(ref FlowMetrics forwardMetrics, int octets, long ticks)
         {
-            builder.AddColumn($"{prefix}_Start", DateTimeDataViewType.Instance);
-            builder.AddColumn($"{prefix}_End", DateTimeDataViewType.Instance);
-            builder.AddColumn($"{prefix}_Duration", NumberDataViewType.Single);
-            builder.AddColumn($"{prefix}_Packets", NumberDataViewType.UInt32);
-            builder.AddColumn($"{prefix}_Octets", NumberDataViewType.UInt64);
+            forwardMetrics.Packets++;
+            forwardMetrics.Octets += octets;
+            if (forwardMetrics.Start == null || ticks < forwardMetrics.Start?.Ticks)
+                forwardMetrics.Start = new DateTime(ticks);
+            if (forwardMetrics.End == null || ticks > forwardMetrics.End?.Ticks)
+                forwardMetrics.End = new DateTime(ticks);
+        }
+        static DateTime? DateTimeMin(DateTime? x, DateTime? y)
+        {
+            if (x == null) return y;
+            if (y == null) return x;
+            return x < y ? x : y;
+        }
+        static DateTime? DateTimeMax(DateTime? x, DateTime? y)
+        {
+            if (x == null) return y;
+            if (y == null) return x;
+            return x > y ? x : y;
         }
     }
 }

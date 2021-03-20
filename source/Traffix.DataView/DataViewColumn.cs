@@ -101,6 +101,10 @@ namespace Traffix.DataView
             {
                 return DateTimeDataViewType.Instance;
             }
+            else if (rawType == typeof(DateTime?))
+            {
+                return DateTimeDataViewType.Instance;
+            }
             else if (rawType == typeof(DateTimeOffset))
             {
                 return DateTimeOffsetDataViewType.Instance;

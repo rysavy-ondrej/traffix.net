@@ -13,45 +13,51 @@ namespace IcsMonitor.Tests
     {
         protected override ModbusFlowRecord Aggregate(ModbusFlowRecord arg1, ModbusFlowRecord arg2)
         {
-            return new ModbusFlowRecord
+            var newRecord = new ModbusFlowRecord
             {
                 FlowKey = arg1.FlowKey.SourcePort > arg2.FlowKey.SourcePort ? arg1.FlowKey : arg2.FlowKey,
-                Metrics = FlowMetrics.Aggregate(ref arg1.Metrics, ref arg2.Metrics),
+                ForwardMetrics = FlowMetrics.Aggregate(ref arg1.ForwardMetrics, ref arg2.ForwardMetrics),
+                ReverseMetrics = FlowMetrics.Aggregate(ref arg1.ReverseMetrics, ref arg2.ReverseMetrics),
                 Modbus = ModbusData.Aggregate(ref arg1.Modbus, ref arg2.Modbus)
             };
+            return newRecord;
         }
 
-        protected override void Update(ModbusFlowRecord arg1, PacketRecord arg2)
+        protected override void Update(ModbusFlowRecord record, PacketRecord packet)
         {
-            arg1.Metrics.Packets++;
-            arg1.Metrics.Octets += arg2.Packet.TotalPacketLength;
-            arg1.Metrics.Start = new DateTime(Math.Min(arg1.Metrics.Start.Ticks, arg2.Ticks));
-            arg1.Metrics.End = new DateTime(Math.Max(arg1.Metrics.Start.Ticks, arg2.Ticks));
-            if (arg2.Key.SourcePort > arg2.Key.DestinationPort)
+            if (packet.Key.SourcePort > packet.Key.DestinationPort)
             {
-                UpdateRequest(ref arg1.Modbus, arg2);
+                UpdateRequest(ref record.Modbus, packet);
+                FlowMetrics.Update(ref record.ForwardMetrics, packet.Packet.TotalPacketLength, packet.Ticks);
             }
             else
             {
-                UpdateResponse(ref arg1.Modbus, arg2);
+                UpdateResponse(ref record.Modbus, packet);
+                FlowMetrics.Update(ref record.ReverseMetrics, packet.Packet.TotalPacketLength, packet.Ticks);
             }
         }
 
         protected override ModbusFlowRecord Create(PacketRecord arg)
         {
-            var record = new ModbusFlowRecord();
-            record.FlowKey = arg.Key;
-            record.Metrics.Packets = 1;
-            record.Metrics.Octets = arg.Packet.TotalPacketLength;
-            record.Metrics.Start = new DateTime(arg.Ticks);
-            record.Metrics.End = new DateTime(arg.Ticks);
+            var record = new ModbusFlowRecord
+            {
+                FlowKey = arg.Key
+            };
             if (arg.Key.SourcePort > arg.Key.DestinationPort)
             {
                 UpdateRequest(ref record.Modbus, arg);
+                record.ForwardMetrics.Packets = 1;
+                record.ForwardMetrics.Octets = arg.Packet.TotalPacketLength;
+                record.ForwardMetrics.Start = new DateTime(arg.Ticks);
+                record.ForwardMetrics.End = new DateTime(arg.Ticks);
             }
             else
             {
                 UpdateResponse(ref record.Modbus, arg);
+                record.ReverseMetrics.Packets = 1;
+                record.ReverseMetrics.Octets = arg.Packet.TotalPacketLength;
+                record.ReverseMetrics.Start = new DateTime(arg.Ticks);
+                record.ReverseMetrics.End = new DateTime(arg.Ticks);
             }
             return record;
         }
