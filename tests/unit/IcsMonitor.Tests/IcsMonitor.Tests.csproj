@@ -7,7 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="3.8.0" />
+    <PackageReference Include="AutoMapper" Version="10.1.1" />
+    <PackageReference Include="CsvHelper" Version="26.1.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="3.1.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.7.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="2.1.1" />
     <PackageReference Include="MSTest.TestFramework" Version="2.1.1" />
@@ -16,10 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\samples\IcsMonitor\IcsMonitor.csproj" />
-    <ProjectReference Include="..\..\..\source\Traffix.Data.Processors\Traffix.Processors.csproj" />
     <ProjectReference Include="..\..\..\source\Traffix.DataView\Traffix.DataView.csproj" />
+    <ProjectReference Include="..\..\..\source\Traffix.Decoders\Traffix.Decoders.csproj" />
     <ProjectReference Include="..\..\..\source\Traffix.Interactive\Traffix.Interactive.csproj" />
+    <ProjectReference Include="..\..\..\source\Traffix.Processors\Traffix.Processors.csproj" />
     <ProjectReference Include="..\..\..\source\Traffix.Storage.Faster\Traffix.Storage.Faster.csproj" />
   </ItemGroup>
 
