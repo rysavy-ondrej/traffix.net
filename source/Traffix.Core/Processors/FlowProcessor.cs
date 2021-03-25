@@ -9,13 +9,15 @@ using System.Threading.Tasks;
 namespace Traffix.Core.Observable
 {
     /// <summary>
-    /// Basic implementation of flow processor with the support for flow aggregation.
+    /// Basic implementation of flow processor.
     /// <para/>
     /// The flow processor is used to apply the processor on each input element and update the flow record. 
     /// The class implements <see cref="IObserver{T}"/> interface for consuming the input sequence.
     /// <para/>
     /// The concrete implementation needs to provide four methods <see cref="Create(TSource)"/>, <see cref="Update(TFlowRecord, TSource)"/>, 
     /// <see cref="Aggregate(TFlowRecord, TFlowRecord)"/>, and <see cref="GetFlowKey(TSource)"/>.
+    /// <para/>
+    /// The extension methods enable to aggregate the created flows and also to get conversations (biflows). 
     /// </summary>
     /// <typeparam name="TSource">The source type.</typeparam>
     /// <typeparam name="TFlowKey">The flow key type.</typeparam>
@@ -79,7 +81,7 @@ namespace Traffix.Core.Observable
         public int Count => _flowDictionary.Count;
 
         /// <summary>
-        /// Aggregates the flow using user defined function.
+        /// Aggregates the flow using the user provided function.
         /// </summary>
         /// <typeparam name="TAggregateKey">The aggregation key type.</typeparam>
         /// <param name="aggregateKey">The aggregation function.</param>
@@ -125,12 +127,7 @@ namespace Traffix.Core.Observable
         /// <para/>
         /// Use this method to detect when the source observable was fully processed if the flow processor is subscribed to input observable. 
         /// </summary>
-        public Task Completed => WaitOneAsync(_onCompleteHandle);
-
-        /// <summary>
-        /// Gets the collection of conversations. 
-        /// </summary>
-        
+        public Task Completed => WaitOneAsync(_onCompleteHandle);        
 
         #region Helper methods
         static Task WaitOneAsync(WaitHandle waitHandle)
