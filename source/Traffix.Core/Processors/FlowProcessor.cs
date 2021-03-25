@@ -33,6 +33,14 @@ namespace Traffix.Core.Observable
             _onCompleteHandle = new EventWaitHandle(false, EventResetMode.ManualReset);
         }
 
+
+        /// <summary>
+        /// Gets the flow key for the given source element.
+        /// </summary>
+        /// <param name="source">The source object.</param>
+        /// <returns>The flow key for the source object.</returns>
+        protected abstract TFlowKey GetFlowKey(TSource source);
+
         /// <summary>
         /// Creates a new flow record from the first source element.
         /// </summary>
@@ -58,12 +66,7 @@ namespace Traffix.Core.Observable
         /// <returns>The new aggregated flow record.</returns>
         protected abstract TFlowRecord Aggregate(TFlowRecord arg1, TFlowRecord arg2);
 
-        /// <summary>
-        /// Gets the flow key for the given source element.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>The flow key for the source object.</returns>
-        protected abstract TFlowKey GetFlowKey(TSource source);
+
 
         /// <summary>
         /// Gets the collection of flows.
