@@ -65,7 +65,9 @@ record _Foo(
 );
 ```
 
-Creating the data view from the enumerable is straightforward by calling `AsDataView` extension method:
+Creating the data view from the enumerable is straightforward by calling `AsDataView` extension method, which requires 
+an instance of data view type resolver. The resolver has a single goal, which is to provide the required data view type instances for
+transforming the complex objects to data view. In our case it is enough to create the resolver with `FooDataViewType` and `BarDataViewType` objects.
 
 ```csharp
 var dataview = records.AsDataView(new DataViewTypeResolver(new FooDataViewType(), new BarDataViewType()));
