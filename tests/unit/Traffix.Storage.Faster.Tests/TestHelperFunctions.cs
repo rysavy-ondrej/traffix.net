@@ -3,13 +3,15 @@ using System;
 using Traffix.Core;
 using Traffix.Providers.PcapFile;
 using Traffix.Core.Flows;
+using SharpPcap;
+
 namespace Traffix.Storage.Faster.Tests
 {
     public static class TestHelperFunctions
     { 
-        public static (long Ticks, Packet Packet) GetPacket(RawFrame arg)
+        public static (long Ticks, Packet Packet) GetPacket(RawCapture arg)
         {
-            return (arg.Ticks, Packet.ParsePacket(arg.LinkLayer, arg.Data));
+            return (arg.Timeval.Date.Ticks, arg.GetPacket());
         }
 
         public static Packet FrameProcessor(ref FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
@@ -17,10 +19,10 @@ namespace Traffix.Storage.Faster.Tests
             return Packet.ParsePacket((LinkLayers)frameMetadata.LinkLayer, frameBytes.ToArray());
         }
 
-        public static (long Ticks, FlowKey Key, Packet Packet) GetPacketAndKey(RawFrame arg)
+        public static (long Ticks, FlowKey Key, Packet Packet) GetPacketAndKey(RawCapture arg)
         {
-            var packet = GetPacket(arg);
-            return (packet.Ticks, packet.Packet.GetFlowKey(), packet.Packet);
+            var packet = arg.GetPacket();
+            return (arg.Timeval.Date.Ticks, packet.GetFlowKey(), packet);
         }
     }
 }

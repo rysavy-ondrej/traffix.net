@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SharpPcap;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -76,7 +77,7 @@ namespace Traffix.Storage.Faster.Tests
             sw.Start();
             var flowTable = OpenTable();
             Console.WriteLine($"--- LOADED --- [{sw.Elapsed}]");
-            var frames = flowTable.ProcessFrames<RawFrame>(flowTable.FrameKeys, new FasterConversationTable.RawFrameProcessor());
+            var frames = flowTable.ProcessFrames<RawCapture>(flowTable.FrameKeys, new FasterConversationTable.RawFrameProcessor());
             var allFrames = 0;
             var otherPackets = 0;
             var ethernetPackets = 0;
@@ -87,11 +88,11 @@ namespace Traffix.Storage.Faster.Tests
             foreach (var frame in frames)
             {
                 allFrames++;
-                if (frame.LinkLayer != PacketDotNet.LinkLayers.Ethernet) otherPackets++;
+                if (frame.LinkLayerType != PacketDotNet.LinkLayers.Ethernet) otherPackets++;
                 else
                 {
                     ethernetPackets++;
-                    var packet = PacketDotNet.Packet.ParsePacket(frame.LinkLayer, frame.Data);
+                    var packet = PacketDotNet.Packet.ParsePacket(frame.LinkLayerType, frame.Data);
                     if (packet.Extract<PacketDotNet.InternetPacket>() != null) ipPackets++;
                     if (packet.Extract<PacketDotNet.UdpPacket>() != null) udpPackets++;
                     if (packet.Extract<PacketDotNet.TcpPacket>() != null) tcpPackets++;
@@ -115,11 +116,11 @@ namespace Traffix.Storage.Faster.Tests
             sw.Restart();
             int frames = 0;
             long octets = 0;
-            var rawFrames = flowTable.ProcessFrames<RawFrame>(flowTable.FrameKeys, new FasterConversationTable.RawFrameProcessor());
+            var rawFrames = flowTable.ProcessFrames<RawCapture>(flowTable.FrameKeys, new FasterConversationTable.RawFrameProcessor());
             foreach (var f in rawFrames)
             {
                 frames++;
-                octets += f.OriginalLength;
+                octets += f.Data.Length;
             }
             Console.WriteLine($"Frames={frames}, Octets={octets}  [{sw.Elapsed}]");
         }

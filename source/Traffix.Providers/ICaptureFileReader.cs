@@ -1,4 +1,5 @@
 ﻿using PacketDotNet;
+using SharpPcap;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -30,7 +31,7 @@ namespace Traffix.Providers.PcapFile
     /// <summary>
     /// The common interface for all implementation of packet file readers.
     /// </summary>
-    public interface ICaptureFileReader : IEnumerator<RawFrame>, IDisposable
+    public interface ICaptureFileReader : IEnumerator<RawCapture>, IDisposable
     {
         /// <summary>
         /// Gets the link layer of the frames.
@@ -62,6 +63,6 @@ namespace Traffix.Providers.PcapFile
         /// <param name="frame">The next frame from the capture file.</param>
         /// <param name="readData">Set to true if frame should be readed oncluding its bytes. false when only frame header should be retrieved.</param>
         /// <returns>True if the next frame has been read. False if there are no more frames to read.</returns>
-        bool GetNextFrame(out RawFrame frame, bool readData = true);
+        bool GetNextFrame(out RawCapture frame, bool readData = true);
     }
 }

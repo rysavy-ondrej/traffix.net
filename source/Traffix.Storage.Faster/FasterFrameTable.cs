@@ -37,6 +37,7 @@ namespace Traffix.Storage.Faster
         readonly IFlowKeyProvider<FlowKey, Packet> _packetKeyProvider = new PacketKeyProvider();
 
         private bool _disposedValue;
+        private int _framesCount;
 
         /// <summary>
         /// Creates a new conversation table.
@@ -274,6 +275,7 @@ namespace Traffix.Storage.Faster
                     client.Put(frameKey.Address, ref frameValue);
                 }
             }
+            _framesCount++;
         }
 
         /// <summary>

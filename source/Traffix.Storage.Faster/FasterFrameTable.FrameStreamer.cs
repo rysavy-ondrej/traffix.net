@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SharpPcap;
+using System;
 using Traffix.Core;
 using Traffix.Data;
 using Traffix.Providers.PcapFile;
@@ -19,6 +20,7 @@ namespace Traffix.Storage.Faster
             private readonly int _autoFlushRecordCount;
             private bool _closed;
             private int _outstandingRequests;
+
             internal FrameStreamer(FasterFrameTable table,
                 RawFramesStore.ClientSession framesStoreClient,
                 int autoFlushRecordCount)
@@ -39,23 +41,27 @@ namespace Traffix.Storage.Faster
             /// <param name="frame">The raw frame object.</param>
             /// <param name="frameNumber">The frame number.</param>
             /// <exception cref="InvalidOperationException">Raises when the stremer is closed.</exception>
-            public void AddFrame(RawFrame frame)
+            public void AddFrame(RawCapture frame)
             {
                 if (_closed) throw new InvalidOperationException("Cannot add new data. The stream is closed.");
-                var frameFlowKey = _table.GetFlowKey(frame.LinkLayer, frame.Data);
+                var frameFlowKey = _table.GetFlowKey(frame.LinkLayerType, frame.Data);
 
-                var frameMeta = new FrameMetadata   // stack allocated struct 
-                {
-                    Ticks = frame.Ticks,
-                    OriginalLength = (ushort)frame.OriginalLength,
-                    LinkLayer = (ushort)frame.LinkLayer,
-                    FlowKeyHash = frameFlowKey.GetHashCode64()
-                };
-
-                var frameKey = new FrameKey(frame.Ticks, (uint)frame.Number);
+                var frameMeta = GetFrameMetadata(frame, frameFlowKey);  // stack allocated struct 
+                var frameKey = new FrameKey(frameMeta.Ticks, (uint)_table._framesCount);
                 _table.InsertFrame(_framesStoreClient, ref frameKey, ref frameFlowKey, ref frameMeta, frame.Data);
                 _outstandingRequests++;
                 if (_outstandingRequests > _autoFlushRecordCount) CompletePending();
+            }
+
+            private FrameMetadata GetFrameMetadata(RawCapture rawCapture, Core.Flows.FlowKey frameFlowKey)
+            {
+                return new FrameMetadata()
+                {
+                    Ticks = rawCapture.Timeval.Date.Ticks,
+                    OriginalLength = (ushort)rawCapture.Data.Length,
+                    LinkLayer = (ushort)rawCapture.LinkLayerType,
+                    FlowKeyHash = frameFlowKey.GetHashCode64()
+                };
             }
 
             /// <summary>

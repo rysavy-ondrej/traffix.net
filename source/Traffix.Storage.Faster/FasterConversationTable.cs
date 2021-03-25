@@ -1,6 +1,7 @@
 using FASTER.core;
 using Microsoft.Extensions.Configuration.Json;
 using PacketDotNet;
+using SharpPcap;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -358,6 +359,8 @@ namespace Traffix.Storage.Faster
             private readonly int _autoFlushRecordCount;
             private bool _closed;
             private int _outstandingRequests;
+            private int _frameNumber;
+
             internal FrameStreamer(FasterConversationTable table, 
                 ConversationsStore.KeyValueStoreClient conversationsStoreClient,
                 RawFramesStore.ClientSession framesStoreClient,
@@ -380,27 +383,27 @@ namespace Traffix.Storage.Faster
             /// <param name="frame">The raw frame object.</param>
             /// <param name="frameNumber">The frame number.</param>
             /// <exception cref="InvalidOperationException">Raises when the stremer is closed.</exception>
-            public void AddFrame(RawFrame frame)
+            public void AddFrame(RawCapture frame)
             {
                 if (_closed) throw new InvalidOperationException("Cannot add new data. The stream is closed.");
-                var frameFlowKey = _table.GetFlowKey(frame.LinkLayer, frame.Data);
+                var frameFlowKey = _table.GetFlowKey(frame.LinkLayerType, frame.Data);
 
                 var frameMeta = new FrameMetadata   // stack allocated struct 
                 {
-                    Ticks = frame.Ticks,
-                    OriginalLength = (ushort)frame.OriginalLength,
-                    LinkLayer = (ushort)frame.LinkLayer,
+                    Ticks = frame.Timeval.Date.Ticks,
+                    OriginalLength = (ushort)frame.Data.Length,
+                    LinkLayer = (ushort)frame.LinkLayerType,
                     FlowKeyHash = frameFlowKey.GetHashCode64()
                 };
 
-                var frameKey = new FrameKey(frame.Ticks, (uint)frame.Number);
+                var frameKey = new FrameKey(frameMeta.Ticks, (uint)_frameNumber++);
                  _table.InsertFrame(_framesStoreClient, ref frameKey, ref frameFlowKey, ref frameMeta, frame.Data);
 
                 var conversationUpdate = new ConversationInput  // stack allocated struct
                 {
                     FrameAddress = frameKey.Address,
-                    FrameSize = frame.OriginalLength,
-                    FrameTicks = frame.Ticks,
+                    FrameSize = frameMeta.OriginalLength,
+                    FrameTicks = frameMeta.Ticks,
                     FrameKey = frameFlowKey
                 };
 
@@ -515,9 +518,9 @@ namespace Traffix.Storage.Faster
             }
         }
         #endregion
-        public class RawFrameConversationProcessor : IConversationProcessor<IEnumerable<RawFrame>>
+        public class RawFrameConversationProcessor : IConversationProcessor<IEnumerable<RawCapture>>
         {
-            public IEnumerable<RawFrame> Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
+            public IEnumerable<RawCapture> Invoke(FlowKey flowKey, IEnumerable<Memory<byte>> frames)
             {
                 var _frameProcessor = new RawFrameProcessor();
                 FrameMetadata frameMetadata = default;
@@ -545,11 +548,11 @@ namespace Traffix.Storage.Faster
             }
         }
 
-        public class RawFrameProcessor : IFrameProcessor<RawFrame>
+        public class RawFrameProcessor : IFrameProcessor<RawCapture>
         {
-            public RawFrame Invoke(ref FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
+            public RawCapture Invoke(ref FrameKey frameKey, ref FrameMetadata frameMetadata, Span<byte> frameBytes)
             {
-                return new RawFrame((LinkLayers)frameMetadata.LinkLayer, (int)frameKey.Number, frameMetadata.Ticks, 0, frameMetadata.OriginalLength, frameBytes.ToArray());
+                return new RawCapture((LinkLayers)frameMetadata.LinkLayer, new PosixTimeval(new DateTime(frameMetadata.Ticks)), frameBytes.ToArray());
             }
         }
         public class PacketFrameProcessor : IFrameProcessor<Packet>

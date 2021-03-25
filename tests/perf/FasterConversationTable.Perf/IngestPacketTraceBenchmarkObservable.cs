@@ -9,6 +9,7 @@ using PacketDotNet;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Traffix.Storage.Faster;
+using SharpPcap;
 
 namespace FasterConversationTablePerf
 {
@@ -154,14 +155,14 @@ namespace FasterConversationTablePerf
         }
 
         #region Helper methods
-        private (long Ticks, FlowKey Key, Packet Packet) GetPacketAndKey(RawFrame arg)
+        private (long Ticks, FlowKey Key, Packet Packet) GetPacketAndKey(RawCapture rawCapture)
         {
-            var packet = GetPacket(arg);
-            return (packet.Ticks, packet.Packet.GetFlowKey(), packet.Packet);
+            var packet = rawCapture.GetPacket();
+            return (rawCapture.Timeval.Date.Ticks, packet.GetFlowKey(), packet);
         }
-        private (long Ticks, Packet Packet) GetPacket(RawFrame arg)
+        private (long Ticks, Packet Packet) GetPacket(RawCapture arg)
         {
-            return (arg.Ticks, Packet.ParsePacket(arg.LinkLayer, arg.Data));
+            return (arg.Timeval.Date.Ticks, arg.GetPacket());
         }
         private FlowKey GetConversationKey(FlowKey key)
         {

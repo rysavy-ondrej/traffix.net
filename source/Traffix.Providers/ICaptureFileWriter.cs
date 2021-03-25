@@ -1,4 +1,5 @@
 ﻿using PacketDotNet;
+using SharpPcap;
 using System;
 
 namespace Traffix.Providers.PcapFile
@@ -18,6 +19,6 @@ namespace Traffix.Providers.PcapFile
         /// </summary>
         /// <param name="frame">The raw frame.</param>
         /// <returns>The offset of the written frame in the file.</returns>
-        long WriteFrame(RawFrame frame);
+        long WriteFrame(RawCapture frame);
     }
 }

@@ -4,26 +4,15 @@ using SharpPcap.LibPcap;
 using System;
 using System.Collections;
 using System.IO;
-using System.Reactive;
-using System.Reactive.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Traffix.Providers.PcapFile
 {
-
-    public static class SharpPcapProducer
-    {
-
-    }
-    
-
     public class SharpPcapReader : ICaptureFileReader
     {
         ICaptureDevice _device;
         int _frameNumber;
         long _frameOffset;
-        RawFrame _current;
+        RawCapture _current;
         ReadingState _state;
 
         public SharpPcapReader(string captureFile)
@@ -35,17 +24,12 @@ namespace Traffix.Providers.PcapFile
             _state = ReadingState.NotStarted;
         }
 
-
-        
-
-
-
         /// <inheritdoc/>
         public LinkLayers LinkLayer => _device.LinkType;
 
 
         /// <inheritdoc/>
-        public RawFrame Current
+        public RawCapture Current
         {
             get
             {
@@ -77,27 +61,20 @@ namespace Traffix.Providers.PcapFile
         }
 
         /// <inheritdoc/>
-        public bool GetNextFrame(out RawFrame frame, bool readData = true)
+        public bool GetNextFrame(out RawCapture frame, bool readData = true)
         {
-            var ok = GetNextFrameInternal(readData);
+            var ok = GetNextFrameInternal();
             frame = _current;
             return ok;
         }
-        private bool GetNextFrameInternal(bool readData)
+        private bool GetNextFrameInternal()
         {
             if (_state == ReadingState.Closed) throw new InvalidOperationException("Reader is not open.");
             if (_state == ReadingState.Finished) return false;
-            var capture = _device.GetNextPacket();
+            _current = _device.GetNextPacket();
            
-            if (capture != null)
+            if (_current != null)
             {
-                _current = new RawFrame(LinkLayer, _frameNumber, GetTicksFromPosixTimeval(capture.Timeval), _frameOffset, capture.Data.Length, capture.Data.Length);
-                if (readData)
-                {
-                    _current.Data = capture.Data; 
-                }
-                _frameNumber++;
-                _frameOffset += capture.Data.Length;
                 _state = ReadingState.Success;
                 return true;
             }
@@ -138,7 +115,7 @@ namespace Traffix.Providers.PcapFile
 
         public bool MoveNext()
         {
-            return GetNextFrameInternal(true);
+            return GetNextFrameInternal();
         }
 
         public void Reset()
@@ -147,23 +124,11 @@ namespace Traffix.Providers.PcapFile
             _device.Open();
             _state = ReadingState.NotStarted;
         }
-        public static IObservable<RawFrame> CreateObservable(string captureFile)
+
+        public static IObservable<RawCapture> CreateObservable(string captureFile)
         {
             var reader = new SharpPcapReader(captureFile);
-            return CreateObservable(reader);
-        }
-        public static IObservable<RawFrame> CreateObservable(ICaptureFileReader captureReader)
-        {
-            return Observable.Create<RawFrame>((observer, cancellation) => Task.Factory.StartNew(
-                () =>
-                {
-                    while (!cancellation.IsCancellationRequested && captureReader.GetNextFrame(out var rawFrame))
-                    {
-                        observer.OnNext(rawFrame);
-                    }
-                    observer.OnCompleted();
-                    captureReader.Dispose();
-                }));
+            return reader.CreateObservable();
         }
     }
 }

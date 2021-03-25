@@ -31,16 +31,10 @@ namespace Traffix.Providers.PcapFile
             }
         }
 
-        public long WriteFrame(RawFrame frame)
+        public long WriteFrame(RawCapture frame)
         {
-            var cap = new RawCapture(frame.LinkLayer, TicksToUnix(frame.Ticks), frame.Data);
-            _device.Write(cap);
+            _device.Write(frame);
             return 0;
-        }
-
-        private PosixTimeval TicksToUnix(long ticks)
-        {
-            return new PosixTimeval(new DateTime(ticks));
         }
     }
 }

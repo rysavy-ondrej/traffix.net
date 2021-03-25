@@ -1,5 +1,23 @@
-# Traffix.CaptureProviders
+# Traffix.Providers
+
 This library contains implementations of various PCAP file readers and other sources of packet capture data. 
+
+
+## Observable
+
+Packet capture readers can also be used to create observable sequences, which are widely used in other Traffix packages.
+The code snippet to create the observable sequence of packets is as follows:
+
+```csharp
+using Traffix.Providers.PcapFile;
+
+using var reader = new SharpPcapReader("source.pcap");
+var observable = reader.CreateObservable();
+
+// ... use RawFrame observable here ...
+```
+
+The observable is a sequence of `RawFrame` objects.
 
 ## ManagedPcapReader
 
