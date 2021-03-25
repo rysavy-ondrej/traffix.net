@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Traffix.Core.Flows;
 
-namespace Traffix.Data
+namespace Traffix.Core.Processors
 {
     /// <summary>
     /// The delegate representing type of conversation processor methods.

@@ -10,7 +10,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Traffix.Core;
 using Traffix.Core.Flows;
-using Traffix.Data;
+using Traffix.Core.Processors;
 using Traffix.Providers.PcapFile;
 
 namespace Traffix.Storage.Faster

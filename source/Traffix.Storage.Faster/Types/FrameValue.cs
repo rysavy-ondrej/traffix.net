@@ -3,7 +3,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Traffix.Core;
-using Traffix.Data;
+using Traffix.Core.Processors;
 
 namespace Traffix.Storage.Faster
 {

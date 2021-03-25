@@ -1,7 +1,7 @@
 ﻿using System;
 using Traffix.Core;
 
-namespace Traffix.Data
+namespace Traffix.Core.Processors
 {
     /// <summary>
     /// A delegate type for frame processor methods. 

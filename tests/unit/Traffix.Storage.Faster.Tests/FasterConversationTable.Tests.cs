@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using Traffix.Core;
 using Traffix.Core.Flows;
-using Traffix.Data;
+using Traffix.Core.Processors;
 using Traffix.Processors;
 using Traffix.Providers.PcapFile;
 

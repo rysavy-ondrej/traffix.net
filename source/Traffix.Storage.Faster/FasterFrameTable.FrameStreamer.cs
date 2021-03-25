@@ -1,7 +1,7 @@
 ﻿using SharpPcap;
 using System;
 using Traffix.Core;
-using Traffix.Data;
+using Traffix.Core.Processors;
 using Traffix.Providers.PcapFile;
 
 namespace Traffix.Storage.Faster

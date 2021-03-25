@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using PacketDotNet;
 using Traffix.Core.Flows;
-using Traffix.Data;
+using Traffix.Core.Processors;
 
 namespace Traffix.Processors
 {

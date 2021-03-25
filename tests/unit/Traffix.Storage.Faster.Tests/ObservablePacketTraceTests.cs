@@ -1,20 +1,15 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.StreamProcessing;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PacketDotNet;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Reactive.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Traffix.Core.Flows;
 using Traffix.Core.Observable;
-using Traffix.Data;
 using Traffix.Providers.PcapFile;
-using Microsoft.StreamProcessing;
-using Traffix.Processors;
-using System.Collections;
 
 namespace Traffix.Storage.Faster.Tests
 {
