@@ -16,7 +16,17 @@ A collection of structures for representing frames:
 
 # Observables
 
-Implements observable operators for sequence of packets and flow aggregation. 
+Implements observable operators for sequence of packets and flow aggregation:
+
+| Operator             | Description |
+|--------------------- | --------- |
+| ApplyFlowProcessor   | Applies the flow processor to an observable sequence of flows. |
+| GroupFlows           | Projects each element of an observable sequence into the corresponding flow.  |
+| GroupConversations   | Projects each element of an observable sequence into the corresponding conversation. |
+| GroupFlowsDictionary | Projects each element of an observable sequence into the corresponding flow. |
+| TimeSpanWindow       | Projects each element of an observable sequence into consecutive non-overlapping window |
+
+Please, check [the operator documentation](Observable/Readme.md) for more information.
 
 # Processors
 
