@@ -61,8 +61,8 @@ record _Foo(
     string FooCol1,
     int FooCol2,
     int FooCol3,
-    int FooCol3BarCol1,
-    int FooCol3,BarCol2
+    int BarBarCol1,
+    int BarBarCol2
 );
 ```
 
