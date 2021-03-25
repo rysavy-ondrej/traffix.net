@@ -10,9 +10,9 @@ The basic structures and classes for representing flow keys and related utilitie
 
 A collection of structures for representing frames:
 
-* `FrameKey` --  The key of a frame. It is represented as ulong value internally. The 64-bit long key consits of 32-bit Unix Epoch with seconds resolution and 32-bit frame number.
-* `FrameMetadata` -- represents the metadata of a single frame. It is a structure that has fixed size of 20 bytes and provides timestamp, link layer type, original length and flow key hash.
-* `FrameRef` -- Represents a reference structure to frame key, metadata and its bytes.
+* `FrameKey` represents the key of a frame. Internally, it is ulong value. The 64-bit key consits of 32-bit Unix Epoch with seconds resolution and 32-bit frame number.
+* `FrameMetadata` desribes the metadata of a single frame. It is a structure that has fixed size of 20 bytes and provides timestamp, link layer type, original length and flow key hash.
+* `FrameRef` is a reference structure to frame key, metadata and its bytes.
 
 # Observables
 
