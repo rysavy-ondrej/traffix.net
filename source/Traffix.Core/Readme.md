@@ -148,7 +148,7 @@ foreach (var flow in flowProcessor.Flows)
 It is easy to obtain conversations (bidirectional flows) from the flow processor with the help of 
 method to generate a conversation key from the flow key, for instance:
 
-```
+```csharp
 ConversationKey GetConversationKey(FlowKey flowKey)
 {
     if (flowKey.SourcePort > flowKey.DestinationPort)
@@ -166,6 +166,8 @@ foreach (var conversation in flowProcessor.GetConversations(GetConversationKey))
     // ... do something with conversation ...
 }
 ```
+
+More exmples can be found at the [test project](../../tests/Traffix.Storage.Faster.Tests).
 
 
 
