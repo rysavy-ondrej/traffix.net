@@ -37,7 +37,7 @@ namespace Traffix.Processors
             DateTime? firstTimestamp = null; 
             foreach (var frame in frames)
             {
-                var buffer = FrameMetadata.ReadFrame(frame.Span, ref meta);
+                var buffer = FrameMetadata.FromBytes(frame.Span, ref meta);
 
                 if (firstTimestamp == null) firstTimestamp = new DateTime(meta.Ticks);
 

@@ -95,7 +95,7 @@ namespace Traffix.Processors
             bool IsInWindow(Memory<byte> frame)
             {
                 FrameMetadata frameMetadata = default;
-                FrameMetadata.ReadFrame(frame.Span, ref frameMetadata);
+                FrameMetadata.FromBytes(frame.Span, ref frameMetadata);
                 return (frameMetadata.Ticks >= firstTicks && frameMetadata.Ticks < lastTicks);
             }
             return _processor.Invoke(flowKey, frames.Where(IsInWindow));

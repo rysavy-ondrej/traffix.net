@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
@@ -8,11 +9,16 @@ using System.Threading.Tasks;
 namespace Traffix.Core.Observable
 {
     /// <summary>
-    /// Basic implementation of flow processor with the support for flow aggregation and conversations.
+    /// Basic implementation of flow processor with the support for flow aggregation.
+    /// <para/>
+    /// The flow processor is used to apply the processor on each input element and update the flow record. 
+    /// The class implements <see cref="IObserver{T}"/> interface for consuming the input sequence.
+    /// <para/>
+    /// The concrete implementation needs to provide four methods <see cref="Create(TSource)"/>, <see cref="Update(TFlowRecord, TSource)"/>, 
+    /// <see cref="Aggregate(TFlowRecord, TFlowRecord)"/>, and <see cref="GetFlowKey(TSource)"/>.
     /// </summary>
     /// <typeparam name="TSource">The source type.</typeparam>
     /// <typeparam name="TFlowKey">The flow key type.</typeparam>
-    /// <typeparam name="TConversationKey">The conversation key type.</typeparam>
     /// <typeparam name="TFlowRecord">The flow record type.</typeparam>
     public abstract class FlowProcessor<TSource, TFlowKey, TFlowRecord> : IObserver<TSource>
     {
@@ -25,12 +31,36 @@ namespace Traffix.Core.Observable
             _onCompleteHandle = new EventWaitHandle(false, EventResetMode.ManualReset);
         }
 
+        /// <summary>
+        /// Creates a new flow record from the first source element.
+        /// </summary>
+        /// <param name="source">The source element.</param>
+        /// <returns>A new flow record.</returns>
         protected abstract TFlowRecord Create(TSource source);
 
+        /// <summary>
+        /// Updates the existing flow record with a new element.  
+        /// <para/>
+        /// An in-place update is considered. It is thus necessary to wrap the 
+        /// record in an object if record value cannot be updated in-place.
+        /// </summary>
+        /// <param name="record">The record to update.</param>
+        /// <param name="source">The source element used to update.</param>
         protected abstract void Update(TFlowRecord record, TSource source);
 
+        /// <summary>
+        /// Aggregates flow records and creates a new resulting record.
+        /// </summary>
+        /// <param name="arg1">The first flow record to aggregate.</param>
+        /// <param name="arg2">The second flow record to aggregate.</param>
+        /// <returns>The new aggregated flow record.</returns>
         protected abstract TFlowRecord Aggregate(TFlowRecord arg1, TFlowRecord arg2);
 
+        /// <summary>
+        /// Gets the flow key for the given source element.
+        /// </summary>
+        /// <param name="source">The source object.</param>
+        /// <returns>The flow key for the source object.</returns>
         protected abstract TFlowKey GetFlowKey(TSource source);
 
         /// <summary>
@@ -82,8 +112,13 @@ namespace Traffix.Core.Observable
         /// <inheritdoc/>
         public void OnError(Exception error)
         {
-            
+            Error?.Invoke(this, new ErrorEventArgs(error));
         }
+
+        /// <summary>
+        /// Called when an error ocurred during source observable processing. 
+        /// </summary>
+        public event EventHandler<ErrorEventArgs>? Error;
 
         /// <summary>
         /// The completion signalizing that input observable completes.
@@ -147,5 +182,4 @@ namespace Traffix.Core.Observable
                         .Select(c=> KeyValuePair.Create(c.Key, c.Aggregate(seed, func)));
         }
     }
-
 }

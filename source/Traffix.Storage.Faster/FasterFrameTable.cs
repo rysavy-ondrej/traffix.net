@@ -229,7 +229,7 @@ namespace Traffix.Storage.Faster
                 {
                     FrameKey frameKey = new FrameKey(key);
                     FrameMetadata frameMetadata = default;
-                    var frameBytes = FrameMetadata.ReadFrame(value.AsSpan(), ref frameMetadata);
+                    var frameBytes = FrameMetadata.FromBytes(value.AsSpan(), ref frameMetadata);
                     _observer.OnNext(_processor(ref frameKey, ref frameMetadata, frameBytes));
                 }
                 _framesStore.ProcessEntries(onNextFrame, _cancel.Token);

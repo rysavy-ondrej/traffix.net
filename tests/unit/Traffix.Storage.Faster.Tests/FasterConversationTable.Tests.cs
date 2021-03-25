@@ -188,7 +188,7 @@ namespace Traffix.Storage.Faster.Tests
             (int octets, int ip, int tcp, int udp) GetFrameSize(Memory<byte> memory)
             {
                 var meta = default(FrameMetadata);
-                var bytes = FrameMetadata.ReadFrame(memory.Span, ref meta);
+                var bytes = FrameMetadata.FromBytes(memory.Span, ref meta);
                 var packet = PacketDotNet.Packet.ParsePacket((PacketDotNet.LinkLayers)meta.LinkLayer, bytes.ToArray());
                 return (meta.OriginalLength,
                     packet.Extract<PacketDotNet.InternetPacket>() != null ? 1 : 0,

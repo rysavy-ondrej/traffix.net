@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
@@ -8,12 +7,19 @@ using System.Threading.Tasks;
 
 namespace Traffix.Core.Observable
 {
-    public static class ObservableFlows
+    /// <summary>
+    /// An extension class that defines several useful reactive operators 
+    /// on input sequence of packets.
+    /// </summary>
+    public static class ObservableOperators
     {
         /// <summary>
         /// Projects each element of an observable sequence into consecutive non-overlapping windows. 
         /// The projection is controlled by time provided by <paramref name="getTicks"/> and the 
-        /// <paramref name="timeSpan"/> interval.
+        /// <paramref name="timeSpan"/> interval. The splitting is approximate. 
+        /// <para/>
+        /// An alternative implementation is <see cref="TimeSpanWindow{TSource}(IObservable{TSource}, Func{TSource, long}, TimeSpan)"/>, 
+        /// which split input collection precisely according to the given time interval.
         /// </summary>
         /// <typeparam name="T">The type of source.</typeparam>
         /// <param name="observable">The source sequence to produce windows over.</param>
@@ -78,7 +84,6 @@ namespace Traffix.Core.Observable
         /// Projects each element of an observable sequence into the corresponding flow.
         /// <para/>
         /// This method implements the operator directly without the use of GroupBy. The performance is similar. 
-        /// TODO - can we do it without the use of Subject?
         /// </summary>
         /// <typeparam name="TFlowKey">The type of flow key.</typeparam>
         /// <typeparam name="TSource">The packet type.</typeparam>
@@ -148,7 +153,7 @@ namespace Traffix.Core.Observable
         {
             return System.Reactive.Linq.Observable.Create<IObservable<TSource>>(observer =>
             {
-                SubjectWindow<TSource>? _currentWindow = null;
+                SubjectTimeSpanWindow<TSource>? _currentWindow = null;
                 
                 return source.Subscribe(value =>
                 {
@@ -156,7 +161,7 @@ namespace Traffix.Core.Observable
 
                     if (_currentWindow == null)
                     {
-                        _currentWindow = new SubjectWindow<TSource>(ticks + timeSpan.Ticks);
+                        _currentWindow = new SubjectTimeSpanWindow<TSource>(ticks + timeSpan.Ticks);
                         _currentWindow.ForwardOnNext(observer);
                     }
 
@@ -171,12 +176,12 @@ namespace Traffix.Core.Observable
                 }, observer.OnError, () => { _currentWindow?.CloseWindow(); observer.OnCompleted(); });
             });
         }
-        internal sealed class SubjectWindow<TSource>
+        internal sealed class SubjectTimeSpanWindow<TSource>
         {
             long _windowEdgeTicks;
             Subject<TSource> _subject;
 
-            internal SubjectWindow(long windowEdgeTicks)
+            internal SubjectTimeSpanWindow(long windowEdgeTicks)
             {
                 _windowEdgeTicks = windowEdgeTicks;
                 _subject = new Subject<TSource>();
