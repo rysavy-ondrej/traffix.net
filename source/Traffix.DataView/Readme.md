@@ -85,3 +85,14 @@ foreach (var row in dataview.Preview(100).RowView)
     Console.WriteLine();
 }
 ```
+
+The output should be as follows:
+
+```
+[FooCol1, 1]	[FooCol2, 2]	[FooCol3, 3]	[BarBarCol1, 1]	    [BarBarCol2, 2]	
+[FooCol1, 2]	[FooCol2, 4]	[FooCol3, 6]	[BarBarCol1, 2]	    [BarBarCol2, 4]	
+[FooCol1, 3]	[FooCol2, 6]	[FooCol3, 9]	[BarBarCol1, 3]	    [BarBarCol2, 6]	
+[FooCol1, 4]	[FooCol2, 8]	[FooCol3, 12]	[BarBarCol1, 4]	    [BarBarCol2, 8]	
+[FooCol1, 5]	[FooCol2, 10]	[FooCol3, 15]	[BarBarCol1, 5]	    [BarBarCol2, 10]		
+...truncated...
+```
