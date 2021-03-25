@@ -50,11 +50,10 @@ public class BarDataViewType : DataViewType<Bar>
         .AddColumn(nameof(Bar.BarCol2), x => x.BarCol2);
 }
 ```
+
 Column definition uses fluent syntax. Each column is defined in terms of its name and the getter function 
 to access the column value. For column that consists of a complex type `AddComplexColumn` method is used, which references
-the data view type of the complex type. 
-
-the presented data type definitions generates the type equivalent to the following record:
+the data view type of the complex type. The presented data type definitions generates the type equivalent to the following record:
 
 ```
 record _Foo(
