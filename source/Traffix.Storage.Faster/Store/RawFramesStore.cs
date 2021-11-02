@@ -4,7 +4,8 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
-using Traffix.Data;
+using System.Threading;
+using Traffix.Core;
 
 namespace Traffix.Storage.Faster
 {
@@ -23,7 +24,7 @@ namespace Traffix.Storage.Faster
             /// <summary>
             /// Gets the number of records in the store.
             /// </summary>
-            public int GetRecordCount() => ProcessEntries(null);
+            public int GetRecordCount() => ProcessEntries(null, CancellationToken.None);
 
             /// <summary>
             /// Creates a new instance of the frame store.
@@ -358,12 +359,12 @@ namespace Traffix.Storage.Faster
         /// </summary>
         /// <param name="onNextValue">The callback function to call on every entry.</param>
         /// <returns>The number of entries processed.</returns>
-            internal int ProcessEntries(OnNextValueCallback<ulong,SpanByte>? onNextValue)
+            internal int ProcessEntries(OnNextValueCallback<ulong,SpanByte>? onNextValue, CancellationToken cancellationToken)
             {
                 if (_fasterKvh == null) throw new InvalidOperationException("The store is closed.");
                 var iterator = _fasterKvh.Iterate() ?? throw new InvalidOperationException("Cannot create conversations database iterator.");
                 var entriesCount = 0;
-                while (iterator.GetNext(out _))
+                while (iterator.GetNext(out _) && !cancellationToken.IsCancellationRequested)
                 {
                     entriesCount++;
                     onNextValue?.Invoke(ref iterator.GetKey(), ref iterator.GetValue());

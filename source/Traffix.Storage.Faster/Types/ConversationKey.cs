@@ -21,7 +21,7 @@ namespace Traffix.Storage.Faster
         public FlowKey FlowKey; 
 
 
-        internal ConversationKey(FlowKey flowKey)
+        public ConversationKey(FlowKey flowKey)
         {
             FlowKey = flowKey;
             HashCode64 = flowKey.GetHashCode64();

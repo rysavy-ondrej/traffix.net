@@ -7,7 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using Traffix.Core.Flows;
-using Traffix.Data;
+using Traffix.Core.Processors;
 using Traffix.Providers.PcapFile;
 using Traffix.Storage.Faster;
 

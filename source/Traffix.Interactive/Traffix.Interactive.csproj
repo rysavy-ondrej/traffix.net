@@ -14,10 +14,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="PacketDotNet" Version="1.1.1" />
+    <PackageReference Include="PacketDotNet" Version="1.2.0" />
     <PackageReference Include="System.Memory" Version="4.5.4" />
-    <ProjectReference Include="..\Traffix.Core.Flows\Traffix.Core.csproj" />
-    <ProjectReference Include="..\Traffix.Data.Processors\Traffix.Processors.csproj" />
+    <ProjectReference Include="..\Traffix.Core\Traffix.Core.csproj" />
+    <ProjectReference Include="..\Traffix.Processors\Traffix.Processors.csproj" />
     <ProjectReference Include="..\Traffix.Storage.Faster\Traffix.Storage.Faster.csproj" />
   </ItemGroup>
 

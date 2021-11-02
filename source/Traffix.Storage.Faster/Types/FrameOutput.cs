@@ -1,7 +1,7 @@
 using System;
 using System.Buffers;
 using System.Runtime.CompilerServices;
-using Traffix.Data;
+using Traffix.Core.Processors;
 
 namespace Traffix.Storage.Faster
 {

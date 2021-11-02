@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using SharpPcap;
+using System.Collections.Generic;
 using System.Threading;
 using Traffix.Providers.PcapFile;
 using Traffix.Storage.Faster;
@@ -20,7 +21,7 @@ namespace Traffix.Interactive
         /// <param name="conversationTablePath">The path to folder where conversation table is to be saved.</param>
         /// <param name="token">The cancellation token for interrupting the operation.</param>
         /// <returns>Newly created conversation table.</returns>
-        public FasterConversationTable CreateConversationTable(IEnumerable<RawFrame> frames, string conversationTablePath, int framesCapacity, CancellationToken? token = null)
+        public FasterConversationTable CreateConversationTable(IEnumerable<RawCapture> frames, string conversationTablePath, int framesCapacity, CancellationToken? token = null)
         {
             var flowTable = FasterConversationTable.Create(conversationTablePath, framesCapacity);
             using (var loader = flowTable.GetStreamer())
