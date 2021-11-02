@@ -6,6 +6,8 @@
     <LangVersion>8.0</LangVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	  <PackageDescription>Collection of decoders for traffix.net framework.</PackageDescription>
+	  <RepositoryUrl>https://github.com/rysavy-ondrej/traffix.net</RepositoryUrl>
   </PropertyGroup>
   
   <ItemGroup>

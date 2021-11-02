@@ -3,6 +3,8 @@
   <PropertyGroup>
     <Authors>Ondrej Rysavy</Authors>
     <Company>Brno University of Technology</Company>
+	  <PackageDescription>Implements basic data providers for traffix.net framework.</PackageDescription>
+	  <RepositoryUrl>https://github.com/rysavy-ondrej/traffix.net</RepositoryUrl>
   </PropertyGroup>
 
   <PropertyGroup>
